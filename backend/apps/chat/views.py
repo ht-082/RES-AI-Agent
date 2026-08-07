@@ -112,7 +112,32 @@ def run_rag(conversation, user_content):
     return sources, "\n\n".join(context_parts), None, False
 
 
-def build_messages(conversation, user_msg, user_content, use_docs, context_text):
+def run_web_search(query):
+    """웹 검색 → (web_sources, web_text, error). run_rag()와 대칭 구조.
+
+    사용자가 토글을 켤 때만 호출된다. 자동 폴백은 하지 않는다 —
+    실측에서 사내 전용 질의("당진행복솔라 PF 대주단")에 이름만 비슷한
+    다른 사업 기사가 상위로 올라왔다. 자동으로 켜면 그게 답이 된다.
+    """
+    from services.web_search import (WebSearchError, build_web_context,
+                                     filter_results, search)
+    try:
+        raw = search(query)
+    except WebSearchError as e:
+        logger.warning(f"웹 검색 실패(무시하고 사내 근거만 사용): {e}")
+        return [], '', str(e)
+
+    kept, reason = filter_results(raw)
+    logger.info(f"[웹] 후보 {len(raw)} 게이트[{reason}] 통과 {len(kept)}")
+    if not kept:
+        return [], '', None
+
+    web_text, cited = build_web_context(kept)
+    return cited, web_text, None
+
+
+def build_messages(conversation, user_msg, user_content, use_docs, context_text,
+                   web_text=''):
     """LLM 프롬프트 구성 (시스템 지시 + 사내자료 + 첨부 + 최근 히스토리 + 질문)"""
     system_prompt = (
         "당신은 재생에너지(태양광/풍력) 분야의 전문 지식을 갖고 있는 사업개발실의 사내 AI 에이전트입니다.\n"
@@ -126,8 +151,24 @@ def build_messages(conversation, user_msg, user_content, use_docs, context_text)
             "자료가 부족해 정확한 대답을 할 수 없다면 솔직히 모른다고 답변하십시오.\n\n"
             f"[사내 참고 문서 내용]\n{context_text}"
         )
-    else:
+    elif not web_text:
         system_prompt += "사내 문서 참조 모드가 꺼져있거나 제공된 참고 자료가 없습니다. 일반적인 지식 범주에서 답변하십시오."
+    else:
+        system_prompt += "사내 참고 자료는 없습니다. 아래 웹 검색 결과만을 근거로 답변하십시오."
+
+    # 웹 검색 근거 — 사내 문서와 **명확히 구분**해서 넣는다.
+    # 도메인 화이트리스트를 두지 않으므로 신뢰도 판단은 사용자 몫이고,
+    # 판단하려면 도메인·날짜가 답변에 보여야 한다.
+    if web_text:
+        system_prompt += (
+            "\n\n[웹 검색 결과 — 사내 문서가 아니며 출처 신뢰도는 확인되지 않았습니다]\n"
+            f"{web_text}\n\n"
+            "웹 검색 결과를 쓸 때의 규칙:\n"
+            "- 사내 문서와 웹 정보가 충돌하면 **사내 문서를 우선**하고, 충돌 사실을 함께 밝히십시오.\n"
+            "- 웹에만 근거가 있는 내용은 \"웹 검색 결과(도메인)에 따르면\" 형태로 출처를 밝혀 쓰십시오.\n"
+            "- 웹 출처는 신뢰도가 검증되지 않았음을 답변에 한 번 명시하십시오.\n"
+            "- 답변 끝에 근거 구성을 밝히십시오. 예: (사내 근거 3건 · 웹 근거 2건)\n"
+        )
 
     # 사용자가 이 대화에 첨부한 파일 (C-6) — 토글과 무관하게 항상 제공
     attachment_text = build_attachment_context(conversation)
@@ -453,6 +494,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
         user_content = serializer.validated_data['content']
         use_docs = serializer.validated_data.get('use_internal_docs',
                                                  conversation.use_internal_docs)
+        use_web = serializer.validated_data.get('use_web_search',
+                                                conversation.use_web_search)
 
         user_msg = Message.objects.create(
             conversation=conversation, role='user', content=user_content, status='done')
@@ -461,7 +504,21 @@ class ConversationViewSet(viewsets.ModelViewSet):
             return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
         def stream():
+            from concurrent.futures import ThreadPoolExecutor
+
             from services.llm import generate_response_stream
+            from services.web_search import is_available
+
+            # 웹 검색은 사내 검색과 **병렬**로 던진다. 순차로 하면 2~3초가 그대로 더해진다.
+            # (웹 검색은 ORM을 쓰지 않으므로 스레드에서 안전하다)
+            web_sources, web_text = [], ''
+            pool = fut_web = None
+            web_ok, web_reason = is_available()
+            if use_web and web_ok:
+                pool = ThreadPoolExecutor(max_workers=1)
+                fut_web = pool.submit(run_web_search, user_content)
+            elif use_web:
+                logger.info(f"웹 검색 요청됐으나 사용 불가: {web_reason}")
 
             sources, context_text, rag_error, no_hit = [], '', None, False
             if use_docs:
@@ -469,6 +526,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 sources, context_text, rag_error, no_hit = run_rag(conversation, user_content)
 
                 if rag_error:
+                    if pool:
+                        pool.shutdown(wait=False)
                     content = (f"🚨 **사내 문서 검색(RAG) 엔진 오류**\n\n"
                                f"- **에러 유형**: `{rag_error}`\n\n서버 로그를 확인해 주세요.")
                     Message.objects.create(conversation=conversation, role='assistant',
@@ -478,29 +537,52 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     yield sse('error', {'message': content})
                     return
 
-                if no_hit:
-                    content = "관련 자료를 찾지 못했습니다."
-                    msg = Message.objects.create(conversation=conversation, role='assistant',
-                                                 content=content, used_internal_docs=True,
-                                                 model='none', status='done')
-                    finalize_conversation(conversation, user_content)
-                    yield sse('delta', {'text': content})
-                    yield sse('done', {'message_id': str(msg.id), 'sources': []})
-                    return
+            # 병렬로 돌던 웹 검색 결과 수거
+            if fut_web is not None:
+                yield sse('status', {'stage': 'web', 'message': '웹을 검색하고 있습니다'})
+                try:
+                    web_sources, web_text, _ = fut_web.result(timeout=20)
+                except Exception as e:
+                    logger.warning(f"웹 검색 결과 수거 실패(사내 근거만 사용): {e}")
+                finally:
+                    pool.shutdown(wait=False)
 
-                # 출처는 LLM 생성 전에 이미 확정되므로 먼저 보낸다 (UI가 근거를 즉시 표시)
+            # 사내에도 없고 웹 근거도 없으면 여기서 끝낸다.
+            # 웹 근거가 있으면 사내가 비어도 답변을 시도한다(사용자가 웹을 켠 경우).
+            if use_docs and no_hit and not web_text:
+                content = "관련 자료를 찾지 못했습니다."
+                msg = Message.objects.create(conversation=conversation, role='assistant',
+                                             content=content, used_internal_docs=True,
+                                             model='none', status='done')
+                finalize_conversation(conversation, user_content)
+                yield sse('delta', {'text': content})
+                yield sse('done', {'message_id': str(msg.id), 'sources': []})
+                return
+
+            # 출처는 LLM 생성 전에 확정되므로 먼저 보낸다 (UI가 근거를 즉시 표시).
+            # kind로 사내/웹을 구분해 프론트가 배지를 다르게 칠할 수 있게 한다.
+            if sources or web_sources:
                 yield sse('sources', {'sources': [
-                    {'short_label': s.short_label, 'display_title': s.display_title,
+                    {'kind': 'internal',
+                     'short_label': s.short_label, 'display_title': s.display_title,
                      'page_number': s.page_number, 'location_label': s.location_label,
                      'score': s.score, 'rank': s.rank, 'snippet': s.snippet,
                      'document_id': str(s.document_id),
                      'open_url': (f'/api/documents/{s.document_id}/file/'
                                   + (f'?page={s.page_number}' if s.page_number else ''))}
-                    for s in sources]})
+                    for s in sources
+                ] + [
+                    {'kind': 'web',
+                     'short_label': w['domain'][:14], 'display_title': w['title'] or w['domain'],
+                     'location_label': ' · '.join(x for x in (w['domain'], w['published']) if x),
+                     'score': w['score'], 'rank': w['rank'], 'snippet': w['snippet'][:200],
+                     'open_url': w['url']}
+                    for w in web_sources
+                ]})
 
             yield sse('status', {'stage': 'generating', 'message': '답변을 작성하고 있습니다'})
             messages_payload = build_messages(conversation, user_msg, user_content,
-                                              use_docs, context_text)
+                                              use_docs, context_text, web_text=web_text)
             llm_model = getattr(settings, 'LLM_MODEL', 'gpt-4o-mini')
 
             parts, usage = [], {}
@@ -523,7 +605,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
                         conversation=conversation, role='assistant',
                         content=partial + '\n\n⚠️ *생성이 중단되었습니다 (연결 오류). 위 내용은 중단 시점까지의 답변입니다.*',
                         used_internal_docs=bool(use_docs and sources),
-                        model=llm_model, status='partial')
+                        model=llm_model, status='partial',
+                        web_sources=web_sources or None)
                     for s in sources:
                         s.message = partial_msg
                         s.save()
@@ -538,13 +621,15 @@ class ConversationViewSet(viewsets.ModelViewSet):
             ai_msg = Message.objects.create(
                 conversation=conversation, role='assistant', content=content,
                 used_internal_docs=bool(use_docs and sources),
-                model=llm_model, token_usage=usage, status='done')
+                model=llm_model, token_usage=usage, status='done',
+                web_sources=web_sources or None)
             for s in sources:
                 s.message = ai_msg
                 s.save()
             finalize_conversation(conversation, user_content)
             yield sse('done', {'message_id': str(ai_msg.id),
-                               'used_internal_docs': bool(use_docs and sources)})
+                               'used_internal_docs': bool(use_docs and sources),
+                               'used_web_search': bool(web_sources)})
 
         response = StreamingHttpResponse(stream(), content_type='text/event-stream')
         response['Cache-Control'] = 'no-cache'

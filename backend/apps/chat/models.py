@@ -17,6 +17,10 @@ class Conversation(models.Model):
     use_internal_docs = models.BooleanField(
         default=True, help_text='사내 문서 참조 토글(대화별)'
     )
+    # ⚠ 기본 False. 켜면 질문 내용이 외부 검색 서비스로 전송된다.
+    use_web_search = models.BooleanField(
+        default=False, help_text='웹 검색 토글(대화별). 질문이 외부로 전송됨'
+    )
     corpus_version = models.CharField(
         max_length=20, blank=True, default='',
         help_text="질의 대상 코퍼스 버전 (빈 값 = is_active 버전 사용)"
@@ -58,6 +62,10 @@ class Message(models.Model):
         ('failed', '실패'),
     ]
 
+    # 웹 검색 근거. MessageSource는 document FK가 필수라 웹을 담을 수 없어 JSON으로 둔다.
+    # 표시용이며 검색·집계 대상이 아니다.
+    # [{title, url, domain, snippet, score, published, rank}, ...]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
         Conversation, on_delete=models.CASCADE, related_name='messages'
@@ -67,6 +75,8 @@ class Message(models.Model):
     used_internal_docs = models.BooleanField(default=False)
     model = models.CharField(max_length=80, blank=True, default='')
     token_usage = models.JSONField(null=True, blank=True)
+    web_sources = models.JSONField(null=True, blank=True,
+                                   help_text='웹 검색 근거 (표시용). 사내 출처는 MessageSource에 있다.')
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='done')
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -299,6 +299,20 @@ input, textarea, select { font-family: inherit; font-size: inherit; color: inher
 .chip.is-link:hover { background: var(--mint-soft); border-color: var(--green-accent); }
 .chip.is-link:focus-visible { outline: 2px solid var(--green-accent); outline-offset: 2px; }
 .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mint); }
+
+/* 웹 검색 출처 — 사내 문서와 시각적으로 확실히 구분한다.
+   도메인 화이트리스트를 두지 않으므로 신뢰도 판단은 사용자 몫이고,
+   판단하려면 "이건 웹이다"가 한눈에 보여야 한다. */
+.chip.is-web { background: #fff8ec; border-color: #e8d5ae; color: #7a5a1e; }
+.chip.is-web:hover { background: #fff3dd; border-color: #d9bd85; }
+.chip.is-web .dot { background: #d9a441; }
+.chip .chip-tag {
+  font-size: 10px; font-weight: 700; letter-spacing: .3px;
+  padding: 1px 5px; border-radius: 4px; background: #d9a441; color: #fff;
+}
+
+/* 웹 검색 토글 — 켜져 있을 때 경고색으로 상태를 드러낸다 */
+.web-switch input:checked ~ .track { background: #d9a441; }
 .chip .tip {
   position: absolute; bottom: calc(100% + 9px); left: 50%; transform: translateX(-50%) translateY(4px);
   background: var(--green-900); color: #fff; font-size: 11.5px; font-weight: 500; letter-spacing: -.1px;

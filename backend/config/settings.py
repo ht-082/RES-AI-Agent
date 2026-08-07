@@ -245,6 +245,44 @@ RAG_GATE_REL_MARGIN_QDRANT = float(os.getenv('RAG_GATE_REL_MARGIN_QDRANT', '0.15
 RAG_CONTEXT_CHUNK_CHAR_LIMIT = int(os.getenv('RAG_CONTEXT_CHUNK_CHAR_LIMIT', '4000'))
 RAG_CONTEXT_CHAR_BUDGET = int(os.getenv('RAG_CONTEXT_CHAR_BUDGET', '24000'))
 LLM_HISTORY_CHAR_BUDGET = int(os.getenv('LLM_HISTORY_CHAR_BUDGET', '6000'))
+
+# ── Tavily 웹 검색 ─────────────────────────────────────────────────────
+# 사내 문서가 담지 못하는 정보(법령 개정·SMP/REC 시세·정책 동향)를 보완한다.
+#
+# ⚠ 웹 검색을 켜면 **질문 내용이 Tavily 서버로 전송된다.**
+#    "당진행복솔라 PF 대주단" 같은 질의에는 사업명·상대방이 담긴다.
+#    그래서 기본은 전부 꺼짐이고, 사용자가 명시적으로 켤 때만 동작한다.
+TAVILY_API_KEY = os.getenv('TAVILY_API_KEY', '')
+# 전역 킬스위치. False면 키가 있어도 외부 호출이 일어나지 않는다.
+TAVILY_ENABLED = os.getenv('TAVILY_ENABLED', 'False').lower() in ('true', '1', 'yes')
+
+TAVILY_SEARCH_DEPTH = os.getenv('TAVILY_SEARCH_DEPTH', 'basic')   # basic=1크레딧 / advanced=2
+TAVILY_MAX_RESULTS = int(os.getenv('TAVILY_MAX_RESULTS', '5'))
+TAVILY_TIMEOUT = float(os.getenv('TAVILY_TIMEOUT', '8.0'))        # LLM(180s)보다 훨씬 짧게
+
+# 품질 게이트 — 실측 결과(질의 10건, 2026-08-03)
+#   웹에 답 있음 1위: 0.7385 ~ 0.9169
+#   웹에 답 없음 1위: 0.1822 ~ 0.7891
+#   → **두 그룹이 겹친다.** 사내 게이트(0.5179 vs 0.6019, 빈 구간 존재)와 달리
+#     점수만으로 "정답/오답"을 가를 수 없다.
+#
+# 이유: Tavily score는 '질의-문서 유사도'지 '정답 여부'가 아니다.
+#   "우리 회사 구내식당 메뉴" → 남의 회사 구내식당 블로그가 0.7891
+#   "당진행복솔라 PF 대주단" → 이름이 비슷한 다른 사업(GS당진솔라팜) 기사가 0.5652
+#
+# 따라서 점수 컷은 '완전 무관한 꼬리를 자르는' 보조 장치로만 쓴다.
+# 오답 방어의 본체는 ① 자동 폴백 금지 ② 출처 도메인 노출 ③ 프롬프트 우선순위 지시다.
+TAVILY_MIN_SCORE = float(os.getenv('TAVILY_MIN_SCORE', '0.3'))
+TAVILY_REL_MARGIN = float(os.getenv('TAVILY_REL_MARGIN', '0.25'))
+
+# 사내 검색이 실패했을 때 웹으로 자동 보완할 것인가.
+# ⚠ 기본 False를 유지할 것. 실측에서 사내 전용 질의("당진행복솔라 PF 대주단")에
+#   이름만 비슷한 **다른 사업 기사**가 상위로 올라왔다. 자동 폴백을 켜면
+#   실제 대주단(우리은행·교보생명) 대신 그 기사의 은행명을 답할 수 있다.
+TAVILY_AUTO_FALLBACK = os.getenv('TAVILY_AUTO_FALLBACK', 'False').lower() in ('true', '1', 'yes')
+
+# 웹 컨텍스트 예산은 사내(24,000자)보다 작게 둔다 — 웹이 사내 근거를 밀어내면 안 된다.
+TAVILY_CONTEXT_CHAR_BUDGET = int(os.getenv('TAVILY_CONTEXT_CHAR_BUDGET', '6000'))
 RAG_MAX_CONTEXT_K = int(os.getenv('RAG_MAX_CONTEXT_K', '8'))
 DEBUG_RAG = os.getenv('DEBUG_RAG', 'True').lower() in ('true', '1', 'yes')
 

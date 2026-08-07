@@ -28,8 +28,9 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = ['id', 'conversation', 'role', 'content', 'used_internal_docs',
-                  'model', 'token_usage', 'status', 'created_at', 'sources']
-        read_only_fields = ['id', 'created_at', 'sources']
+                  'model', 'token_usage', 'status', 'created_at', 'sources',
+                  'web_sources']
+        read_only_fields = ['id', 'created_at', 'sources', 'web_sources']
 
 
 class MessageAttachmentSerializer(serializers.ModelSerializer):
@@ -46,7 +47,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ['id', 'project', 'title', 'use_internal_docs', 'corpus_version',
+        fields = ['id', 'project', 'title', 'use_internal_docs', 'use_web_search', 'corpus_version',
                   'is_pinned', 'is_shared', 'created_by', 'last_message_at',
                   'created_at', 'updated_at', 'message_count', 'last_message_preview']
         read_only_fields = ['id', 'created_at', 'updated_at', 'last_message_at']
@@ -80,3 +81,4 @@ class SendMessageSerializer(serializers.Serializer):
     """사용자 메시지 전송 시 사용하는 시리얼라이저"""
     content = serializers.CharField()
     use_internal_docs = serializers.BooleanField(required=False, default=True)
+    use_web_search = serializers.BooleanField(required=False, default=False)

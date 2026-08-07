@@ -16,6 +16,8 @@ interface Source {
   score: number
   rank?: number
   snippet?: string
+  /** 'internal' = 사내 문서 · 'web' = 웹 검색. 없으면 사내(기존 데이터 호환) */
+  kind?: 'internal' | 'web'
 }
 
 interface Message {
@@ -66,6 +68,8 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [useInternalDocs, setUseInternalDocs] = useState(true)
+  // 웹 검색은 기본 꺼짐 — 켜면 질문 내용이 외부 검색 서비스로 전송된다
+  const [useWebSearch, setUseWebSearch] = useState(false)
   const [sending, setSending] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [uploading, setUploading] = useState(false)
@@ -127,7 +131,7 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
     const res = await fetch('/api/conversations/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-      body: JSON.stringify({ title: '', use_internal_docs: useInternalDocs, corpus_version: corpusVersion }),
+      body: JSON.stringify({ title: '', use_internal_docs: useInternalDocs, use_web_search: useWebSearch, corpus_version: corpusVersion }),
       credentials: 'include',
     })
     if (!res.ok) throw new Error('대화 생성 실패')
@@ -198,6 +202,9 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
             sources: m.sources ?? [],
           }))
         setMessages(loaded)
+        if (typeof data.use_web_search === 'boolean') {
+          setUseWebSearch(data.use_web_search)
+        }
         if (typeof data.use_internal_docs === 'boolean') {
           setUseInternalDocs(data.use_internal_docs)
         }
@@ -319,7 +326,7 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
       const res = await fetch(`/api/conversations/${convId}/messages/stream/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-        body: JSON.stringify({ content: currentInput, use_internal_docs: useInternalDocs }),
+        body: JSON.stringify({ content: currentInput, use_internal_docs: useInternalDocs, use_web_search: useWebSearch }),
         credentials: 'include',
       })
       if (!res.ok || !res.body) throw new Error('검색 또는 생성 실패')
@@ -470,29 +477,34 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
                         const body = (
                           <>
                             <span className="dot" />
+                            {src.kind === 'web' && <span className="chip-tag">웹</span>}
                             {src.short_label}
                             <span className="tip">
                               {src.display_title}
                               {src.location_label && (
                                 <span className="tp-meta">{src.location_label}</span>
                               )}
+                              {src.kind === 'web' && (
+                                <span className="tp-meta">웹 검색 결과 · 출처 신뢰도는 확인되지 않았습니다</span>
+                              )}
                             </span>
                           </>
                         )
                         // 원문을 열 수 없는 출처(문서 삭제 등)는 링크로 만들지 않는다.
+                        const cls = `chip${src.open_url ? ' is-link' : ''}${src.kind === 'web' ? ' is-web' : ''}`
                         return src.open_url ? (
                           <a
                             key={src.id ?? i}
-                            className="chip is-link"
+                            className={cls}
                             href={sourceHref(src)}
                             target="_blank"
                             rel="noreferrer"
-                            title="원문 열기"
+                            title={src.kind === 'web' ? '웹 원문 열기' : '원문 열기'}
                           >
                             {body}
                           </a>
                         ) : (
-                          <span key={src.id ?? i} className="chip">{body}</span>
+                          <span key={src.id ?? i} className={cls}>{body}</span>
                         )
                       })}
                     </div>
@@ -542,6 +554,24 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
             <div>
               <span className="rt-txt">사내 문서 참조</span>
               <span className="rt-sub"> · 이 대화에서 부서 자료를 검색해 답변에 반영합니다</span>
+            </div>
+
+            <label className="switch web-switch" title="켜면 질문 내용이 외부 검색 서비스로 전송됩니다">
+              <input
+                type="checkbox"
+                checked={useWebSearch}
+                onChange={e => setUseWebSearch(e.target.checked)}
+              />
+              <span className="track" />
+              <span className="knob" />
+            </label>
+            <div>
+              <span className="rt-txt">웹 검색</span>
+              <span className="rt-sub">
+                {useWebSearch
+                  ? ' · ⚠ 질문 내용이 외부로 전송됩니다'
+                  : ' · 법령·시세 등 사내 자료에 없는 정보를 보완합니다'}
+              </span>
             </div>
             {corpusVersions.length > 0 && (
               <select

@@ -76,3 +76,12 @@ re_ai_agent.html
 새 폴더/
 .obsidian/
 backend;C/
+
+# ── 개발 중 산출물 (코드 아님) ────────────────────────────────────
+backend/temp_*.py
+backend/classification_result.csv
+backend/failed_documents_report.csv
+backend/indexing_report_*.txt
+backend/downloaded_draft.*
+backend/.bench_*.json
+backend/chunking_strategy.md
