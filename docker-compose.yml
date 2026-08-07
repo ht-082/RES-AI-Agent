@@ -1,0 +1,109 @@
+# =====================================================================
+# 재생E AI Agent — Docker Compose
+# 서비스: PostgreSQL(Main DB) · Qdrant(벡터) · Django(backend) · React(frontend)
+#        + Redis · Celery worker (비동기 문서 수집/임베딩, 권장)
+# =====================================================================
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    container_name: re_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-re_agent}
+      POSTGRES_USER: ${POSTGRES_USER:-re_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-re_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-re_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    container_name: re_qdrant
+    ports:
+      - "6333:6333"   # REST
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    container_name: re_redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    container_name: re_backend
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-re_user}:${POSTGRES_PASSWORD:-re_pass}@postgres:5432/${POSTGRES_DB:-re_agent}
+      QDRANT_URL: http://qdrant:6333
+      REDIS_URL: redis://redis:6379/0
+      EMBEDDING_MODEL: BAAI/bge-m3
+      EMBEDDING_DEVICE: cpu          # 컴퓨팅 여유 부족 시 cpu, 추후 cuda
+      LLM_API_BASE: ${LLM_API_BASE}  # 기 개발 LLM 엔드포인트
+      LLM_API_KEY: ${LLM_API_KEY}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./backend/media:/app/media        # 원본 문서·산출물 저장
+      - hf_cache:/root/.cache/huggingface  # BGE-M3 모델 캐시
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      redis:
+        condition: service_started
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    container_name: re_worker
+    command: celery -A config worker -l info --concurrency=1
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-re_user}:${POSTGRES_PASSWORD:-re_pass}@postgres:5432/${POSTGRES_DB:-re_agent}
+      QDRANT_URL: http://qdrant:6333
+      REDIS_URL: redis://redis:6379/0
+      EMBEDDING_MODEL: BAAI/bge-m3
+      EMBEDDING_DEVICE: cpu
+    volumes:
+      - ./backend:/app
+      - ./backend/media:/app/media
+      - hf_cache:/root/.cache/huggingface
+    depends_on:
+      - backend
+      - redis
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    container_name: re_frontend
+    command: npm run dev -- --host 0.0.0.0
+    environment:
+      VITE_API_BASE: http://localhost:8000/api
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  pg_data:
+  qdrant_data:
+  media_data:
+  hf_cache:

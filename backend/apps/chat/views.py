@@ -1,0 +1,641 @@
+import json
+import logging
+import os
+import uuid
+
+from django.conf import settings
+from django.db.models import F
+from django.http import StreamingHttpResponse
+from django.utils import timezone
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+from .models import Conversation, Message, MessageSource, MessageAttachment, ConversationShare
+from .serializers import (
+    ConversationSerializer, ConversationDetailSerializer,
+    MessageSerializer, SendMessageSerializer, ConversationShareSerializer,
+    MessageAttachmentSerializer,
+)
+
+logger = logging.getLogger(__name__)
+
+# 첨부 가능한 형식 (services/parser.py가 다룰 수 있는 것들)
+ALLOWED_ATTACHMENT_EXTS = {'pdf', 'docx', 'xlsx', 'pptx', 'hwp', 'hwpx'}
+# 첨부 1건당 LLM에 넣을 텍스트 상한. 문서 전문을 그대로 넣으면 컨텍스트가 폭발한다.
+ATTACHMENT_TEXT_LIMIT = 8000
+
+
+def run_rag(conversation, user_content):
+    """검색 → 컨텍스트/출처 구성. (sources, context_text, error, no_hit) 반환.
+
+    send_message(비스트리밍)와 stream_message(SSE)가 공유한다.
+    """
+    from apps.documents.models import Document, DocumentChunk
+    from services.retriever import retrieve_for_views
+
+    sources, context_parts = [], []
+    try:
+        project_id = conversation.project.id if conversation.project else None
+        search_results = retrieve_for_views(
+            query=user_content,
+            project_id=project_id,
+            corpus_version=conversation.corpus_version or None,
+        )
+    except Exception as e:
+        import traceback
+        logger.error(f"🚨 [RAG PIPELINE FATAL ERROR]\n{traceback.format_exc()}")
+        return [], '', str(e), False
+
+    # search_results는 리랭커 순위대로 정렬되어 있으므로 순서를 유지한다.
+    # (score는 Qdrant 점수이므로 이 값으로 재정렬하면 리랭킹이 무효가 된다.)
+    from services.retriever import apply_relevance_gate
+    passed, gate_reason = apply_relevance_gate(search_results)
+    final_chunks = passed[:settings.RAG_MAX_CONTEXT_K]
+
+    if getattr(settings, 'DEBUG_RAG', True):
+        logger.info(f"[RAG] 후보 {len(search_results)} (K={settings.RAG_RETRIEVE_K}) "
+                    f"게이트[{gate_reason}] 통과={len(passed)} 최종={len(final_chunks)}")
+
+    if not final_chunks:
+        return [], '', None, True
+
+    # [M-1] 컨텍스트 길이 가드. 청커 우회 경로 탓에 최대 138,570자짜리 청크가 존재해,
+    # 8개만 모아도 30만 자(약 10만 토큰)가 되어 지연·비용 폭증과 타임아웃을 유발했다.
+    per_chunk_limit = getattr(settings, 'RAG_CONTEXT_CHUNK_CHAR_LIMIT', 4000)
+    total_budget = getattr(settings, 'RAG_CONTEXT_CHAR_BUDGET', 24000)
+    used, truncated, skipped = 0, 0, 0
+
+    # [M-3] 출처 번호는 '실제로 컨텍스트에 담긴 순서'로 매긴다.
+    # 예전에는 청크 조회 실패 시에도 인덱스가 증가해 [참고자료 N]과 출처 목록이 어긋났다.
+    for hit in final_chunks:
+        payload = getattr(hit, 'payload', {}) or {}
+        try:
+            chunk = DocumentChunk.objects.get(qdrant_point_id=payload.get('chunk_id'))
+            doc = chunk.document
+        except (DocumentChunk.DoesNotExist, Document.DoesNotExist):
+            continue
+
+        body = chunk.content or ''
+        if len(body) > per_chunk_limit:
+            body = body[:per_chunk_limit] + f"\n…(이하 {len(chunk.content) - per_chunk_limit:,}자 생략)"
+            truncated += 1
+        if used + len(body) > total_budget and context_parts:
+            skipped += 1
+            continue          # 예산 초과 — 순위가 낮은 청크부터 버린다
+        used += len(body)
+
+        loc = f"페이지 {chunk.page_number}"
+        if chunk.section_title:
+            loc += f" · {chunk.section_title}"
+        elif chunk.sheet_name:
+            loc = f"시트: {chunk.sheet_name} ({chunk.cell_range})"
+
+        rank = len(sources) + 1
+        context_parts.append(f"[참고자료 {rank}] {doc.title} ({loc})\n{body}")
+        sources.append(MessageSource(
+            document=doc,
+            document_chunk=chunk,
+            display_title=doc.original_filename or doc.title,
+            short_label=doc.title[:4] + ".." if len(doc.title) > 5 else doc.title,
+            page_number=chunk.page_number,
+            location_label=(f"p.{chunk.page_number} · {chunk.section_title}"
+                            if chunk.section_title else f"p.{chunk.page_number}"),
+            score=getattr(hit, 'score', 0.0),
+            rank=rank,
+            snippet=chunk.content[:200],
+        ))
+
+    if truncated or skipped:
+        logger.info(f"[RAG] 컨텍스트 가드: {used:,}자 사용 / 예산 {total_budget:,}자 "
+                    f"(청크 절단 {truncated}건, 예산초과 제외 {skipped}건)")
+    return sources, "\n\n".join(context_parts), None, False
+
+
+def build_messages(conversation, user_msg, user_content, use_docs, context_text):
+    """LLM 프롬프트 구성 (시스템 지시 + 사내자료 + 첨부 + 최근 히스토리 + 질문)"""
+    system_prompt = (
+        "당신은 재생에너지(태양광/풍력) 분야의 전문 지식을 갖고 있는 사업개발실의 사내 AI 에이전트입니다.\n"
+        "한국어로 친절하고 격식 있게 답변하십시오.\n"
+    )
+    if use_docs and context_text:
+        system_prompt += (
+            "주어진 [사내 참고 문서 내용]을 기반으로만 사용자의 질문에 대답하십시오.\n"
+            "답변은 반드시 참고 자료의 사실에 근거해야 하며, 참고 자료에 없는 내용은 절대 지어내거나 가상의 수치, 예측값 등을 임의로 만들어 대답하지 마십시오.\n"
+            "가설적인 추론이나 없는 사실을 꾸며내는 행위는 완전히 금지됩니다.\n"
+            "자료가 부족해 정확한 대답을 할 수 없다면 솔직히 모른다고 답변하십시오.\n\n"
+            f"[사내 참고 문서 내용]\n{context_text}"
+        )
+    else:
+        system_prompt += "사내 문서 참조 모드가 꺼져있거나 제공된 참고 자료가 없습니다. 일반적인 지식 범주에서 답변하십시오."
+
+    # 사용자가 이 대화에 첨부한 파일 (C-6) — 토글과 무관하게 항상 제공
+    attachment_text = build_attachment_context(conversation)
+    if attachment_text:
+        system_prompt += (
+            "\n\n사용자가 이 대화에 파일을 첨부했습니다. 아래 [첨부파일 내용]도 "
+            "함께 근거로 사용하십시오. 첨부파일에 없는 내용을 지어내지 마십시오.\n\n"
+            f"[첨부파일 내용]\n{attachment_text}"
+        )
+
+    payload = [{'role': 'system', 'content': system_prompt}]
+
+    # [M-1] 히스토리 길이 가드. 개수(10개)만 제한하고 길이는 무제한이라, 긴 표 답변이
+    # 몇 번 오가면 히스토리만으로 프롬프트가 수만 토큰이 됐다. 최근 것부터 담다가
+    # 예산을 넘으면 더 오래된 대화를 버린다.
+    hist_budget = getattr(settings, 'LLM_HISTORY_CHAR_BUDGET', 6000)
+    history = list(
+        conversation.messages.filter(status__in=['done', 'partial'])
+        .exclude(id=user_msg.id).order_by('-created_at')[:10]
+    )
+    picked, used = [], 0
+    for h in history:                       # 최신 → 과거 순
+        content = h.content or ''
+        if used + len(content) > hist_budget and picked:
+            break
+        used += len(content)
+        picked.append(h)
+
+    for h in reversed(picked):              # 다시 시간순으로
+        payload.append({'role': 'user' if h.role == 'user' else 'assistant',
+                        'content': h.content})
+    if len(picked) < len(history):
+        logger.info(f"[프롬프트] 히스토리 {len(history)}건 중 {len(picked)}건만 포함 "
+                    f"({used:,}자 / 예산 {hist_budget:,}자)")
+    payload.append({'role': 'user', 'content': user_content})
+    return payload
+
+
+def finalize_conversation(conversation, user_content):
+    conversation.last_message_at = timezone.now()
+    if not conversation.title:
+        conversation.title = user_content[:50]
+    conversation.save()
+
+
+def build_attachment_context(conversation):
+    """대화에 붙은 첨부파일들의 추출 텍스트를 컨텍스트 문자열로 만든다."""
+    parts = []
+    for att in conversation.attachments.all().order_by('created_at'):
+        if not att.parsed_text_uri:
+            continue
+        path = os.path.join(settings.MEDIA_ROOT, att.parsed_text_uri.lstrip('/'))
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                text = f.read(ATTACHMENT_TEXT_LIMIT)
+        except OSError as e:
+            logger.warning(f"첨부 텍스트를 읽지 못했습니다 ({att.filename}): {e}")
+            continue
+        if text.strip():
+            parts.append(f"[첨부파일: {att.filename}]\n{text}")
+    return "\n\n".join(parts)
+
+
+class ConversationViewSet(viewsets.ModelViewSet):
+    """대화 CRUD + 메시지 전송 API"""
+    serializer_class = ConversationSerializer
+    filterset_fields = ['project', 'is_shared']
+
+    def get_queryset(self):
+        # 고정된 대화가 맨 위, 그 다음 최근 대화 순.
+        # Postgres는 DESC에서 NULL을 먼저 놓으므로, 아직 메시지가 없는 대화
+        # (last_message_at IS NULL)가 목록 상단을 차지하지 않게 nulls_last를 준다.
+        return Conversation.objects.order_by(
+            '-is_pinned', F('last_message_at').desc(nulls_last=True), '-created_at'
+        )
+
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return ConversationDetailSerializer
+        return ConversationSerializer
+
+    @action(detail=True, methods=['post'], url_path='messages')
+    def send_message(self, request, pk=None):
+        """
+        POST /api/conversations/{id}/messages
+        사용자 질의 → Qdrant 하이브리드 검색 → LLM 답변 → 출처 저장 후 결과 반환
+        """
+        conversation = self.get_object()
+        serializer = SendMessageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user_content = serializer.validated_data['content']
+        use_docs = serializer.validated_data.get('use_internal_docs', conversation.use_internal_docs)
+
+        # 1. 사용자 메시지 저장
+        user_msg = Message.objects.create(
+            conversation=conversation,
+            role='user',
+            content=user_content,
+            status='done',
+        )
+
+        sources_to_create = []
+        context_text = ""
+        rag_error = None
+
+        # 2. RAG 파이프라인 작동 (use_docs가 참일 때)
+        if use_docs:
+            from services.retriever import retrieve_for_views
+            from apps.documents.models import Document, DocumentChunk
+
+            try:
+                # A, B. LangChain 리랭킹 + Qdrant 하이브리드 통합 파이프라인 단일 호출
+                project_id = conversation.project.id if conversation.project else None
+                search_results = retrieve_for_views(
+                    query=user_content,
+                    project_id=project_id,
+                    corpus_version=conversation.corpus_version or None,
+                )
+
+                # C. 검색된 청크 분석, 임계값 필터링 및 상한선 상위 K개 추출
+                # search_results는 리랭커 순위대로 정렬되어 있으므로 순서를 유지한다.
+                # (score는 Qdrant 점수이므로 이 값으로 재정렬하면 리랭킹이 무효가 된다.)
+                passed_chunks = []
+                for hit in search_results:
+                    score = getattr(hit, 'score', 0.0)
+                    if score >= settings.RAG_SIMILARITY_THRESHOLD:
+                        passed_chunks.append(hit)
+
+                # 상한선 적용
+                final_chunks = passed_chunks[:settings.RAG_MAX_CONTEXT_K]
+
+                # 디버그 로깅
+                if getattr(settings, 'DEBUG_RAG', True):
+                    import logging
+                    rag_logger = logging.getLogger(__name__)
+                    scores = [getattr(hit, 'score', 0.0) for hit in search_results]
+                    rag_logger.info("=== [RAG DIAGNOSTIC START] ===")
+                    rag_logger.info(f"1차 검색(Qdrant) 후보 수: {len(search_results)} (설정된 RETRIEVE_K: {settings.RAG_RETRIEVE_K})")
+                    rag_logger.info(f"전체 후보 score 목록 (상위 5개): {scores[:5]}")
+                    rag_logger.info(f"설정된 임계값 (THRESHOLD): {settings.RAG_SIMILARITY_THRESHOLD}")
+                    rag_logger.info(f"임계값 필터 통과 개수: {len(passed_chunks)}")
+                    rag_logger.info(f"상한(MAX_CONTEXT_K): {settings.RAG_MAX_CONTEXT_K}")
+                    rag_logger.info(f"최종 컨텍스트 개수: {len(final_chunks)}")
+                    rag_logger.info("=== [RAG DIAGNOSTIC END] ===")
+
+                # 임계값을 넘는 조각이 하나도 없는 경우: 고정 응답 반환 및 차단
+                if len(final_chunks) == 0:
+                    ai_msg = Message.objects.create(
+                        conversation=conversation,
+                        role='assistant',
+                        content="관련 자료를 찾지 못했습니다.",
+                        used_internal_docs=True,
+                        model="none",
+                        status='done',
+                    )
+                    conversation.last_message_at = timezone.now()
+                    if not conversation.title:
+                        conversation.title = user_content[:50]
+                    conversation.save()
+                    
+                    msg_serializer = MessageSerializer(ai_msg)
+                    return Response(msg_serializer.data, status=status.HTTP_201_CREATED)
+
+                context_parts = []
+                for idx, hit in enumerate(final_chunks):
+                    # hit 데이터에서 payload 추출
+                    payload = getattr(hit, 'payload', {}) or {}
+                    chunk_id = payload.get('chunk_id')
+                    score = getattr(hit, 'score', 0.0)
+
+                    # DB 매핑 조회
+                    try:
+                        chunk = DocumentChunk.objects.get(qdrant_point_id=chunk_id)
+                        doc = chunk.document
+                        
+                        # 컨텍스트 추가
+                        loc_lbl = f"페이지 {chunk.page_number}"
+                        if chunk.section_title:
+                            loc_lbl += f" · {chunk.section_title}"
+                        elif chunk.sheet_name:
+                            loc_lbl = f"시트: {chunk.sheet_name} ({chunk.cell_range})"
+
+                        context_parts.append(
+                            f"[참고자료 {idx+1}] {doc.title} ({loc_lbl})\n{chunk.content}"
+                        )
+
+                        # MessageSource 데이터 리스트업
+                        short_lbl = doc.title[:4] + ".." if len(doc.title) > 5 else doc.title
+                        sources_to_create.append(MessageSource(
+                            document=doc,
+                            document_chunk=chunk,
+                            display_title=doc.original_filename or doc.title,
+                            short_label=short_lbl,
+                            page_number=chunk.page_number,
+                            location_label=f"p.{chunk.page_number} · {chunk.section_title}" if chunk.section_title else f"p.{chunk.page_number}",
+                            score=score,
+                            rank=idx + 1,
+                            snippet=chunk.content[:200]
+                        ))
+                    except (DocumentChunk.DoesNotExist, Document.DoesNotExist):
+                        continue
+                
+                if context_parts:
+                    context_text = "\n\n".join(context_parts)
+            except Exception as e:
+                import traceback
+                import logging
+                tb = traceback.format_exc()
+                logging.getLogger(__name__).error(f"🚨 [RAG PIPELINE FATAL ERROR]\n{tb}")
+                rag_error = str(e)
+
+        # RAG 과정에서 치명적 예외가 발생한 경우: LLM 호출을 건너뛰고 에러 설명 본문과 함께 HTTP 500 반환
+        if use_docs and rag_error:
+            ai_msg = Message.objects.create(
+                conversation=conversation,
+                role='assistant',
+                content=(
+                    f"🚨 **사내 문서 검색(RAG) 엔진 오류**\n\n"
+                    f"사내 문서를 검색하고 분석하는 과정에서 내부 시스템 예외가 발생했습니다.\n"
+                    f"- **에러 유형**: `{rag_error}`\n\n"
+                    f"자세한 기술 스택 트레이스백은 서버 에러 로그(`🚨 [RAG PIPELINE FATAL ERROR]`)를 참고하시기 바랍니다."
+                ),
+                used_internal_docs=True,
+                status='failed',
+                model="none",
+            )
+            conversation.last_message_at = timezone.now()
+            conversation.save()
+            msg_serializer = MessageSerializer(ai_msg)
+            return Response(msg_serializer.data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # 3. LLM API 프롬프트 구성 및 실행
+        from services.llm import generate_response
+
+        system_prompt = (
+            "당신은 재생에너지(태양광/풍력) 분야의 전문 지식을 갖고 있는 사업개발실의 사내 AI 에이전트입니다.\n"
+            "한국어로 친절하고 격식 있게 답변하십시오.\n"
+        )
+        if use_docs and context_text:
+            system_prompt += (
+                "주어진 [사내 참고 문서 내용]을 기반으로만 사용자의 질문에 대답하십시오.\n"
+                "답변은 반드시 참고 자료의 사실에 근거해야 하며, 참고 자료에 없는 내용은 절대 지어내거나 가상의 수치, 예측값 등을 임의로 만들어 대답하지 마십시오.\n"
+                "가설적인 추론이나 없는 사실을 꾸며내는 행위는 완전히 금지됩니다.\n"
+                "자료가 부족해 정확한 대답을 할 수 없다면 솔직히 모른다고 답변하십시오.\n\n"
+                f"[사내 참고 문서 내용]\n{context_text}"
+            )
+        else:
+            system_prompt += "사내 문서 참조 모드가 꺼져있거나 제공된 참고 자료가 없습니다. 일반적인 지식 범주에서 답변하십시오."
+
+        # 사용자가 이 대화에 첨부한 파일의 내용 (C-6)
+        # 사내 문서 참조 토글과 무관하게, 사용자가 직접 올린 자료이므로 항상 제공한다.
+        attachment_text = build_attachment_context(conversation)
+        if attachment_text:
+            system_prompt += (
+                "\n\n사용자가 이 대화에 파일을 첨부했습니다. 아래 [첨부파일 내용]도 "
+                "함께 근거로 사용하십시오. 첨부파일에 없는 내용을 지어내지 마십시오.\n\n"
+                f"[첨부파일 내용]\n{attachment_text}"
+            )
+
+        # 이전 대화 히스토리 구성 (최근 10개)
+        # 방금 저장한 user_msg는 아래에서 따로 추가하므로 여기서 제외한다.
+        messages_payload = [{'role': 'system', 'content': system_prompt}]
+        history_msgs = list(
+            conversation.messages
+            .filter(status='done')
+            .exclude(id=user_msg.id)
+            .order_by('-created_at')[:10]
+        )
+        for h_msg in reversed(history_msgs):
+            messages_payload.append({
+                'role': 'user' if h_msg.role == 'user' else 'assistant',
+                'content': h_msg.content
+            })
+
+        # 최신 질문 추가
+        messages_payload.append({'role': 'user', 'content': user_content})
+
+        # LLM 응답 생성
+        llm_model = getattr(settings, 'LLM_MODEL', 'gpt-4o-mini')
+        llm_res = generate_response(messages=messages_payload, model=llm_model)
+
+        # 4. AI 응답 메시지 생성
+        # 참조 청크의 유사도·출처·위치·스니펫은 응답의 sources 배열로 전달된다.
+        ai_content = llm_res['content']
+
+        ai_msg = Message.objects.create(
+            conversation=conversation,
+            role='assistant',
+            content=ai_content,
+            used_internal_docs=use_docs and len(sources_to_create) > 0,
+            model=llm_res.get('model', llm_model),
+            token_usage=llm_res.get('usage'),
+            status='done',
+        )
+
+        # 5. 출처(Sources) DB 영속화
+        for src in sources_to_create:
+            src.message = ai_msg
+            src.save()
+
+        # 6. 대화 마지막 시간 및 제목 업데이트
+        conversation.last_message_at = timezone.now()
+        if not conversation.title:
+            conversation.title = user_content[:50]
+        conversation.save()
+
+        # 7. 직렬화 반환
+        msg_serializer = MessageSerializer(ai_msg)
+        return Response(msg_serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='messages/stream')
+    def stream_message(self, request, pk=None):
+        """POST /api/conversations/{id}/messages/stream — SSE 스트리밍 응답
+
+        이벤트: status(진행 단계) → sources(출처) → delta(본문 조각)* → done / error
+        총 소요는 비스트리밍과 같지만 첫 글자가 1~2초 안에 나오고, 검색 단계가
+        실시간으로 표시되어 체감 대기가 크게 줄어든다.
+        """
+        conversation = self.get_object()
+        serializer = SendMessageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user_content = serializer.validated_data['content']
+        use_docs = serializer.validated_data.get('use_internal_docs',
+                                                 conversation.use_internal_docs)
+
+        user_msg = Message.objects.create(
+            conversation=conversation, role='user', content=user_content, status='done')
+
+        def sse(event, data):
+            return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+        def stream():
+            from services.llm import generate_response_stream
+
+            sources, context_text, rag_error, no_hit = [], '', None, False
+            if use_docs:
+                yield sse('status', {'stage': 'searching', 'message': '사내 자료를 검색하고 있습니다'})
+                sources, context_text, rag_error, no_hit = run_rag(conversation, user_content)
+
+                if rag_error:
+                    content = (f"🚨 **사내 문서 검색(RAG) 엔진 오류**\n\n"
+                               f"- **에러 유형**: `{rag_error}`\n\n서버 로그를 확인해 주세요.")
+                    Message.objects.create(conversation=conversation, role='assistant',
+                                           content=content, used_internal_docs=True,
+                                           status='failed', model='none')
+                    finalize_conversation(conversation, user_content)
+                    yield sse('error', {'message': content})
+                    return
+
+                if no_hit:
+                    content = "관련 자료를 찾지 못했습니다."
+                    msg = Message.objects.create(conversation=conversation, role='assistant',
+                                                 content=content, used_internal_docs=True,
+                                                 model='none', status='done')
+                    finalize_conversation(conversation, user_content)
+                    yield sse('delta', {'text': content})
+                    yield sse('done', {'message_id': str(msg.id), 'sources': []})
+                    return
+
+                # 출처는 LLM 생성 전에 이미 확정되므로 먼저 보낸다 (UI가 근거를 즉시 표시)
+                yield sse('sources', {'sources': [
+                    {'short_label': s.short_label, 'display_title': s.display_title,
+                     'page_number': s.page_number, 'location_label': s.location_label,
+                     'score': s.score, 'rank': s.rank, 'snippet': s.snippet,
+                     'document_id': str(s.document_id),
+                     'open_url': (f'/api/documents/{s.document_id}/file/'
+                                  + (f'?page={s.page_number}' if s.page_number else ''))}
+                    for s in sources]})
+
+            yield sse('status', {'stage': 'generating', 'message': '답변을 작성하고 있습니다'})
+            messages_payload = build_messages(conversation, user_msg, user_content,
+                                              use_docs, context_text)
+            llm_model = getattr(settings, 'LLM_MODEL', 'gpt-4o-mini')
+
+            parts, usage = [], {}
+            try:
+                for ev in generate_response_stream(messages=messages_payload, model=llm_model):
+                    if ev['type'] == 'delta':
+                        parts.append(ev['text'])
+                        yield sse('delta', {'text': ev['text']})
+                    elif ev['type'] == 'usage':
+                        usage = ev.get('usage') or {}
+            except Exception as e:
+                logger.error(f"LLM 스트리밍 실패: {e}")
+                # [M-2] 여기까지 생성된 내용을 버리지 않는다.
+                # 타임아웃·연결 끊김이 실제로 발생하고 있고, 예전에는 부분 답변이
+                # 통째로 사라져 사용자가 처음부터 다시 질문해야 했다.
+                partial = ''.join(parts)
+                msg_id = None
+                if partial.strip():
+                    partial_msg = Message.objects.create(
+                        conversation=conversation, role='assistant',
+                        content=partial + '\n\n⚠️ *생성이 중단되었습니다 (연결 오류). 위 내용은 중단 시점까지의 답변입니다.*',
+                        used_internal_docs=bool(use_docs and sources),
+                        model=llm_model, status='partial')
+                    for s in sources:
+                        s.message = partial_msg
+                        s.save()
+                    msg_id = str(partial_msg.id)
+                finalize_conversation(conversation, user_content)
+                # 이미 200으로 스트림이 시작돼 HTTP 오류를 보낼 수 없으므로 error 이벤트로 알린다
+                yield sse('error', {'message': f'답변 생성 중 오류가 발생했습니다: {e}',
+                                    'partial_saved': bool(msg_id), 'message_id': msg_id})
+                return
+
+            content = ''.join(parts)
+            ai_msg = Message.objects.create(
+                conversation=conversation, role='assistant', content=content,
+                used_internal_docs=bool(use_docs and sources),
+                model=llm_model, token_usage=usage, status='done')
+            for s in sources:
+                s.message = ai_msg
+                s.save()
+            finalize_conversation(conversation, user_content)
+            yield sse('done', {'message_id': str(ai_msg.id),
+                               'used_internal_docs': bool(use_docs and sources)})
+
+        response = StreamingHttpResponse(stream(), content_type='text/event-stream')
+        response['Cache-Control'] = 'no-cache'
+        response['X-Accel-Buffering'] = 'no'   # 프록시 버퍼링 방지 (조각이 즉시 전달되도록)
+        return response
+
+    @action(detail=True, methods=['get', 'post'], url_path='attachments',
+            parser_classes=[MultiPartParser, FormParser])
+    def attachments(self, request, pk=None):
+        """GET/POST /api/conversations/{id}/attachments — 대화 첨부파일 (C-6)
+
+        업로드한 파일은 파싱해 텍스트만 뽑아 두고, 이 대화의 질의에서만 컨텍스트로 쓴다.
+        Qdrant에는 넣지 않는다(일회성 자료로 사내 코퍼스를 오염시키지 않기 위해).
+        """
+        conversation = self.get_object()
+
+        if request.method == 'GET':
+            qs = conversation.attachments.all().order_by('created_at')
+            return Response(MessageAttachmentSerializer(qs, many=True).data)
+
+        uploaded = request.FILES.get('file')
+        if not uploaded:
+            return Response({'error': 'file 필드가 필요합니다.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        ext = os.path.splitext(uploaded.name)[1].lower().lstrip('.')
+        if ext not in ALLOWED_ATTACHMENT_EXTS:
+            return Response(
+                {'error': f'지원하지 않는 형식입니다: .{ext} '
+                          f'(가능: {", ".join(sorted(ALLOWED_ATTACHMENT_EXTS))})'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 저장 파일명은 UUID로 만든다. 사용자 파일명을 경로에 쓰면 경로 탈출 위험이 있다.
+        att_id = uuid.uuid4()
+        rel_dir = 'attachments'
+        abs_dir = os.path.join(settings.MEDIA_ROOT, rel_dir)
+        os.makedirs(abs_dir, exist_ok=True)
+        stored_name = f'{att_id}.{ext}'
+        abs_path = os.path.join(abs_dir, stored_name)
+        with open(abs_path, 'wb+') as f:
+            for chunk in uploaded.chunks():
+                f.write(chunk)
+
+        # 파싱 → 텍스트 추출 (실패해도 첨부 자체는 남긴다)
+        parsed_rel = ''
+        try:
+            from services.parser import parse_file
+            items = parse_file(abs_path) or []
+            text = "\n".join((it.get('text') or '') for it in items).strip()
+            if text:
+                parsed_rel = f'{rel_dir}/{att_id}.txt'
+                with open(os.path.join(settings.MEDIA_ROOT, parsed_rel), 'w',
+                          encoding='utf-8') as f:
+                    f.write(text)
+            else:
+                logger.warning(f"첨부에서 추출된 텍스트가 없습니다: {uploaded.name}")
+        except Exception as e:
+            logger.error(f"첨부 파싱 실패 ({uploaded.name}): {e}", exc_info=True)
+
+        att = MessageAttachment.objects.create(
+            id=att_id,
+            conversation=conversation,
+            filename=uploaded.name,
+            file_type=ext,
+            storage_uri=f'{settings.MEDIA_URL}{rel_dir}/{stored_name}',
+            file_size=uploaded.size,
+            parsed_text_uri=parsed_rel,
+        )
+        data = MessageAttachmentSerializer(att).data
+        data['parsed'] = bool(parsed_rel)
+        return Response(data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='share')
+    def share(self, request, pk=None):
+        """POST /api/conversations/{id}/share — 공용 프로젝트로 반출"""
+        conversation = self.get_object()
+        payload = {
+            'conversation': str(conversation.id),
+            'shared_to_project': request.data.get('shared_to_project_id'),
+            'share_type': request.data.get('share_type', 'copy'),
+        }
+        # 누가 반출했는지 기록한다. 인증된 사용자가 있으면 그 사용자를 남긴다.
+        if request.user and request.user.is_authenticated:
+            payload['shared_by'] = str(request.user.id)
+
+        serializer = ConversationShareSerializer(data=payload)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        conversation.is_shared = True
+        conversation.save(update_fields=['is_shared'])
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

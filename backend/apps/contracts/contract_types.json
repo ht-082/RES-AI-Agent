@@ -1,0 +1,53 @@
+[
+  {
+    "type_id": "ppa",
+    "type_name": "전력판매계약 (PPA)",
+    "fields": [
+      {
+        "key": "parties",
+        "label": "계약 당사자",
+        "input": "text",
+        "required": true,
+        "placeholder": "(주)OO / (주)XX"
+      },
+      {
+        "key": "capacity",
+        "label": "계약 용량",
+        "input": "text",
+        "required": true,
+        "placeholder": "예: 100MW"
+      },
+      {
+        "key": "period",
+        "label": "계약 기간",
+        "input": "text",
+        "required": true,
+        "placeholder": "예: 상업운전개시일로부터 20년"
+      },
+      {
+        "key": "pricing",
+        "label": "매매 단가 / 정산 조건",
+        "input": "text",
+        "required": false,
+        "placeholder": "예: 140원/kWh 또는 시장가격 연동"
+      },
+      {
+        "key": "custom_terms",
+        "label": "기타 관철 조건 (자유 입력)",
+        "input": "textarea",
+        "required": false,
+        "placeholder": "예: 지체상금율은 일일 0.1%로 제한하며, 총액의 최대 10%를 한도로 한다."
+      }
+    ],
+    "article_structure": [
+      "전문(당사자)",
+      "제1조(목적)",
+      "제2조(계약 기간)",
+      "제3조(정산)",
+      "제4조(계통 접속)",
+      "제5조(불가항력)",
+      "제6조(계약 해지)"
+    ],
+    "system_prompt": "당신은 한국 신재생에너지 전력판매계약(PPA) 분야의 법무 전문가입니다. 아래에 제공되는 조항 골격(article_structure)을 반드시 엄격히 유지해야 하며, 사용자가 입력한 핵심 조건(Key-term)을 정확하게 반영하여 실무적으로 사용 가능한 정교한 한국어 PPA 계약서를 작성해야 합니다. 사용자가 입력하지 않은 필수 조항의 내용은 전력거래 표준 관행에 따른 일반적이고 균형 잡힌 문안으로 채워넣어야 합니다. 작성된 문서는 법적인 최종 검토가 아닌 임시 초안입니다."
+  }
+]

@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+
+# Django
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+
+# HuggingFace cache
+hf_cache/
+
+# ── 리랭커 모델 산출물 (수 GB, 로컬에서 생성) ─────────────────────
+# 생성: python bench_openvino.py c
+.ov_reranker_int8/
+.ov_reranker_fp32/
+.onnx_reranker/
+*.onnx
+*.bin
+
+# ── 사내 데이터 (저장소에 올리지 않는다) ──────────────────────────
+# 원본 문서·적재 산출물·백업. media/ 는 위에서 이미 제외됨
+backup_*.zip
+*.sqlite
+db/
+DRM_해제대상_목록.txt
+survey_results.json
+.bench_pairs.json
+*_results.json
+*_run.log
+*_retry.log
+
+# 사업 정보가 담긴 문서 (법인번호·PF 금액·계약 단가 등)
+사업개요*.md
+[[]사업개요[]]*.md
+전면감사_Final.md
+재생E_AI_Agent_기획서.md
+project_handover_guide.md
+re_ai_agent.html
+
+# 작업용 임시 폴더
+새 폴더/
+.obsidian/
+backend;C/
