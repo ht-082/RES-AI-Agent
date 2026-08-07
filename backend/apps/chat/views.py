@@ -85,11 +85,7 @@ def run_rag(conversation, user_content):
             continue          # 예산 초과 — 순위가 낮은 청크부터 버린다
         used += len(body)
 
-        loc = f"페이지 {chunk.page_number}"
-        if chunk.section_title:
-            loc += f" · {chunk.section_title}"
-        elif chunk.sheet_name:
-            loc = f"시트: {chunk.sheet_name} ({chunk.cell_range})"
+        loc = format_location(chunk)
 
         rank = len(sources) + 1
         context_parts.append(f"[참고자료 {rank}] {doc.title} ({loc})\n{body}")
@@ -99,8 +95,7 @@ def run_rag(conversation, user_content):
             display_title=doc.original_filename or doc.title,
             short_label=doc.title[:4] + ".." if len(doc.title) > 5 else doc.title,
             page_number=chunk.page_number,
-            location_label=(f"p.{chunk.page_number} · {chunk.section_title}"
-                            if chunk.section_title else f"p.{chunk.page_number}"),
+            location_label=loc,
             score=getattr(hit, 'score', 0.0),
             rank=rank,
             snippet=chunk.content[:200],
@@ -110,6 +105,24 @@ def run_rag(conversation, user_content):
         logger.info(f"[RAG] 컨텍스트 가드: {used:,}자 사용 / 예산 {total_budget:,}자 "
                     f"(청크 절단 {truncated}건, 예산초과 제외 {skipped}건)")
     return sources, "\n\n".join(context_parts), None, False
+
+
+def format_location(chunk):
+    """출처 위치 라벨. 포맷마다 '위치'의 의미가 달라 분기한다.
+
+    xlsx는 페이지가 시트 순번일 뿐이라 "p.3"이 아무 정보도 주지 않는다.
+    시트명이 있으면 그것을 쓴다. (LLM 컨텍스트와 출처 칩이 같은 값을 쓰도록
+    한 곳에서 만든다 — 예전에는 두 곳이 따로 계산해 서로 달랐다.)
+    """
+    if getattr(chunk, 'sheet_name', ''):
+        loc = f"시트: {chunk.sheet_name}"
+        return f"{loc} ({chunk.cell_range})" if chunk.cell_range else loc
+    parts = []
+    if chunk.page_number is not None:
+        parts.append(f"p.{chunk.page_number}")
+    if chunk.section_title:
+        parts.append(chunk.section_title)
+    return ' · '.join(parts) or '위치 미상'
 
 
 def run_web_search(query):

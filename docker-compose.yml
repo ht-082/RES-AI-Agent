@@ -52,8 +52,10 @@ services:
       REDIS_URL: redis://redis:6379/0
       EMBEDDING_MODEL: BAAI/bge-m3
       EMBEDDING_DEVICE: cpu          # 컴퓨팅 여유 부족 시 cpu, 추후 cuda
-      LLM_API_BASE: ${LLM_API_BASE}  # 기 개발 LLM 엔드포인트
-      LLM_API_KEY: ${LLM_API_KEY}
+      # API 키는 여기서 넘기지 않는다.
+      # 컨테이너 환경변수는 backend/.env(load_dotenv)보다 우선하므로,
+      # 양쪽에 두면 어느 값이 실제로 쓰이는지 헷갈리고 한쪽만 갱신하는 사고가 난다.
+      # 키의 단일 출처는 backend/.env 하나다. worker도 같은 파일을 읽는다.
     ports:
       - "8000:8000"
     volumes:

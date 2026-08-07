@@ -267,6 +267,10 @@ def process_document(document_id):
                 section_title=section_title,
                 char_start=char_start,
                 char_end=char_end,
+                # 시트/셀 범위는 xlsx 출처 라벨("시트: 운영비예산 (1-250행)")에 쓰인다.
+                # 메타에는 담기면서 전용 컬럼에는 넘기지 않아 채움률이 0%였다.
+                sheet_name=meta.get('sheet_name', '') or '',
+                cell_range=meta.get('cell_range', '') or '',
                 metadata=meta,
                 token_count=len(sub_text),
                 qdrant_point_id=point_id
