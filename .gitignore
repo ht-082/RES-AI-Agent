@@ -85,3 +85,4 @@ backend/indexing_report_*.txt
 backend/downloaded_draft.*
 backend/.bench_*.json
 backend/chunking_strategy.md
+_archive_초기개발/
