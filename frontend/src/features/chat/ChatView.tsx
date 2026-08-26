@@ -1,7 +1,49 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { Send, Paperclip, FileText, Copy, Check, Printer } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import MermaidBlock from './MermaidBlock'
+import TableChart from './TableChart'
+import VizBlock from './VizBlock'
+
+/** Markdown 요소 → 컴포넌트 매핑.
+ *
+ *  **반드시 모듈 상수여야 한다.** 컴포넌트 안에서 객체 리터럴로 만들면 렌더마다
+ *  함수 정체성이 바뀌고, react-markdown이 이를 다른 컴포넌트로 보아 하위 트리를
+ *  통째로 언마운트·재마운트한다. 입력창에 글자를 칠 때마다(setInput → 리렌더)
+ *  이미 그려진 도식이 다시 그려지면서 화면이 흔들렸다.
+ */
+const MD_COMPONENTS = {
+  // 표는 가로 스크롤로 감싸고, 숫자 열이 있으면 차트 전환 버튼을 붙인다.
+  // 차트는 이 표의 DOM을 그대로 읽어 그리므로 수치가 어긋날 수 없다.
+  table: ({ children }: { children?: ReactNode }) => (
+    <TableChart>
+      <div className="md-table-wrap"><table>{children}</table></div>
+    </TableChart>
+  ),
+  // ```mermaid 는 도식, ```viz:<유형> 은 전용 컴포넌트로 보낸다.
+  // 정규식이 \w+ 였을 때는 'viz:timeline'에서 ':' 앞까지만 잡혀 유형을 잃었다.
+  code: ({ className, children, ...props }: { className?: string; children?: ReactNode }) => {
+    const lang = /language-([\w:.-]+)/.exec(className ?? '')?.[1]
+    if (lang === 'mermaid') {
+      return <MermaidBlock code={String(children)} />
+    }
+    if (lang?.startsWith('viz:')) {
+      // code 자리에 렌더되므로 `.md code`의 모노스페이스·배경 규칙을 그대로
+      // 물려받는다. viz는 코드가 아니라 UI라서 래퍼로 그 규칙을 끊는다.
+      return (
+        <span className="viz-host">
+          <VizBlock type={lang.slice(4)} source={String(children)} />
+        </span>
+      )
+    }
+    return <code className={className} {...props}>{children}</code>
+  },
+  // 출처 링크는 새 탭으로
+  a: ({ href, children }: { href?: string; children?: ReactNode }) => (
+    <a href={href} target="_blank" rel="noreferrer">{children}</a>
+  ),
+}
 
 /** GET/POST /api/conversations/{id}/messages 의 sources 배열 항목
  *  (backend: apps/chat/serializers.py MessageSourceSerializer) */
@@ -41,6 +83,14 @@ interface Attachment {
 const ATTACH_ACCEPT = '.pdf,.docx,.xlsx,.pptx,.hwp,.hwpx'
 
 /** GET /api/corpus-versions/ 응답 항목 — 코퍼스 버전 선택용 */
+/** GET /api/llm-models/ 응답 항목 */
+interface LlmModel {
+  id: string
+  label: string
+  note: string
+  tier: string
+}
+
 interface CorpusVersion {
   version: string
   major: number
@@ -81,13 +131,44 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
   // 코퍼스 버전 선택 ('' = 활성 기본 버전)
   const [corpusVersions, setCorpusVersions] = useState<CorpusVersion[]>([])
   const [corpusVersion, setCorpusVersion] = useState('')
+  // 답변 생성 모델. 빈 값 = 서버 기본값 사용
+  const [llmModels, setLlmModels] = useState<LlmModel[]>([])
+  const [llmDefault, setLlmDefault] = useState('')
+  const [llmModel, setLlmModel] = useState('')
 
   useEffect(() => {
     fetch('/api/corpus-versions/', { credentials: 'include' })
       .then(res => (res.ok ? res.json() : []))
       .then(data => setCorpusVersions(Array.isArray(data) ? data : []))
       .catch(() => setCorpusVersions([]))
+
+    fetch('/api/llm-models/', { credentials: 'include' })
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (!data) return
+        setLlmModels(Array.isArray(data.models) ? data.models : [])
+        setLlmDefault(data.default ?? '')
+      })
+      .catch(() => setLlmModels([]))
   }, [])
+
+  const handleModelChange = async (v: string) => {
+    setLlmModel(v)
+    // 이미 만들어진 대화면 서버에도 반영 (다음 질의부터 해당 모델 사용)
+    if (liveConvId.current) {
+      try {
+        const csrf = await getCsrf()
+        await fetch(`/api/conversations/${liveConvId.current}/`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+          body: JSON.stringify({ llm_model: v }),
+          credentials: 'include',
+        })
+      } catch {
+        /* 실패해도 이번 질의에는 아래 body 의 llm_model 이 쓰인다 */
+      }
+    }
+  }
 
   const handleCorpusChange = async (v: string) => {
     setCorpusVersion(v)
@@ -131,7 +212,7 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
     const res = await fetch('/api/conversations/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-      body: JSON.stringify({ title: '', use_internal_docs: useInternalDocs, use_web_search: useWebSearch, corpus_version: corpusVersion }),
+      body: JSON.stringify({ title: '', use_internal_docs: useInternalDocs, use_web_search: useWebSearch, llm_model: llmModel, corpus_version: corpusVersion }),
       credentials: 'include',
     })
     if (!res.ok) throw new Error('대화 생성 실패')
@@ -209,6 +290,7 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
           setUseInternalDocs(data.use_internal_docs)
         }
         setCorpusVersion(data.corpus_version ?? '')
+        setLlmModel(data.llm_model ?? '')
       })
       .catch(() => { if (!cancelled) setMessages([]) })
     return () => { cancelled = true }
@@ -326,7 +408,7 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
       const res = await fetch(`/api/conversations/${convId}/messages/stream/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-        body: JSON.stringify({ content: currentInput, use_internal_docs: useInternalDocs, use_web_search: useWebSearch }),
+        body: JSON.stringify({ content: currentInput, use_internal_docs: useInternalDocs, use_web_search: useWebSearch, llm_model: llmModel }),
         credentials: 'include',
       })
       if (!res.ok || !res.body) throw new Error('검색 또는 생성 실패')
@@ -401,22 +483,9 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
     ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'
   }
 
-  /** 답변 본문 렌더링 — LLM이 만드는 Markdown(표·목록·강조)을 그대로 표현한다.
-   *  react-markdown은 기본적으로 원시 HTML을 렌더링하지 않아 XSS에 안전하다. */
+  /** 답변 본문 렌더링 — 컴포넌트 매핑은 모듈 상수(MD_COMPONENTS)를 쓴다. 이유는 그 정의부 참고. */
   const renderContent = (content: string) => (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        // 긴 표가 레이아웃을 깨지 않도록 가로 스크롤 컨테이너로 감싼다
-        table: ({ children }) => (
-          <div className="md-table-wrap"><table>{children}</table></div>
-        ),
-        // 출처 링크는 새 탭으로
-        a: ({ href, children }) => (
-          <a href={href} target="_blank" rel="noreferrer">{children}</a>
-        ),
-      }}
-    >
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>
       {content}
     </ReactMarkdown>
   )
@@ -434,6 +503,13 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
               </div>
               <h2>무엇을 도와드릴까요?</h2>
               <p>사업개발실 자료를 근거로 답변하고, 참조한 원문을 함께 보여드립니다.</p>
+              {/* 검색은 질문 문장 그대로 수행된다. 사업명이 없으면 어느 사업 자료인지
+                  가려낼 단서가 없어 다른 사업이 섞이거나 답을 찾지 못한다.
+                  특히 "그건 얼마야?"처럼 앞 대화를 이어받는 질문이 취약하다. */}
+              <p className="ce-note">
+                질문에는 <strong>사업명을 반드시 포함</strong>해 주세요.
+                이어서 묻더라도 매번 적어야 정확히 찾습니다.
+              </p>
             </div>
           )}
           {/* 본문이 아직 비어 있는 초안(스트리밍 시작 전)은 대기 표시가 대신하므로 건너뛴다 */}
@@ -573,6 +649,26 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
                   : ' · 법령·시세 등 사내 자료에 없는 정보를 보완합니다'}
               </span>
             </div>
+            {llmModels.length > 0 && (
+              <select
+                className="corpus-select model-select"
+                value={llmModel}
+                onChange={e => handleModelChange(e.target.value)}
+                title={
+                  llmModels.find(m => m.id === (llmModel || llmDefault))?.note
+                  ?? '답변 생성 모델'
+                }
+              >
+                <option value="">
+                  모델: {llmModels.find(m => m.id === llmDefault)?.label ?? '기본'} (기본)
+                </option>
+                {llmModels.map(m => (
+                  <option key={m.id} value={m.id}>
+                    모델: {m.label} · {m.note}
+                  </option>
+                ))}
+              </select>
+            )}
             {corpusVersions.length > 0 && (
               <select
                 className="corpus-select"
@@ -608,7 +704,7 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
             <textarea
               ref={textareaRef}
               rows={1}
-              placeholder="질문을 입력하세요. 예: 풍력 PPA 계약에서 우리가 관철했던 핵심 조건은?"
+              placeholder="질문에 사업명을 반드시 포함해 주세요 (홍성 · 당진1 · 당진2 · 임자 · 안면도 · 태평)"
               value={input}
               onChange={handleTextareaInput}
               onKeyDown={handleKeyDown}
