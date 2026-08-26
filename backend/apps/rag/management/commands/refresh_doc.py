@@ -162,7 +162,7 @@ class Command(BaseCommand):
         for dirpath, _, files in os.walk(root):
             for name in files:
                 ext = os.path.splitext(name)[1].lower().strip('.')
-                if ext not in ('pdf', 'docx', 'xlsx', 'hwp', 'hwpx', 'pptx', 'md', 'txt'):
+                if ext not in ('pdf', 'docx', 'doc', 'xlsx', 'xlsm', 'hwp', 'hwpx', 'pptx', 'md', 'txt'):
                     continue
                 if pattern in name:
                     found.append(os.path.join(dirpath, name))

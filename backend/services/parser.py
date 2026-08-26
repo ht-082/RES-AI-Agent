@@ -23,8 +23,8 @@ class ParserGateError(Exception):
 
 _MAGIC_SIGS = [(b'PK\x03\x04', 'zip'), (b'\xd0\xcf\x11\xe0', 'ole2'),
                (b'%PDF', 'pdf'), (b'{\\rtf', 'rtf')]
-_MAGIC_EXPECT = {'pdf': 'pdf', 'docx': 'zip', 'xlsx': 'zip', 'pptx': 'zip',
-                 'hwpx': 'zip', 'hwp': 'ole2'}
+_MAGIC_EXPECT = {'pdf': 'pdf', 'docx': 'zip', 'doc': 'ole2', 'xlsx': 'zip', 'xlsm': 'zip',
+                 'pptx': 'zip', 'hwpx': 'zip', 'hwp': 'ole2'}
 # DRM/암호화 컨테이너 마커 (ASCII·UTF-16 모두 확인 — Fasoo 'FSD', MS 암호화 래퍼)
 _DRM_MARKERS = [b'FSD', b'EncryptedPackage', b'EncryptionInfo',
                 'EncryptedPackage'.encode('utf-16-le'), 'Encrypt'.encode('utf-16-le')]
@@ -59,6 +59,12 @@ def gate_check(file_path, ext):
             logger.info(f"래핑된 PDF 감지: 오프셋 {off}부터 읽음 ({os.path.basename(file_path)})")
             return {'pdf_offset': off}
 
+    # .hwpx인데 실체가 ole2면 그냥 hwp다(사용자가 확장자만 바꿔 저장한 경우).
+    # 내용은 멀쩡하므로 차단하지 않고 hwp 파서로 넘긴다.
+    if ext == 'hwpx' and magic == 'ole2':
+        logger.info(f"hwpx 확장자이나 실체는 hwp — hwp 파서로 처리 ({os.path.basename(file_path)})")
+        return {'as_ext': 'hwp'}
+
     # ole2 위장이면 DRM 여부를 구분해 기록 (권한 문제 vs 포맷 문제)
     if magic == 'ole2':
         size = os.path.getsize(file_path)
@@ -66,6 +72,14 @@ def gate_check(file_path, ext):
             data = f.read(min(size, 4_000_000))
         if any(m in data for m in _DRM_MARKERS):
             raise ParserGateError('drm-protected')
+
+        # DRM이 아닌 ole2 = 그냥 구형 포맷이다. 확장자만 .docx로 바뀐 .doc 파일이
+        # 코퍼스에 4건 있었고 전부 차단돼 있었다(실측: antiword로 1.4만~17만자 추출).
+        # DRM 검사 **뒤에** 두는 것이 중요하다 — 순서를 바꾸면 DRM 문서가 이리 샌다.
+        if ext in ('docx', 'doc'):
+            logger.info(f"docx 확장자이나 실체는 레거시 doc — doc 파서로 처리 "
+                        f"({os.path.basename(file_path)})")
+            return {'as_ext': 'doc'}
 
     raise ParserGateError(f'format-mismatch({magic})')
 
@@ -297,14 +311,47 @@ def parse_docx(file_path):
         logger.error(f"Docx 파싱 실패 ({file_path}): {e}")
     return paragraphs_data
 
-def parse_xlsx(file_path):
+# ── Excel 부피 제어 (재무모델 대응) ──────────────────────────────────
+# 실측(재무모델 xlsm 8건): 원시 텍스트는 파일당 54만자인데 행 서술화('헤더: 값' 쌍)를
+# 거치면 265만자로 **4.9배** 부푼다. 분기 시계열 시트는 열이 수십 개라 헤더 문자열이
+# 그만큼 반복되기 때문이다. 8건 합계 1,042만자 = 청크 약 1만개로, v1.0 코퍼스 전체
+# (10,777청크)보다 크다. 행 서술화는 열이 적을 때만 이득이다.
+XLSX_PAIR_MAX_COLS = 12
+
+# 재무모델은 요약·가정 시트만 인덱싱한다.
+# 근거: 8개 파일 170여 시트를 훑어보니 분기 캐시플로·재무제표 격자는 숫자셀이 84~97%다.
+# 사람은 챗봇에 "IRR 얼마야"·"사업비 총액"을 묻지, 2024년 3분기 원리금을 묻지 않는다
+# (그건 엑셀을 연다). 상세 격자는 비용만 크고 검색에 기여하지 않는다.
+FM_SHEET_WHITELIST = re.compile(
+    r'report|summary|result|보고서|요약'
+    r'|irr|수익률|valuation|lcoe|경제성'
+    r'|assum(?!_book)|가정|input|전제'          # Assum_Book(가정 상세)은 제외
+    r'|tic|tpc|투자비|총사업비|funding|재원조달'
+    r'|revenue|^rev$|발전량|opex|capex'
+    r'|sensitivity|민감도',
+    re.I)
+
+# 화이트리스트를 통과해도 제외하는 것: 이름 끝의 주기 접미사.
+# 8개 파일 공통 관례로 (Q)=분기·(Y)=연간·(FY)=회계연도 시계열 격자를 뜻한다.
+# 'IRR'은 요약이지만 'IRR(Q)'는 264행짜리 분기 격자(8.9만자)다 — 같은 단어라도
+# 접미사가 성격을 가른다. Re_Fin(리파이낸싱) 시나리오 상세도 같이 걸러진다.
+FM_SHEET_PERIODIC = re.compile(r'\((?:q|y|fy)\)|re[_-]?fin', re.I)
+
+
+def parse_xlsx(file_path, sheet_filter=None):
     """
     Excel 파일 파싱 (시트 단위 및 행 단위 병합)
+
+    sheet_filter: 시트명 -> bool. None이면 전 시트. xlsm(재무모델)에만 건다.
     """
     sheets_data = []
+    skipped = []
     try:
         wb = openpyxl.load_workbook(file_path, data_only=True)
         for sheet_name in wb.sheetnames:
+            if sheet_filter and not sheet_filter(sheet_name):
+                skipped.append(sheet_name)
+                continue
             sheet = wb[sheet_name]
             rows = []
             row_count = 0
@@ -324,8 +371,10 @@ def parse_xlsx(file_path):
                         continue
                     header = []  # 헤더 없는 시트로 확정
 
-                if header:
-                    # 행 서술화: '헤더=값' 쌍 — 청크가 어디서 잘려도 각 행이 자기설명적
+                if header and sum(1 for h in header if h) <= XLSX_PAIR_MAX_COLS:
+                    # 행 서술화: '헤더=값' 쌍 — 청크가 어디서 잘려도 각 행이 자기설명적.
+                    # 단 넓은 시트(분기 시계열 등)에서는 헤더 반복이 부피를 몇 배로
+                    # 키우기만 하므로 값만 나열한다.
                     pairs = [f"{h}: {v}" for h, v in zip(header, vals) if v and h]
                     row_str = " | ".join(pairs) if pairs else " | ".join(v for v in vals if v)
                 else:
@@ -359,15 +408,121 @@ def parse_xlsx(file_path):
                 })
     except Exception as e:
         logger.error(f"Excel 파싱 실패 ({file_path}): {e}")
+    if skipped:
+        logger.info(f"[xlsm] 상세 시트 {len(skipped)}개 제외 ({os.path.basename(file_path)}): "
+                    + ", ".join(skipped[:8]) + ("..." if len(skipped) > 8 else ""))
     return sheets_data
 
+def parse_doc(file_path):
+    """레거시 Word(.doc, Word 97-2003) 파싱 — antiword 우선, catdoc 폴백.
+
+    python-docx는 OOXML(.docx)만 읽는다. 코퍼스에는 확장자만 .docx로 바뀐 채
+    실체는 .doc인 파일이 4건 있었고(기술규격서 3 + FS보고서), 전부 게이트에서
+    'format-mismatch(ole2)'로 차단돼 통째로 빠져 있었다.
+    antiword -w 0: 줄바꿈 폭 제한 해제. 표는 '|' 구분으로 렌더링된다.
+    """
+    import subprocess
+
+    for cmd in (['antiword', '-w', '0', file_path], ['catdoc', file_path]):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        except FileNotFoundError:
+            continue
+        except Exception as e:
+            logger.warning(f"{cmd[0]} 실행 실패: {e}")
+            continue
+        text = (r.stdout or '').strip()
+        if r.returncode == 0 and len(text) >= 200:
+            # antiword는 빈 줄을 많이 남긴다 — 청크 부피만 키우므로 압축한다
+            text = re.sub(r'[ \t]+\n', '\n', text)
+            text = re.sub(r'\n{3,}', '\n\n', text)
+            logger.info(f"[{cmd[0]}] {len(text)}자 추출 ({os.path.basename(file_path)})")
+            return [{'text': text, 'page_number': 1, 'section_title': '본문',
+                     'sheet_name': '', 'cell_range': ''}]
+    logger.warning(f"레거시 doc 추출 실패(antiword·catdoc 모두): {os.path.basename(file_path)}")
+    return []
+
+
+_XHTML = '{http://www.w3.org/1999/xhtml}'
+
+
+def _parse_hwp_via_html(file_path, timeout=180):
+    """hwp5html로 변환해 본문 + 표를 함께 뽑는다. 실패 시 빈 목록.
+
+    **hwp5txt는 표 내용을 `<표>` 다섯 글자로 대체해 버린다.**
+    실측(코퍼스 hwp/hwpx 78건): 59건(75%)이 표를 포함하고, 그 안의 값이 전부
+    사라지고 있었다. '계약서_EPC가격사항'은 표 45개에 본문 3,719자 — EPC 단가가
+    통째로 표 안이라 사실상 빈 문서였다. hwp5html은 같은 표를 <table>로 주므로
+    pdf·docx와 동일하게 Markdown 직렬화해 되살린다.
+    """
+    import subprocess, tempfile, shutil
+    import xml.etree.ElementTree as ET
+
+    tmp = tempfile.mkdtemp(prefix='hwp5html_')
+    try:
+        r = subprocess.run(['hwp5html', '--output', tmp, file_path],
+                           capture_output=True, text=True, timeout=timeout)
+        index = os.path.join(tmp, 'index.xhtml')
+        if r.returncode != 0 or not os.path.exists(index):
+            return []
+        root = ET.parse(index).getroot()
+
+        tables = []
+        for tbl in list(root.iter(_XHTML + 'table')):
+            rows = []
+            for tr in tbl.iter(_XHTML + 'tr'):
+                cells = [' '.join(''.join(td.itertext()).split())
+                         for td in tr.iter(_XHTML + 'td')]
+                if any(cells):
+                    rows.append(cells)
+            md_parts = _rows_to_markdown(rows)
+            if md_parts:
+                tables.extend(md_parts)
+            else:
+                flat = [' | '.join(c for c in r_ if c) for r_ in rows]
+                flat = [f for f in flat if f]
+                if flat:
+                    tables.append('\n'.join(flat))
+            # 본문에서 표를 걷어내 중복 적재를 막는다. tail(표 뒤 텍스트)은 보존.
+            tail = tbl.tail
+            tbl.clear()
+            tbl.tail = tail
+
+        body = '\n'.join(l for l in (''.join(root.itertext())).split('\n') if l.strip())
+        items = []
+        if len(body.strip()) >= 20:
+            items.append({'text': body.strip(), 'page_number': 1,
+                          'section_title': '본문', 'sheet_name': '', 'cell_range': ''})
+        for i, md in enumerate(tables):
+            items.append({'text': md, 'page_number': 1, 'section_title': f'표 {i + 1}',
+                          'kind': 'table', 'sheet_name': '', 'cell_range': ''})
+        if items:
+            logger.info(f"[hwp5html] 본문 {len(body)}자 · 표 {len(tables)}개 "
+                        f"({os.path.basename(file_path)})")
+        return items
+    except FileNotFoundError:
+        logger.warning("hwp5html 미설치 — hwp5txt로 진행 (pip install pyhwp)")
+        return []
+    except Exception as e:
+        logger.warning(f"hwp5html 실패, hwp5txt로 진행: {e}")
+        return []
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def parse_hwp(file_path):
-    """한글(HWP 5.x) 파싱 — hwp5txt(pyhwp) 우선, 실패 시 바이너리 정규식 폴백.
+    """한글(HWP 5.x) 파싱 — hwp5html(표 보존) → hwp5txt → 바이너리 정규식 순.
 
     실측(2026-07-17, 코퍼스 hwp 72건): 정규식 방식은 15건 추출 실패 + 성공분도
     텍스트를 4~10배 유실. hwp5txt는 실패 15건 중 14건 구제. (전략 §3.3, §7-5)
+    2026-08-18: hwp5txt가 표를 버리는 것을 확인해 hwp5html을 1순위로 올렸다.
     """
     import subprocess
+
+    items = _parse_hwp_via_html(file_path)
+    if sum(len(i.get('text', '')) for i in items) >= 200:
+        return items
+
     try:
         r = subprocess.run(['hwp5txt', file_path], capture_output=True, text=True, timeout=120)
         text = (r.stdout or '').strip()
@@ -591,13 +746,23 @@ def parse_file(file_path):
     """
     ext = os.path.splitext(file_path)[1].lower().strip('.')
     gate_opts = gate_check(file_path, ext)  # 불가 시 ParserGateError 전파
+    ext = gate_opts.get('as_ext', ext)      # 확장자 위장 교정(hwpx→hwp 등)
 
     if ext == 'pdf':
         items = parse_pdf(file_path, pdf_offset=gate_opts.get('pdf_offset', 0))
     elif ext == 'docx':
         items = parse_docx(file_path)
-    elif ext == 'xlsx':
-        items = parse_xlsx(file_path)
+    elif ext == 'doc':
+        items = parse_doc(file_path)
+    elif ext in ('xlsx', 'xlsm'):
+        # xlsm은 매크로가 든 통합문서일 뿐 시트 구조는 xlsx와 같다.
+        # openpyxl은 셀 값만 읽고 VBA는 실행하지 않으므로 파싱 자체는 안전하다.
+        #
+        # 화이트리스트는 xlsm에만 건다. 코퍼스의 xlsm은 전부 재무모델이고,
+        # xlsx(자금집행현황·인출요청서 등)는 운영 실무 자료라 시트를 걸러내면 안 된다.
+        sf = (lambda n: bool(FM_SHEET_WHITELIST.search(n))
+                        and not FM_SHEET_PERIODIC.search(n)) if ext == 'xlsm' else None
+        items = parse_xlsx(file_path, sheet_filter=sf)
     elif ext == 'hwp':
         items = parse_hwp(file_path)
     elif ext == 'hwpx':
@@ -625,7 +790,7 @@ def parse_file(file_path):
             raise ParserGateError(f'hwp-extract-too-short({total})')
 
     # Excel은 시트/셀 단위라 '페이지 가장자리' 개념이 없으므로 제외한다.
-    if ext == 'xlsx':
+    if ext in ('xlsx', 'xlsm'):
         return items
 
     # 표·OCR 항목은 머리말 제거 대상에서 보호 (Markdown 표의 첫 줄은 헤더다)

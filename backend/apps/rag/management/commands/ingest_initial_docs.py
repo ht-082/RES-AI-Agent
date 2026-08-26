@@ -11,7 +11,7 @@ from django.conf import settings
 from apps.accounts.models import User
 from apps.workspaces.models import Workspace, Project
 from apps.documents.models import Document
-from apps.rag.tasks import process_document
+from apps.rag.tasks import is_global_folder, process_document
 
 try:
     import fitz
@@ -41,11 +41,22 @@ def extract_head_text(file_path, file_type, max_chars=5000):
                 except UnicodeDecodeError:
                     continue
         elif file_type == 'docx' and docx:
-            doc_file = docx.Document(file_path)
-            for para in doc_file.paragraphs:
-                text += para.text + "\n"
-                if len(text) > max_chars:
-                    break
+            try:
+                doc_file = docx.Document(file_path)
+                for para in doc_file.paragraphs:
+                    text += para.text + "\n"
+                    if len(text) > max_chars:
+                        break
+            except Exception:
+                # 확장자만 .docx인 레거시 .doc (실측 4건: 기술규격서 3 + FS보고서).
+                # 빈 텍스트로 두면 규칙 분류가 전부 빗나가고 LLM이 파일명만 보게 된다.
+                from services.parser import parse_doc
+                items = parse_doc(file_path)
+                text = "\n".join(i.get('text', '') for i in items)
+        elif file_type == 'doc':
+            from services.parser import parse_doc
+            items = parse_doc(file_path)
+            text = "\n".join(i.get('text', '') for i in items)
         elif file_type == 'hwpx':
             try:
                 with zipfile.ZipFile(file_path, 'r') as zf:
@@ -84,13 +95,42 @@ def extract_head_text(file_path, file_type, max_chars=5000):
 LAW_MARKERS = ("법제처", "국가법령정보센터", "법률 제", "대통령령 제", "부령 제", "고시 제")
 
 
+# 정리된 파일명은 '종류_대상_날짜' 형태라 **접두가 곧 문서종류**다.
+# 접두가 이미 종류를 선언한 파일은, 이름 안쪽에 다른 종류 단어가 섞여 있어도
+# 그 선언을 존중한다. (실측 오탐: '보고서_사업타당성검토서'→검토서→admin,
+#  '계약서_지역개발채권매입필증'→필증→admin. 둘 다 접두가 정답이다)
+_DECLARED_TYPE = re.compile(r'^(보고서|감사보고서|계약서|계약서부록|사업계획서|질의답변)_')
+
+# 접두 → doc_type 직접 매핑 (2026-08-20).
+# 이전에는 접두를 오분류 **방지**에만 쓰고 판정은 본문 규칙→LLM에 맡겼다.
+# 그 결과 5,000자짜리 '보고서_*.pdf'가 규칙 미달로 LLM 폴백에 넘어갔다
+# (실측: 폴백 197건 중 109건이 접두 보유). 이번 달 파일명 정리로 접두가
+# 사람이 검수한 신뢰 라벨이 됐으므로 직접 판정에 쓴다 — LLM 추측보다
+# 서열이 높고, 재적재 때마다 결과가 흔들리지 않는다.
+# ⚠ 전제: 큐레이션된 코퍼스. 접두를 대충 붙인 파일이 들어오면 그대로 박힌다.
+_PREFIX_DOC_TYPE = [
+    (re.compile(r'^(보고서|감사보고서|사업계획서)_'), 'report'),
+    (re.compile(r'^(계약서|계약서부록|협약서|합의서|약정서)_'), 'contract'),
+    (re.compile(r'^질의답변_'), 'general'),   # 입찰 Q&A 시트 — 계약도 보고도 아니다
+]
+
+
 def rule_based_classify(text, file_type, filename=''):
     """6종 분류 규칙 (파싱_청킹_전략.md §4, 우선순위 순)"""
+    # 0-0. 접두 선언 — 최우선. 본문 규칙보다 앞에 두는 이유: 접두는 사람이 붙인
+    # 라벨이고, 본문 규칙은 인용문("…시행령에 따라")에 속을 수 있는 추정이다.
+    for pat, dt in _PREFIX_DOC_TYPE:
+        if pat.match(filename):
+            return dt, '파일명 접두 선언'
+
     article_matches = len(re.findall(r'제\s?\d+조(의\d+)?', text))
+    declared = bool(_DECLARED_TYPE.match(filename))
 
     # 0. spec(파일명) — 과업지시서는 법령·고시를 인용해 law 규칙에 걸리므로 law보다 먼저 본다
-    if re.search(r'시방서|과업\s?지시|설계기준|Manual', filename, re.I):
-        return "spec", "시방·과업 파일명"
+    #    '기술규격서'는 EPC 기술문서의 표준 명칭인데 빠져 있었다(당진1에만 25건).
+    #    본문의 제N장/절 구조로 걸릴 수도 있지만, 파일명이 확실한 신호라 여기서 잡는다.
+    if not declared and re.search(r'시방서|규격서|과업\s?지시|설계기준|Manual', filename, re.I):
+        return "spec", "시방·규격·과업 파일명"
 
     # 1. law — 제N조 다수 + 법령 발행표기
     if article_matches >= 5 and any(k in text for k in LAW_MARKERS):
@@ -104,7 +144,11 @@ def rule_based_classify(text, file_type, filename=''):
 
     # 3. contract(한글) — 조항 + 당사자/체결 문구.
     #    보고서류는 계약을 '인용'만 하므로 제외 (실측: 최종감리보고서가 contract로 오분류)
-    if article_matches >= 1 and "계약" in text and (
+    #    '계약'만 요구하면 PF 문서 다수가 샌다 — 대출·출자·자금보충 문서는 본문에서
+    #    스스로를 "본 **약정**"이라 부르고 '계약'이라는 낱말이 아예 없을 수 있다.
+    #    (코퍼스 실측: 약정서 7 · 협약서 3 · 합의서 5건)
+    #    나머지 조건(제N조 + 갑을/당사자/체결 + 보고서 파일명 배제)이 그대로라 범위만 넓어진다.
+    if article_matches >= 1 and any(k in text for k in ("계약", "약정", "협약", "합의")) and (
         ("갑" in text and "을" in text) or "당사자" in text or "체결" in text
     ) and not re.search(r'보고서|보고자료', filename):
         return "contract", "제N조 + 계약 당사자/체결 문구"
@@ -118,7 +162,15 @@ def rule_based_classify(text, file_type, filename=''):
 
     # 4. admin — 문서번호/행정 파일명 + 짧은 문서 (report보다 먼저: '허가 통보' 오분류 흡수)
     has_doc_no = bool(re.search(r'제?\s?\d{4}\s?-\s?\d+\s?호?', text[:1000]))
-    admin_name = bool(re.search(r'공문|허가증|통보|승낙|신청서|접수증|증명|필증', filename))
+    # 파일명 정리(2026-08) 후 문서종류가 세분화되면서 기존 목록이 놓치는 것이 많아졌다.
+    # 넉넉히 잡아도 되는 이유: 바로 아래 `len(text) < 3000` 게이트가 안전판이라,
+    # 긴 문서는 이 이름을 달고 있어도 admin으로 떨어지지 않고 report/general로 흐른다.
+    # (admin = 문서 전체 1청크이므로 긴 문서에 적용되면 안 된다)
+    admin_name = bool(re.search(
+        r'공문|허가증|통보|승낙|신청서|접수증|증명|필증'
+        r'|확인증|확인서|등록증|등본|제의서|명부'
+        r'|결과서|검토서|내역서|청구서|요청서|통지서|증빙|대장|공정표|신고',
+        filename)) and not declared
     if (has_doc_no or admin_name) and len(text) < 3000 and text.strip():
         return "admin", "문서번호/행정 파일명 + 단문"
 
@@ -156,9 +208,15 @@ def llm_classify(text, filename=''):
 {text[:4000]}"""
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            # 분류도 답변·OCR과 같은 모델로 통일한다. 예전 리팩터에서 이 한 곳만
+            # 'gpt-4o-mini' 하드코딩이 남아, 규칙으로 안 잡힌 문서의 유형 판별이
+            # 저사양 모델로 돌고 있었다. settings.LLM_MODEL(.env: gpt-5.6-terra)로 일원화.
+            #
+            # temperature는 넘기지 않는다. gpt-5.x(추론 모델)는 temperature=0을
+            # 거부하고 기본값 1만 허용한다. 분류는 출력 단어를 키워드 매칭하므로
+            # 값이 1이어도 결과가 흔들리지 않는다.
+            model=settings.LLM_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0
         )
         answer = response.choices[0].message.content.strip().lower()
         for t in ['contract', 'report', 'law', 'spec', 'admin', 'general']:
@@ -237,9 +295,15 @@ class Command(BaseCommand):
         
         for root_dir, dirs, files in os.walk(initial_docs_dir):
             for file in files:
+                # 오피스 임시·잠금 파일. `~$문서.xlsm`은 엑셀이 파일을 열어둔 동안
+                # 만드는 수백 바이트짜리 소유자 표시용이라 확장자만 같고 내용이 없다.
+                # 거르지 않으면 파싱 실패로 남거나 빈 청크가 코퍼스에 섞인다.
+                if file.startswith('~$') or file.startswith('.~lock.'):
+                    continue
+
                 ext = os.path.splitext(file)[1].lower().strip('.')
                 # md/txt: 사업개요처럼 사람이 직접 관리하는 정리본 경로
-                if ext not in ('pdf', 'docx', 'xlsx', 'hwp', 'hwpx', 'pptx', 'md', 'txt'):
+                if ext not in ('pdf', 'docx', 'doc', 'xlsx', 'xlsm', 'hwp', 'hwpx', 'pptx', 'md', 'txt'):
                     continue
 
                 file_path = os.path.join(root_dir, file)
@@ -325,13 +389,17 @@ class Command(BaseCommand):
             # 프로젝트 = 최상위 폴더 (예: '2. 당진PJT'). 하위 폴더 깊이는 무시한다.
             # basename을 쓰면 '당진PJT/Contract'와 '홍성PJT/Contract'가 같은 'Contract'
             # 프로젝트로 합쳐져 PJT 구분이 사라진다.
+            # 단, 별칭표에 null로 등록된 폴더('0. 포괄 정보' 등)는 특정 사업 소속이
+            # 아닌 공통 문서다. 프로젝트에 묶으면 payload의 is_global이 False가 되어,
+            # 사업을 지정해 질문할 때 법령·지침이 통째로 검색에서 빠진다.
             project = None
             if rel_path != '.':
                 proj_name = rel_path.split(os.sep)[0]
-                project, _ = Project.objects.get_or_create(
-                    workspace=workspace, name=proj_name,
-                    defaults={'description': f'{proj_name} 프로젝트', 'created_by': admin_user}
-                )
+                if not is_global_folder(proj_name):
+                    project, _ = Project.objects.get_or_create(
+                        workspace=workspace, name=proj_name,
+                        defaults={'description': f'{proj_name} 프로젝트', 'created_by': admin_user}
+                    )
 
             # 원본 내용으로 checksum을 먼저 계산한다(복사 전).
             # 저장 파일명에 checksum을 붙여 이름 충돌을 원천 차단한다.

@@ -203,13 +203,28 @@ def normalize_chunks(chunks, *, doc_type=None, max_chars=MAX_SEG_CHARS,
         meta.setdefault('doc_type', 'general')
 
         base_start = meta.get('char_start')
+
+        # 재부착할 제목을 **먼저** 정하고, 그만큼 분할 폭을 줄인다.
+        # v2 초기 사고: 마크다운 표의 헤더행+구분행이 521자였는데, 조각을
+        # SUB_CHUNK_SIZE(1200)로 자른 뒤 제목을 붙여 1,610자가 됐다.
+        # 그걸 verify_chunk_invariants가 치명 위반으로 잡아 문서 4건이 통째로
+        # 실패했다(홍성 용역공정보고 등). 제목 재부착과 크기 상한이 서로
+        # 모순이었던 것 — 상한을 지키려면 붙일 몫을 미리 빼둬야 한다.
+        head_probe = _continuation_heading(text, meta) if len(text) > max_chars else ''
+        head_cost = len(head_probe) + len(' (이어서)\n') if head_probe else 0
+        # 제목이 지나치게 길면(폭 넓은 표) 잘라 쓴다. 본문 자리를 남겨야 한다.
+        if head_cost > max_chars // 3:
+            head_probe = head_probe[:max_chars // 3] + '…'
+            head_cost = len(head_probe) + len(' (이어서)\n')
+        sub_size = max(200, min(SUB_CHUNK_SIZE, max_chars - head_cost))
+
         if len(text) <= max_chars:
             pieces = [(text, 0)]
         else:
-            pieces = split_text_with_offsets(text, SUB_CHUNK_SIZE, SUB_CHUNK_OVERLAP)
+            pieces = split_text_with_offsets(text, sub_size, SUB_CHUNK_OVERLAP)
             n_split += 1
 
-        heading = _continuation_heading(text, meta) if len(pieces) > 1 else ''
+        heading = head_probe if len(pieces) > 1 else ''
 
         for idx, (piece, off) in enumerate(pieces):
             piece = piece.strip()
