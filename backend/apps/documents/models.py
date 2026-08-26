@@ -42,7 +42,9 @@ class Document(models.Model):
     FILE_TYPE_CHOICES = [
         ('pdf', 'PDF'),
         ('docx', 'Word'),
+        ('doc', 'Word(97-2003)'),
         ('xlsx', 'Excel'),
+        ('xlsm', 'Excel(매크로)'),
         ('pptx', 'PowerPoint'),
     ]
     DOC_TYPE_CHOICES = [

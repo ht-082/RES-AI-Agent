@@ -63,11 +63,17 @@ class ExistingQdrantRetriever(BaseRetriever):
         collection_name = self.collection_name or getattr(settings, 'QDRANT_COLLECTION', 're_documents')
 
         # 보안 필터 적용
+        #
+        # should = OR. "그 사업의 문서" **또는** "사업 무관 공통 문서(법령·지침)"를 뽑는다.
+        # must로 project_id만 걸면 사업을 지정하는 순간 법령이 통째로 배제된다 —
+        # 그런데 실제 질문의 상당수가 "당진 부지가 농지인데 개발행위허가 뭐 필요해?"처럼
+        # 사내 문서와 법령 근거를 **같이** 요구한다.
         query_filter = None
         if self.project_id:
-            query_filter = Filter(
-                must=[FieldCondition(key="project_id", match=MatchValue(value=self.project_id))]
-            )
+            query_filter = Filter(should=[
+                FieldCondition(key="project_id", match=MatchValue(value=self.project_id)),
+                FieldCondition(key="is_global", match=MatchValue(value=True)),
+            ])
 
         # Pydantic이 {int: float} 딕셔너리를 거부하므로 공식 SparseVector로 변환한다.
         sparse_query = None
@@ -212,16 +218,78 @@ def get_reranker():
     return _reranker
 
 
+_PROJECT_LABEL_CACHE = None
+
+
+def _project_label_map():
+    """project_id -> 사업명. 적재 때 헤더에 쓴 이름과 같아야 하므로 같은 함수를 쓴다.
+
+    임포트를 함수 안에서 하는 이유: apps.rag.tasks가 services.*를 임포트하므로
+    모듈 상단에서 부르면 순환 임포트가 된다.
+    """
+    global _PROJECT_LABEL_CACHE
+    if _PROJECT_LABEL_CACHE is None:
+        try:
+            from apps.rag.tasks import project_label
+            from apps.workspaces.models import Project
+            _PROJECT_LABEL_CACHE = {
+                str(p.id): project_label(p) for p in Project.objects.all()
+            }
+        except Exception as e:
+            logger.warning(f"사업명 매핑 로드 실패 — 리랭커 헤더에서 사업명을 생략한다: {e}")
+            _PROJECT_LABEL_CACHE = {}
+    return _PROJECT_LABEL_CACHE
+
+
+def _rerank_context_header(meta: dict) -> str:
+    """리랭커 입력 앞에 붙일 컨텍스트 헤더 [C-2 보완].
+
+    임베딩 입력에는 '[사업: X] [문서: Y]'가 붙는데(tasks.build_embed_header)
+    리랭커에는 본문만 들어가고 있었다. 그래서 **문서명이 신호를 다 가진 청크**가
+    본문에 질의어가 없다는 이유로 밀렸다. 실측(2026-08-26):
+    '계약서_설계용역_251231.docx'의 계약 당사자 조항이 질의
+    '홍성 설계 인허가 용역 어떤 업체에서 하는데?'에 대해 0.116 -> 0.830.
+
+    md/txt는 임베딩과 같은 이유로 건너뛴다(헤딩에 사업명이 이미 들어 있다).
+    어떤 이유로든 실패하면 빈 문자열을 돌려 기존 동작(본문만)으로 폴백한다.
+    """
+    try:
+        from apps.rag.tasks import HEADER_SKIP_EXTS  # 적재 쪽과 규칙을 공유한다
+        if (meta.get('file_type') or '').lower() in HEADER_SKIP_EXTS:
+            return ''
+        title = os.path.splitext(meta.get('document_title') or '')[0].strip()
+        proj = ''
+        pid = meta.get('project_id')
+        if pid and not meta.get('is_global'):
+            proj = _project_label_map().get(str(pid), '')
+        parts = []
+        if proj:
+            parts.append(f'[사업: {proj}]')
+        if title:
+            parts.append(f'[문서: {title}]')
+        return ' '.join(parts)
+    except Exception as e:
+        logger.debug(f"리랭커 헤더 생성 실패(본문만 사용): {e}")
+        return ''
+
+
 def rerank_documents(query: str, docs: List[Document]) -> List[Document]:
     """리랭커 점수 내림차순으로 재정렬한다.
 
     bge-reranker-v2-m3의 출력은 로짓(대략 -12 ~ +12)이라 그대로는 컷 기준으로 쓰기
     어렵다. 시그모이드를 씌운 확률(0~1)을 metadata['rerank_score']에 함께 남겨
     관련성 게이트가 해석 가능한 값으로 판단하게 한다.
+
+    입력에는 임베딩과 동일한 컨텍스트 헤더를 붙인다(_rerank_context_header).
     """
     if not docs:
         return docs
-    scores = get_reranker().score([(query, d.page_content) for d in docs])
+    pairs = []
+    for d in docs:
+        head = _rerank_context_header(d.metadata or {})
+        joined = (head + chr(10) + d.page_content) if head else d.page_content
+        pairs.append((query, joined))
+    scores = get_reranker().score(pairs)
     for doc, score in zip(docs, scores):
         logit = float(score)
         doc.metadata['rerank_logit'] = logit

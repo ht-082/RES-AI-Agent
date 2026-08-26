@@ -17,6 +17,21 @@ from .models import CorpusVersion, Document, DocumentChunk
 from .serializers import DocumentSerializer, DocumentChunkSerializer, DocumentUploadSerializer
 
 
+class LLMModelListView(APIView):
+    """GET /api/llm-models/ — 프론트 모델 선택 드롭다운용
+
+    사용자가 고를 수 있는 모델은 settings.LLM_MODEL_CHOICES 로 제한된다.
+    (임의 모델명을 받으면 고가 모델을 호출당할 수 있다)
+    """
+
+    def get(self, request):
+        choices = getattr(settings, 'LLM_MODEL_CHOICES', [])
+        return Response({
+            'default': settings.LLM_MODEL,
+            'models': choices,
+        })
+
+
 class CorpusVersionListView(APIView):
     """GET /api/corpus-versions/ — 프론트 코퍼스 선택 드롭다운용"""
 
@@ -37,13 +52,15 @@ logger = logging.getLogger(__name__)
 
 # 업로드 허용 확장자 — services/parser.parse_file 이 다룰 수 있는 것과 일치시킨다.
 # (md/txt: 사업개요처럼 사람이 직접 관리하는 정리본)
-UPLOADABLE_EXTS = ('pdf', 'docx', 'xlsx', 'pptx', 'hwp', 'hwpx', 'md', 'txt')
+UPLOADABLE_EXTS = ('pdf', 'docx', 'doc', 'xlsx', 'xlsm', 'pptx', 'hwp', 'hwpx', 'md', 'txt')
 
 # 원문 열람 시 브라우저에 알려줄 MIME 타입
 CONTENT_TYPES = {
     'pdf': 'application/pdf',
     'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'doc': 'application/msword',
     'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'xlsm': 'application/vnd.ms-excel.sheet.macroEnabled.12',
     'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     'hwpx': 'application/haansofthwpx',
     'hwp': 'application/x-hwp',

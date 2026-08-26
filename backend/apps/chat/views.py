@@ -21,7 +21,7 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 # 첨부 가능한 형식 (services/parser.py가 다룰 수 있는 것들)
-ALLOWED_ATTACHMENT_EXTS = {'pdf', 'docx', 'xlsx', 'pptx', 'hwp', 'hwpx'}
+ALLOWED_ATTACHMENT_EXTS = {'pdf', 'docx', 'xlsx', 'xlsm', 'pptx', 'hwp', 'hwpx'}
 # 첨부 1건당 LLM에 넣을 텍스트 상한. 문서 전문을 그대로 넣으면 컨텍스트가 폭발한다.
 ATTACHMENT_TEXT_LIMIT = 8000
 
@@ -105,6 +105,77 @@ def run_rag(conversation, user_content):
         logger.info(f"[RAG] 컨텍스트 가드: {used:,}자 사용 / 예산 {total_budget:,}자 "
                     f"(청크 절단 {truncated}건, 예산초과 제외 {skipped}건)")
     return sources, "\n\n".join(context_parts), None, False
+
+
+# 도식·차트를 요청하는 표현. 이 말이 나올 때만 프롬프트에 도식 지시를 붙인다.
+# 항상 붙이면 시스템 프롬프트가 길어져 사내 근거 예산을 잠식하고,
+# 요청하지도 않은 답변에 도식이 끼어든다.
+_DIAGRAM_HINTS = (
+    '도식', '도표', '다이어그램', '플로우차트', '순서도', '흐름도',
+    '차트', '그래프', '시각화', '타임라인', '간트', '마인드맵',
+    '그림으로', '그려', '도식화', 'flowchart', 'diagram', 'chart', 'gantt',
+    # 실측(2026-08-19): 사용자가 '가시화'라고 썼는데 '시각화'만 있어 감지에 실패했다.
+    # 지침이 안 붙자 모델이 박스 문자로 ASCII 아트를 그렸고, 그게 코드블록으로
+    # 렌더돼 가로로 잘렸다. 같은 뜻의 다른 표기를 모두 받는다.
+    '가시화', '시각적', '한눈에', '보기 쉽게', '정리해서 보여',
+    '로드맵', '타임 라인', '조직도', '관계도', '구조도', '계통도',
+    'timeline', 'roadmap', 'graph', 'visual',
+)
+
+DIAGRAM_INSTRUCTION = """
+
+[도식 작성 지침]
+사용자가 도식·차트를 요청했습니다. 아래 규칙을 지키십시오.
+
+- **연혁·경과·이력**(시점이 나열되는 것)은 ```viz:timeline 블록에 JSON만 담으십시오.
+  화면이 전용 컴포넌트로 세로 배치해 그립니다. mermaid timeline은 쓰지 마십시오.
+  status는 done(완료) 또는 ongoing(진행 중). phase·detail·tags는 있으면 넣습니다.
+  총 기간·건수 같은 요약 수치는 **쓰지 마십시오** — 화면이 직접 계산합니다.
+```viz:timeline
+{"title":"당진행복솔라 인허가 경과","items":[
+{"date":"2021.11.30","phase":"인허가","title":"발전사업허가 취득","tags":["제2021-122호","99MW"],"status":"done"},
+{"date":"2024.07","phase":"진행 중","title":"154kV 사전기술검토","status":"ongoing"}]}
+```
+- 구조·절차·관계는 ```mermaid 코드블록으로 그리십시오.
+  · 절차/흐름 → flowchart TD
+  · 상태 변화 → stateDiagram-v2
+  · 일정(기간이 있는 공정) → gantt (dateFormat YYYY-MM-DD)
+- **수치 비교는 mermaid로 그리지 말고 마크다운 표로 제시하십시오.**
+  화면에서 표를 막대·선 차트로 바꾸는 기능이 이미 있어, 표가 곧 차트가 됩니다.
+  숫자를 도식 안에 다시 쓰면 원본과 어긋날 위험이 있습니다.
+  다만 **관계를 설명하는 엣지 라벨의 수치는 유지하십시오** — 지분율·금액·용량처럼
+  관계 자체의 의미인 값을 빼면 관계도가 이름 목록으로 전락합니다.
+  예: `A -->|지분 49%| B`
+- **절대로 문자로 그림을 그리지 마십시오.** `│ └ ├ ─ ▼ ▲ → ┌ ┐` 같은 박스·화살표
+  문자를 늘어놓아 표·트리·타임라인 모양을 만드는 방식(ASCII 아트)은 금지입니다.
+  화면에서 도식으로 렌더되지 않고 코드 덩어리로 표시되어 가로로 잘립니다.
+  반드시 ```mermaid 코드블록이나 마크다운 표 중 하나를 쓰십시오.
+- 노드 라벨에 큰따옴표·괄호·콜론을 쓰지 마십시오. 문법 오류의 주된 원인입니다.
+- 참고 자료에 없는 항목을 도식에 넣지 마십시오. 모르면 노드를 만들지 않습니다.
+- 도식 아래에 핵심을 한두 문장으로 요약하십시오.
+"""
+
+
+def wants_diagram(text):
+    """사용자가 도식·차트를 요청했는지 판정한다."""
+    lowered = (text or '').lower()
+    return any(hint in lowered for hint in _DIAGRAM_HINTS)
+
+
+def resolve_llm_model(conversation, requested=''):
+    """사용할 답변 생성 모델을 정한다. **allowlist 밖의 값은 받지 않는다.**
+
+    클라이언트가 보낸 모델명을 그대로 쓰면 임의의 고가 모델을 호출당할 수 있어,
+    settings.LLM_MODEL_CHOICES 안에 있는 것만 통과시킨다.
+    우선순위: 이번 요청 지정 > 대화 설정 > 서버 기본값
+    """
+    allowed = {m['id'] for m in getattr(settings, 'LLM_MODEL_CHOICES', [])}
+    for candidate in (requested, getattr(conversation, 'llm_model', '')):
+        if candidate and candidate in allowed:
+            return candidate
+        if candidate:
+            logger.warning(f"허용되지 않은 모델 요청을 무시합니다: {candidate!r}")
+    return settings.LLM_MODEL
 
 
 def format_location(chunk):
@@ -191,6 +262,10 @@ def build_messages(conversation, user_msg, user_content, use_docs, context_text,
             "함께 근거로 사용하십시오. 첨부파일에 없는 내용을 지어내지 마십시오.\n\n"
             f"[첨부파일 내용]\n{attachment_text}"
         )
+
+    # 도식 지시는 요청이 감지될 때만 붙인다 (약 400자, 평상시 컨텍스트 예산 보존)
+    if wants_diagram(user_content):
+        system_prompt += DIAGRAM_INSTRUCTION
 
     payload = [{'role': 'system', 'content': system_prompt}]
 
@@ -461,7 +536,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
         messages_payload.append({'role': 'user', 'content': user_content})
 
         # LLM 응답 생성
-        llm_model = getattr(settings, 'LLM_MODEL', 'gpt-4o-mini')
+        llm_model = resolve_llm_model(
+            conversation, serializer.validated_data.get('llm_model', ''))
         llm_res = generate_response(messages=messages_payload, model=llm_model)
 
         # 4. AI 응답 메시지 생성
@@ -596,7 +672,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
             yield sse('status', {'stage': 'generating', 'message': '답변을 작성하고 있습니다'})
             messages_payload = build_messages(conversation, user_msg, user_content,
                                               use_docs, context_text, web_text=web_text)
-            llm_model = getattr(settings, 'LLM_MODEL', 'gpt-4o-mini')
+            llm_model = resolve_llm_model(
+            conversation, serializer.validated_data.get('llm_model', ''))
 
             parts, usage = [], {}
             try:

@@ -209,6 +209,37 @@ EMBEDDING_API_KEY = os.getenv('EMBEDDING_API_KEY', '')
 # ── LLM ───────────────────────────────────────────────────────────────
 LLM_API_BASE = os.getenv('LLM_API_BASE', '')
 LLM_API_KEY = os.getenv('LLM_API_KEY', '')
+
+# 답변 생성 모델. 예전에는 코드 4곳에 'gpt-4o-mini'가 폴백값으로 박혀 있었고
+# settings에 항목 자체가 없어 .env로 바꿀 통로가 없었다.
+# 사용 가능한 모델은 다음으로 확인한다:
+#   python manage.py list_models
+LLM_MODEL = os.getenv('LLM_MODEL', 'gpt-5.6-terra')
+
+# 사용자가 대화별로 고를 수 있는 모델 목록 (allowlist).
+# ⚠ 클라이언트가 보낸 모델명을 그대로 쓰면 임의의 고가 모델을 호출당할 수 있다.
+#   반드시 이 목록에 있는 것만 허용한다(apps/chat/views.py: resolve_llm_model).
+# 전부 실호출로 동작을 확인한 모델이다 (2026-08-07).
+LLM_MODEL_CHOICES = [
+    {'id': 'gpt-5.6-terra', 'label': 'Terra',
+     'note': '가장 정확 · 복잡한 비교·해석에 강함', 'tier': 'high'},
+    {'id': 'gpt-5.6-sol', 'label': 'Sol',
+     'note': '정확도와 속도의 균형', 'tier': 'mid'},
+    {'id': 'gpt-5.6-luna', 'label': 'Luna',
+     'note': '가장 빠름 · 간단한 조회에 적합', 'tier': 'fast'},
+]
+# 2026-08-21: gpt-4o-mini를 선택지에서 제거. 시스템 전반에서 4o-mini를 폐기했다
+# (OCR·분류·답변 모두 5.6 계열로 통일). allowlist 밖 모델 요청은 resolve_llm_model이
+# 서버 기본값(LLM_MODEL=terra)으로 폴백하므로, 옛 대화(llm_model='gpt-4o-mini')도
+# 다음 질문부터 자동으로 terra로 이어진다 — 오류 없이.
+
+# 스캔본 OCR용 비전 모델. 답변 생성과 요구사항이 달라 따로 둔다
+# (이미지 입력 지원이 필요하고, 문서 적재 시에만 쓰여 비용 특성이 다르다).
+LLM_VISION_MODEL = os.getenv('LLM_VISION_MODEL', 'gpt-5.6-terra')
+# OCR 페이지 상한. 폭주 방지용 안전장치이지 절약 수단이 아니라 넉넉히 잡는다.
+# 2026-08 코퍼스 실측: OCR 대상 68건 1,017페이지, 최대 365페이지(약정서_대출).
+# 상한에 걸리면 경고 로그와 전송대장에 남겨 무엇이 잘렸는지 드러낸다.
+VISION_OCR_MAX_PAGES = int(os.getenv('VISION_OCR_MAX_PAGES', '400'))
 # LLM 응답 대기 상한(초). 사내망 SSL 우회를 위해 커스텀 httpx 클라이언트를 넘기면
 # OpenAI SDK 기본 타임아웃(600초)이 httpx 기본값 5초로 덮어써지므로 명시한다.
 LLM_TIMEOUT = float(os.getenv('LLM_TIMEOUT', '180'))
@@ -245,6 +276,27 @@ RAG_GATE_REL_MARGIN_QDRANT = float(os.getenv('RAG_GATE_REL_MARGIN_QDRANT', '0.15
 RAG_CONTEXT_CHUNK_CHAR_LIMIT = int(os.getenv('RAG_CONTEXT_CHUNK_CHAR_LIMIT', '4000'))
 RAG_CONTEXT_CHAR_BUDGET = int(os.getenv('RAG_CONTEXT_CHAR_BUDGET', '24000'))
 LLM_HISTORY_CHAR_BUDGET = int(os.getenv('LLM_HISTORY_CHAR_BUDGET', '6000'))
+
+# ── 컨텍스트 헤더 주입 [C-2] ───────────────────────────────────────────
+# 근거: 청크의 76.9%에 사업명이 없다(당진 67.5% / 태평 99.2%). 정답 청크
+# ('대주별 선순위 인출금액.pdf')에 '당진행복솔라'가 한 번도 안 나와 후보에조차
+# 못 들어왔다. 그래서 **임베딩 입력에만** 사업명·문서명 헤더를 앞에 붙인다.
+# 저장 본문(content)은 건드리지 않는다 — 화면 표시 품질을 지키기 위함.
+RAG_EMBED_CONTEXT_HEADER = os.getenv('RAG_EMBED_CONTEXT_HEADER', 'True').lower() in ('true', '1', 'yes')
+# 헤더 상한. 짧은 청크에서 벡터가 헤더에 지배되는 것과 리랭커 384토큰 창을
+# 잠식하는 것을 막는다.
+RAG_EMBED_HEADER_MAX_CHARS = int(os.getenv('RAG_EMBED_HEADER_MAX_CHARS', '60'))
+# 폴더명(프로젝트명) → 실제 사업명 매핑. 폴더는 '2. 당진1PJT'인데 사용자는
+# '당진행복솔라'로 묻기 때문에 폴더명을 그대로 헤더에 넣으면 효과가 없다.
+PROJECT_ALIAS_FILE = os.getenv('PROJECT_ALIAS_FILE', os.path.join(BASE_DIR, 'project_aliases.json'))
+
+# ── 불변조건 강제 [H-4] ────────────────────────────────────────────────
+# True면 치명적 위반이 있는 문서는 적재하지 않고 failed로 떨군다(해당 문서만.
+# 배치 전체는 계속 진행되고 리포트에 사유가 남는다).
+# 치명: 크기 초과 · 제어문자 · 내용 중복 · doc_type 없음 · 길이 부족
+# 경고: 위치정보(page_no·char_start) 없음 — 출처 라벨 품질 문제일 뿐 데이터
+#       오염이 아니라서, 이것 하나로 문서를 버리지는 않는다.
+RAG_STRICT_INVARIANTS = os.getenv('RAG_STRICT_INVARIANTS', 'True').lower() in ('true', '1', 'yes')
 
 # ── Tavily 웹 검색 ─────────────────────────────────────────────────────
 # 사내 문서가 담지 못하는 정보(법령 개정·SMP/REC 시세·정책 동향)를 보완한다.

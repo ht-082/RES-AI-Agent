@@ -30,6 +30,46 @@ def get_llm_client():
     return client
 
 
+def build_completion_kwargs(model, temperature, max_tokens):
+    """모델 세대에 맞는 호출 파라미터를 만든다.
+
+    신형 모델(gpt-5 계열 등)은 `max_tokens` 대신 `max_completion_tokens`를 받고,
+    `temperature` 커스텀 값을 거부하는 경우가 있다. 모델명으로 미리 갈라내면
+    새 모델이 나올 때마다 코드를 고쳐야 하므로, 여기서는 신형 규격을 기본으로 두고
+    호출측이 400 응답을 보고 구형 규격으로 1회 재시도한다(_create_with_fallback).
+    """
+    return {'model': model, 'max_completion_tokens': max_tokens,
+            'temperature': temperature}
+
+
+def _create_with_fallback(client, messages, kwargs, stream=False):
+    """신형 규격으로 호출하고, 규격 오류가 나면 구형 규격으로 한 번 재시도한다."""
+    from openai import BadRequestError
+
+    call = dict(kwargs)
+    if stream:
+        call.update(stream=True, stream_options={'include_usage': True})
+    try:
+        return client.chat.completions.create(messages=messages, **call)
+    except BadRequestError as e:
+        detail = str(e)
+        retry = dict(call)
+        changed = []
+        # 구형 모델: max_completion_tokens 미지원 → max_tokens
+        if 'max_completion_tokens' in detail and 'max_completion_tokens' in retry:
+            retry['max_tokens'] = retry.pop('max_completion_tokens')
+            changed.append('max_tokens')
+        # 일부 신형 모델: temperature 커스텀 값 거부 → 기본값 사용
+        if 'temperature' in detail and 'temperature' in retry:
+            retry.pop('temperature')
+            changed.append('temperature 제거')
+        if not changed:
+            raise
+        logger.info(f"모델 파라미터 규격 조정 후 재시도: {', '.join(changed)} "
+                    f"(model={call.get('model')})")
+        return client.chat.completions.create(messages=messages, **retry)
+
+
 def generate_response(messages, model='default', temperature=0.3, max_tokens=4096):
     """
     LLM 답변 생성
@@ -38,12 +78,8 @@ def generate_response(messages, model='default', temperature=0.3, max_tokens=409
     client = get_llm_client()
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        response = _create_with_fallback(
+            client, messages, build_completion_kwargs(model, temperature, max_tokens))
         return {
             'content': response.choices[0].message.content,
             'model': response.model,
@@ -65,14 +101,9 @@ def generate_response_stream(messages, model='default', temperature=0.3, max_tok
     호출측은 yield된 조각을 이어붙여 최종 본문을 만든다.
     """
     client = get_llm_client()
-    stream = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        stream=True,
-        stream_options={'include_usage': True},
-    )
+    stream = _create_with_fallback(
+        client, messages, build_completion_kwargs(model, temperature, max_tokens),
+        stream=True)
     usage = None
     for chunk in stream:
         if getattr(chunk, 'usage', None):
@@ -193,19 +224,16 @@ def generate_structured_contract(type_id, inputs, article_structure, system_prom
 }}"""
 
     from django.conf import settings
-    model = getattr(settings, 'LLM_MODEL', 'gpt-4o-mini')
+    model = settings.LLM_MODEL
     client = get_llm_client()
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {'role': 'system', 'content': full_system_prompt},
-                {'role': 'user', 'content': user_prompt}
-            ],
-            temperature=0.3,
-            max_tokens=8192,
-            response_format={"type": "json_object"}
-        )
+        kwargs = build_completion_kwargs(model, 0.3, 8192)
+        kwargs['response_format'] = {"type": "json_object"}
+        response = _create_with_fallback(
+            client,
+            [{'role': 'system', 'content': full_system_prompt},
+             {'role': 'user', 'content': user_prompt}],
+            kwargs)
         content = response.choices[0].message.content
         return json.loads(content)
     except Exception as e:

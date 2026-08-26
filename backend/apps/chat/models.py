@@ -21,6 +21,11 @@ class Conversation(models.Model):
     use_web_search = models.BooleanField(
         default=False, help_text='웹 검색 토글(대화별). 질문이 외부로 전송됨'
     )
+    # 빈 값이면 settings.LLM_MODEL 을 쓴다. 값은 LLM_MODEL_CHOICES 안의 것만 허용된다.
+    llm_model = models.CharField(
+        max_length=60, blank=True, default='',
+        help_text='답변 생성 모델(대화별). 빈 값 = 서버 기본값'
+    )
     corpus_version = models.CharField(
         max_length=20, blank=True, default='',
         help_text="질의 대상 코퍼스 버전 (빈 값 = is_active 버전 사용)"

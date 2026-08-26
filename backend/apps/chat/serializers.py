@@ -47,7 +47,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ['id', 'project', 'title', 'use_internal_docs', 'use_web_search', 'corpus_version',
+        fields = ['id', 'project', 'title', 'use_internal_docs', 'use_web_search', 'llm_model', 'corpus_version',
                   'is_pinned', 'is_shared', 'created_by', 'last_message_at',
                   'created_at', 'updated_at', 'message_count', 'last_message_preview']
         read_only_fields = ['id', 'created_at', 'updated_at', 'last_message_at']
@@ -82,3 +82,5 @@ class SendMessageSerializer(serializers.Serializer):
     content = serializers.CharField()
     use_internal_docs = serializers.BooleanField(required=False, default=True)
     use_web_search = serializers.BooleanField(required=False, default=False)
+    # 값 검증은 views.resolve_llm_model 이 allowlist 로 수행한다
+    llm_model = serializers.CharField(required=False, allow_blank=True, default='')
