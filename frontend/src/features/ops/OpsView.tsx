@@ -1,26 +1,10 @@
-import { useState } from 'react'
-import OpsMonitorTab from './OpsMonitorTab'
 import BizdevTab from './bizdev/BizdevTab'
 import type { AppUser } from './bizdev/types'
 
-type OpsTab = 'monitor' | 'bizdev'
-
-// 운영관리 뷰 — [운영 현황 | 사업개발] 탭 래퍼.
-// 운영 현황은 기존 하드코딩 목업(OpsMonitorTab), 사업개발은 bizdev API 연동 대시보드.
+// 사업 관리 뷰 — 전체 사업 파이프라인이 본체다.
+// 파이프라인/지도에서 사업을 고르면 lifecycle 에 따라 상세가 갈린다:
+//   dev → 개발 상세(인허가·예산) · ops → 운영 상세(발전 실적)
+// (기존 운영관리 하드코딩 목업은 폐기. 운영 PJT 전용 대시보드는 추후 별도 지시)
 export default function OpsView({ user }: { user: AppUser | null }) {
-  const [tab, setTab] = useState<OpsTab>('bizdev')
-
-  return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <div className="tabs">
-        <div className={`tab ${tab === 'bizdev' ? 'active' : ''}`} onClick={() => setTab('bizdev')}>
-          사업개발
-        </div>
-        <div className={`tab ${tab === 'monitor' ? 'active' : ''}`} onClick={() => setTab('monitor')}>
-          운영 현황
-        </div>
-      </div>
-      {tab === 'monitor' ? <OpsMonitorTab /> : <BizdevTab user={user} />}
-    </div>
-  )
+  return <BizdevTab user={user} />
 }

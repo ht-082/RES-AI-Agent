@@ -26,7 +26,7 @@ const NAV_ITEMS: { view: ViewType; label: string; Icon: typeof MessageSquare }[]
   { view: 'chat',     label: '대화',                Icon: MessageSquare },
   { view: 'contract', label: '계약',                Icon: FileText },
   { view: 'finance',  label: '재무모델',            Icon: TrendingUp },
-  { view: 'ops',      label: '운영관리 Dashboard',  Icon: LayoutDashboard },
+  { view: 'ops',      label: '사업 관리 Dashboard', Icon: LayoutDashboard },
 ]
 
 export default function Sidebar({

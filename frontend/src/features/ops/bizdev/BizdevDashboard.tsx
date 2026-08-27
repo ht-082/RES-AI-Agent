@@ -58,8 +58,8 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
     <section className="pane" style={{ flex: 1, overflowY: 'auto' }}>
       <div className="section-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h2>사업개발 Dashboard</h2>
-          <p>재생에너지 개발 자산 파이프라인 · 계통 · 법령 통합 현황</p>
+          <h2>전체 사업 파이프라인</h2>
+          <p>재생에너지 자산 통합 현황 · 개발 사업은 개발 상세, 운영 사업은 운영 상세로 이동</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input className="inp" style={{ width: 200 }} placeholder="사업지·지역 검색"
@@ -115,7 +115,9 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
       {/* 인허가 진척 파이프라인 */}
       <div className="card block">
         <h3>인허가 진척 파이프라인</h3>
-        <div className="h-sub" style={{ marginBottom: 12 }}>행 클릭 → 사업지 상세 (개발/운영 사업은 각각 다른 상세 화면)</div>
+        <div className="h-sub" style={{ marginBottom: 12 }}>
+          행 클릭 → 개발 사업은 인허가·예산 상세로, <b>운영</b> 배지 사업은 발전 실적 상세로 이동
+        </div>
         <PipelineTable sites={filtered} onSelectSite={onSelectSite} />
       </div>
 

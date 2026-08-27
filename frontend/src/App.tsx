@@ -13,7 +13,7 @@ const VIEW_META: Record<ViewType, { title: string; sub: string }> = {
   chat:     { title: '대화',                sub: '사내 자료 기반 질의응답' },
   contract: { title: '계약',                sub: '계약서 생성 및 검토' },
   finance:  { title: '재무모델',            sub: '재무모델 생성 및 검토' },
-  ops:      { title: '운영관리 Dashboard',  sub: '발전 자산 통합 모니터링' },
+  ops:      { title: '사업 관리 Dashboard', sub: '개발·운영 자산 통합 파이프라인' },
 }
 
 export default function App() {
