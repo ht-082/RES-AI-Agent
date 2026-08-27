@@ -24,6 +24,10 @@ def api_root(request):
             'contract_templates': '/api/contract-templates/',
             'contract_drafts': '/api/contracts/drafts/',
             'contract_reviews': '/api/contracts/reviews/',
+            'bizdev_sites': '/api/bizdev/sites/',
+            'bizdev_summary': '/api/bizdev/summary/',
+            'bizdev_grid': '/api/bizdev/grid/capacity/',
+            'bizdev_laws': '/api/bizdev/laws/',
         }
     })
 
@@ -52,5 +56,6 @@ urlpatterns = [
     path('api/', include('apps.documents.urls')),
     path('api/', include('apps.chat.urls')),
     path('api/', include('apps.contracts.urls')),
+    path('api/', include('apps.bizdev.urls')),
     re_path(r'^media/(?P<path>.+)$', protected_media, name='protected-media'),
 ]

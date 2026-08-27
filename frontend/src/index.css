@@ -647,3 +647,71 @@ textarea.inp { resize: vertical; min-height: 84px; line-height: 1.55; }
   border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
 .vt-tools { display: flex; gap: 4px; justify-content: flex-end;
   margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+
+/* ── bizdev (사업개발 대시보드) ─────────────────────────────── */
+.bz-chip { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px;
+  white-space: nowrap; line-height: 1.5; }
+.bz-bar { height: 8px; background: var(--line-soft); border-radius: 6px; overflow: hidden; }
+.bz-bar-fill { height: 100%; border-radius: 6px; transition: width .25s; }
+.bz-dot { display: inline-block; width: 13px; height: 13px; border-radius: 50%; }
+.bz-dot.cur { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in srgb, var(--ink) 55%, transparent); }
+.bz-row { cursor: pointer; }
+.bz-row:hover td { background: var(--mint-soft); }
+
+/* 지도 핀 */
+.bz-pin-wrap { background: none; border: none; }
+.bz-pin { position: relative; width: 26px; height: 34px; }
+.bz-pin-head { position: absolute; left: 3px; top: 3px; width: 20px; height: 20px;
+  background: var(--pin-color, #f59e0b); border: 2.5px solid #fff; border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg); box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+.bz-pin-head::after { content: ''; position: absolute; left: 50%; top: 50%;
+  width: 6px; height: 6px; margin: -3px 0 0 -3px; background: #fff; border-radius: 50%; }
+.bz-pin-pulse { position: absolute; left: 1px; top: 1px; width: 24px; height: 24px;
+  border-radius: 50%; background: color-mix(in srgb, var(--red) 45%, transparent);
+  animation: bz-pulse 1.4s ease-out infinite; }
+@keyframes bz-pulse { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(1.9); opacity: 0; } }
+
+/* 지도 컨트롤 */
+.bz-map-ctrl { position: absolute; top: 10px; right: 10px; z-index: 800; display: flex; gap: 4px; }
+.bz-map-btn { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 7px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  box-shadow: var(--shadow); }
+.bz-map-btn.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+/* 드로어 */
+.bz-drawer { position: absolute; top: 54px; right: 14px; bottom: 14px; width: 250px; z-index: 900;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 10px 34px rgba(12,38,31,.16); padding: 16px; overflow-y: auto;
+  animation: bz-slide .18s ease-out; }
+@keyframes bz-slide { from { transform: translateX(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 모달 */
+.bz-modal-back { position: fixed; inset: 0; background: rgba(12,38,31,.4); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 20px; }
+.bz-modal { background: var(--surface); border-radius: 14px; padding: 22px;
+  width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow); }
+
+/* 좌측 사업지 카드 */
+.bz-site-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  background: var(--surface); cursor: pointer; transition: border-color .12s, background .12s; }
+.bz-site-card:hover { background: var(--surface-2); }
+.bz-site-card.sel { border: 2px solid var(--brand); background: var(--mint-soft); }
+
+/* 인허가 단계 행 (major 헤드 + minor 들여쓰기) */
+.bz-stage { padding: 9px 10px; border-top: 1px solid var(--line-soft); }
+.bz-stage.major { background: var(--surface-2); border-radius: 8px; border-top: none; margin-top: 6px; }
+.bz-stage.minor { margin-left: 18px; border-left: 2px solid var(--line); }
+.bz-stage-glyph { display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border: 1.5px solid; border-radius: 50%;
+  font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.bz-doc-history { margin: 8px 0 2px 32px; padding: 8px 10px; background: var(--surface-2);
+  border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
+
+/* 이슈 타임라인 */
+.bz-timeline { display: flex; flex-direction: column; gap: 12px; position: relative; padding-left: 4px; }
+.bz-tl-item { display: flex; gap: 10px; position: relative; }
+.bz-tl-item::before { content: ''; position: absolute; left: 5px; top: 16px; bottom: -14px;
+  width: 2px; background: var(--line-soft); }
+.bz-tl-item:last-child::before { display: none; }
+.bz-tl-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 3px; flex-shrink: 0;
+  box-shadow: 0 0 0 3px var(--surface); z-index: 1; }

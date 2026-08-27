@@ -72,6 +72,20 @@ backend/media/initial_docs/{PJT폴더}/...
 docker compose up -d
 ```
 
+### 3-1. 사업개발 대시보드 초기화 (운영관리 → 사업개발 탭)
+
+Re-project-mng 에서 이식한 사업개발 포트폴리오 대시보드(`apps/bizdev`).
+테이블은 마이그레이션이, 시드(사업지 25개소)는 커맨드가 만든다:
+
+```bash
+docker exec re_backend python manage.py migrate bizdev
+docker exec re_backend python manage.py seed_bizdev        # 멱등 · --wipe 로 초기화 재적재
+```
+
+- 계통(KEPCO)·법령(법제처) 데이터는 `backend/apps/bizdev/data/*.json` 스냅샷 서빙 (실시간 API 전환은 2차 — `apps/bizdev/snapshots.py` 함수만 교체)
+- 인허가 12단계 정의는 `apps/bizdev/constants.py` STAGE_DEFS 단일 소스
+- 권한: admin 전체 편집 / 사업지 PM(등록자) 본인 것만 편집 / 그 외 읽기. 사업지 삭제는 admin 전용
+
 ### 4. 코퍼스 적재
 
 ```bash

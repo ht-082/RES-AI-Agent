@@ -82,7 +82,7 @@ export default function App() {
         )}
         {activeView === 'contract' && <ContractView />}
         {activeView === 'finance'  && <FinanceView />}
-        {activeView === 'ops'      && <OpsView />}
+        {activeView === 'ops'      && <OpsView user={user} />}
       </main>
     </>
   )

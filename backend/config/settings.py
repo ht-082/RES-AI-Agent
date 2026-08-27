@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'apps.rag',
     'apps.chat',
     'apps.contracts',
+    'apps.bizdev',
 ]
 
 MIDDLEWARE = [
