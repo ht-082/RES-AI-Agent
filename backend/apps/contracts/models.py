@@ -120,7 +120,11 @@ class ContractReview(models.Model):
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
     created_by = models.ForeignKey(
         'accounts.User', on_delete=models.SET_NULL,
-        null=True, blank=True, related_name='contract_reviews'
+        null=True, blank=True, related_name='contract_reviews',
+        # db/schema.sql(initdb 원본)이 만드는 컬럼명은 created_by 다. 이걸 명시하지
+        # 않으면 Django가 created_by_id 를 찾아, User 삭제 시 SET_NULL 갱신이
+        # UndefinedColumn 으로 터진다. workspaces 의 created_by 와 같은 관행이다.
+        db_column='created_by'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
