@@ -115,9 +115,9 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
         </div>
       </div>
 
-      {/* 인허가 진척 파이프라인 */}
+      {/* 사업 List */}
       <div className="card block">
-        <h3>인허가 진척 파이프라인</h3>
+        <h3>사업 List</h3>
         <div className="h-sub" style={{ marginBottom: 12 }}>
           행 클릭 → 개발 사업은 인허가·예산 상세로, <b>운영</b> 배지 사업은 발전 실적 상세로 이동
         </div>
