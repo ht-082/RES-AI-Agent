@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
 import SiteFormModal from './SiteFormModal'
 import SiteListRail from './SiteListRail'
-import OverviewCard from './detail/OverviewCard'
+import OverviewSection from './detail/OverviewSection'
 import FactSection from './detail/FactSection'
 import PermitSection from './detail/PermitSection'
 import ContractSection from './detail/ContractSection'
@@ -118,16 +118,18 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
           {!data && !error && <p className="note">불러오는 중...</p>}
           {data && (
             <>
-              {/* 사업개요 양식 순서 */}
-              <FactSection title={labelOf('basic')} facts={factsOf('basic')}
-                           canEdit={canEdit} onChanged={reload} />
+              {/* 사업 개요(기본 정보 + 부지 지도)를 왼쪽 절반에.
+                  오른쪽 칸은 SPC 정보 자리로 비워 둔다. */}
+              <div className="grid-2 lean" style={{ alignItems: 'start' }}>
+                <OverviewSection site={data.site} facts={factsOf('basic')}
+                                 canEdit={canEdit} onChanged={reload} />
+              </div>
               <FactSection title={labelOf('spc')} facts={factsOf('spc')}
                            canEdit={canEdit} onChanged={reload} />
               <PermitSection stages={data.stages} canEdit={canEdit}
                              onChanged={reload} onError={setError} />
               <FactSection title={labelOf('land')} facts={factsOf('land')}
                            canEdit={canEdit} onChanged={reload} />
-              <OverviewCard site={data.site} budget={data.budget_summary} />
               <ContractSection siteId={siteId} contracts={data.contracts}
                                canEdit={canEdit} onChanged={reload} onError={setError} />
               <EventSection siteId={siteId} events={data.events}

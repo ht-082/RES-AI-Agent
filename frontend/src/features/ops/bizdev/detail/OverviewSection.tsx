@@ -1,0 +1,65 @@
+import { useEffect, useRef } from 'react'
+import L from 'leaflet'
+import FactSection from './FactSection'
+import { ENERGY_META } from '../constants'
+import type { Site, SiteFact } from '../types'
+
+// 사업 개요 — 양식 §1(사업 기본 정보) + 부지 위성 지도를 한 카드로 합쳤다.
+// 반폭 배치라 표는 compact(근거·비고를 내용 밑 작은 줄로) 형태를 쓴다.
+export default function OverviewSection({ site, facts, canEdit, onChanged }: {
+  site: Site
+  facts: SiteFact[]
+  canEdit: boolean
+  onChanged: () => void
+}) {
+  const boxRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<L.Map | null>(null)
+
+  useEffect(() => {
+    if (!boxRef.current) return
+    if (mapRef.current) { mapRef.current.remove(); mapRef.current = null }
+    if (site.lat == null || site.lng == null) return
+    const map = L.map(boxRef.current, { scrollWheelZoom: false, zoomControl: false })
+      .setView([site.lat, site.lng], 13)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { attribution: 'Tiles &copy; Esri' }).addTo(map)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+      { attribution: '' }).addTo(map)
+    const color = ENERGY_META[site.energy_type]?.color || '#f59e0b'
+    L.marker([site.lat, site.lng], {
+      icon: L.divIcon({
+        className: 'bz-pin-wrap',
+        html: `<div class="bz-pin" style="--pin-color:${color}"><span class="bz-pin-head"></span></div>`,
+        iconSize: [26, 34], iconAnchor: [13, 30],
+      }),
+    }).addTo(map)
+    mapRef.current = map
+    return () => { map.remove(); mapRef.current = null }
+  }, [site.id, site.lat, site.lng, site.energy_type])
+
+  const unconfirmed = facts.filter(f => f.certainty === 'unconfirmed').length
+
+  return (
+    <div className="card block">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <h3>사업 개요</h3>
+        {unconfirmed > 0 && (
+          <span className="bz-chip" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>
+            미확정 {unconfirmed}
+          </span>
+        )}
+      </div>
+      <div className="h-sub" style={{ marginBottom: 10 }}>
+        {site.pm_name ? `담당 ${site.pm_name}` : '담당 미지정'} · 인허가 진척 {site.overall_pct}%
+      </div>
+
+      <div ref={boxRef} style={{ height: 190, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)' }}>
+        {(site.lat == null || site.lng == null) && (
+          <p className="note" style={{ padding: 20 }}>위경도 미입력 — 지도 표시 불가</p>
+        )}
+      </div>
+
+      <FactSection title="" facts={facts} canEdit={canEdit} onChanged={onChanged} bare />
+    </div>
+  )
+}

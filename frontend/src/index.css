@@ -729,3 +729,9 @@ textarea.inp { resize: vertical; min-height: 84px; line-height: 1.55; }
 .bz-cell-input::placeholder { color: var(--ink-faint); }
 select.bz-cell-input { cursor: pointer; }
 .bz-cell-input.saving { border-color: var(--mint); background: var(--mint-soft); }
+
+/* 반폭 표에서 근거·비고를 내용 밑 작은 줄로 */
+.bz-subcells { display: grid; grid-template-columns: 30px 1fr 30px 1fr;
+  align-items: center; gap: 2px; margin-top: 2px; }
+.bz-subcells > span { font-size: 10px; color: var(--ink-faint); }
+.bz-subcells .bz-cell-input { font-size: 11px; padding: 2px 5px; }
