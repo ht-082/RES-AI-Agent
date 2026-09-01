@@ -75,13 +75,12 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
             <th>주요 내용</th>
             <th style={{ width: 90 }}>확정도</th>
             <th style={{ width: 96 }}>체결</th>
-            <th style={{ width: 110 }}>비고</th>
             {canEdit && <th style={{ width: 34 }} />}
           </tr>
         </thead>
         <tbody>
           {contracts.length === 0 && (
-            <tr><td colSpan={canEdit ? 7 : 6} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
+            <tr><td colSpan={canEdit ? 6 : 5} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
               등록된 계약이 없습니다.
             </td></tr>
           )}
@@ -112,10 +111,6 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
                     background: `color-mix(in srgb, ${CONTRACT_STATUS_META[row.status]?.color} 12%, transparent)`,
                     borderRadius: 6, textAlign: 'center', width: 84,
                   }} />
-              </td>
-              <td>
-                <EditableText value={row.note} placeholder="—" disabled={!canEdit}
-                              onSave={v => patch(row, { note: v })} />
               </td>
               {canEdit && (
                 <td>
