@@ -48,7 +48,10 @@ services:
     command: python manage.py runserver 0.0.0.0:8000
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-re_user}:${POSTGRES_PASSWORD:-re_pass}@postgres:5432/${POSTGRES_DB:-re_agent}
-      QDRANT_URL: http://qdrant:6333
+      # 루트 .env의 QDRANT_URL로 공용 서버(EC2) 선택 가능. 비우면 로컬 컨테이너.
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-re_documents_v2}
       REDIS_URL: redis://redis:6379/0
       EMBEDDING_MODEL: BAAI/bge-m3
       EMBEDDING_DEVICE: cpu          # 컴퓨팅 여유 부족 시 cpu, 추후 cuda
@@ -77,7 +80,10 @@ services:
     command: celery -A config worker -l info --concurrency=1
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-re_user}:${POSTGRES_PASSWORD:-re_pass}@postgres:5432/${POSTGRES_DB:-re_agent}
-      QDRANT_URL: http://qdrant:6333
+      # 루트 .env의 QDRANT_URL로 공용 서버(EC2) 선택 가능. 비우면 로컬 컨테이너.
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-re_documents_v2}
       REDIS_URL: redis://redis:6379/0
       EMBEDDING_MODEL: BAAI/bge-m3
       EMBEDDING_DEVICE: cpu

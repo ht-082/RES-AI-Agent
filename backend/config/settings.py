@@ -198,7 +198,12 @@ CELERY_TIMEZONE = 'Asia/Seoul'
 
 # ── Qdrant ────────────────────────────────────────────────────────────
 QDRANT_URL = os.getenv('QDRANT_URL', 'http://localhost:6333')
-QDRANT_COLLECTION = 're_documents'
+# 공용(EC2 등) Qdrant 인증 키. 비우면 무인증(로컬 Docker) — 하위호환.
+# RAG 담당자는 쓰기 키, 그 외 개발자는 읽기 전용 키를 받는다.
+QDRANT_API_KEY = os.getenv('QDRANT_API_KEY', '')
+# 컬렉션 결정의 실권자는 DB(corpus_versions.is_active)다 — 이 값은 그 조회가
+# 실패했을 때의 폴백일 뿐이다. v1('re_documents')로 낡아 있던 것을 현행화.
+QDRANT_COLLECTION = os.getenv('QDRANT_COLLECTION', 're_documents_v2')
 
 # ── Embedding ─────────────────────────────────────────────────────────
 EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'baai/bge-m3')

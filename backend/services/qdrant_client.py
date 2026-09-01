@@ -16,8 +16,14 @@ def get_client():
     global _client
     if _client is None:
         from qdrant_client import QdrantClient
-        _client = QdrantClient(url=settings.QDRANT_URL)
-        logger.info(f"Qdrant 클라이언트 연결: {settings.QDRANT_URL}")
+        # api_key가 비어 있으면 None → 무인증(로컬 Docker)과 동일하게 동작한다.
+        # 공용 서버(EC2)는 QDRANT__SERVICE__API_KEY를 걸므로 키 전달이 필수다.
+        _client = QdrantClient(
+            url=settings.QDRANT_URL,
+            api_key=settings.QDRANT_API_KEY or None,
+        )
+        logger.info(f"Qdrant 클라이언트 연결: {settings.QDRANT_URL} "
+                    f"(인증 {'사용' if settings.QDRANT_API_KEY else '없음'})")
     return _client
 
 
