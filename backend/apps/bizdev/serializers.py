@@ -1,6 +1,9 @@
 from rest_framework import serializers
 
-from .models import BudgetEntry, CommunityIssue, PermitDocument, PermitStage, Site
+from .models import (
+    BudgetEntry, CommunityIssue, Contract, PermitDocument, PermitStage,
+    Site, SiteEvent, SiteFact,
+)
 from .permissions import can_edit_site
 
 
@@ -18,9 +21,10 @@ class PermitStageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PermitStage
-        fields = ['id', 'site', 'stage_no', 'name', 'agency', 'tier', 'status',
-                  'progress_pct', 'received_date', 'deadline', 'detail',
-                  'dday_label', 'doc_label', 'documents']
+        fields = ['id', 'site', 'stage_no', 'name', 'agency', 'category', 'tier',
+                  'status', 'content', 'certainty', 'remark', 'progress_pct',
+                  'received_date', 'deadline', 'detail', 'dday_label', 'doc_label',
+                  'documents']
         read_only_fields = ['id', 'stage_no']  # stage_no 는 서버가 부여/재정렬
 
 
@@ -53,10 +57,16 @@ class CommunityIssueSerializer(serializers.ModelSerializer):
 
 
 def overall_pct(site):
-    stages = list(site.stages.all())
+    """진척률 = 완료 항목 수 ÷ 대상 항목 수.
+
+    예전에는 항목별 progress_pct 평균이었는데, 그 값은 상태에서 기계적으로
+    파생된 수라 근거가 없었다. 사업개요 양식은 완료/미완료만 다루므로
+    "10개 중 1개 완료 = 10%"로 세는 편이 설명 가능하다(미대상은 분모에서 제외).
+    """
+    stages = [s for s in site.stages.all() if s.status != 'na']
     if not stages:
         return 0
-    return round(sum(s.progress_pct for s in stages) / len(stages))
+    return round(len([s for s in stages if s.status == 'done']) / len(stages) * 100)
 
 
 class SiteListSerializer(serializers.ModelSerializer):
@@ -90,3 +100,35 @@ class SiteWriteSerializer(serializers.ModelSerializer):
                   'status', 'risk_tag', 'risk_level', 'target_ntp',
                   'approved_budget_krw', 'lat', 'lng', 'energy_type',
                   'lifecycle', 'annual_gwh', 'cod', 'address_detail']
+
+
+class SiteFactSerializer(serializers.ModelSerializer):
+    """사업개요 항목 — 값·확정도·근거·비고만 수정 가능(라벨/키는 정의가 소유)"""
+    class Meta:
+        model = SiteFact
+        fields = ['id', 'site', 'section', 'key', 'label', 'value',
+                  'certainty', 'source', 'note', 'sort_order']
+        read_only_fields = ['id', 'site', 'section', 'key', 'label', 'sort_order']
+
+
+class ContractSerializer(serializers.ModelSerializer):
+    category_label = serializers.CharField(source='get_category_display', read_only=True)
+    status_label = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = Contract
+        fields = ['id', 'site', 'category', 'category_label', 'counterparty',
+                  'summary', 'certainty', 'status', 'status_label', 'note',
+                  'sort_order', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class SiteEventSerializer(serializers.ModelSerializer):
+    type_label = serializers.CharField(source='get_event_type_display', read_only=True)
+    is_ongoing = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = SiteEvent
+        fields = ['id', 'site', 'event_date', 'is_ongoing', 'event_type',
+                  'type_label', 'summary', 'certainty', 'created_at']
+        read_only_fields = ['id', 'created_at']

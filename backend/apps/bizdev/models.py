@@ -12,8 +12,10 @@ from django.db import models
 from django.db.models import Q
 
 from .constants import (
-    BUDGET_CATEGORY_CHOICES, ENERGY_CHOICES, ISSUE_STATUS_CHOICES,
-    ISSUE_TYPE_CHOICES, LIFECYCLE_CHOICES, RISK_LEVEL_CHOICES,
+    BUDGET_CATEGORY_CHOICES, CERTAINTY_CHOICES, CONTRACT_CATEGORY_CHOICES,
+    CONTRACT_STATUS_CHOICES, ENERGY_CHOICES, EVENT_TYPE_CHOICES,
+    ISSUE_STATUS_CHOICES, ISSUE_TYPE_CHOICES, LIFECYCLE_CHOICES,
+    PERMIT_CATEGORY_CHOICES, PERMIT_STATE_CHOICES, RISK_LEVEL_CHOICES,
     STATUS_CHOICES, TIER_CHOICES,
 )
 
@@ -62,14 +64,23 @@ class Site(models.Model):
 
 
 class PermitStage(models.Model):
-    """인허가 단계 — 12단계 기본 + 사용자 추가 단계"""
+    """인허가 항목 — 사업개요 양식 §3 (법정절차 7 + 개별법 협의 3) + 사용자 추가"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='stages')
     stage_no = models.PositiveSmallIntegerField()
     name = models.CharField(max_length=100)
     agency = models.CharField(max_length=100, blank=True, default='')
     tier = models.CharField(max_length=5, choices=TIER_CHOICES, default='minor')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='idle')
+    category = models.CharField(max_length=12, choices=PERMIT_CATEGORY_CHOICES,
+                                default='statutory', help_text='법정절차 / 개별법 협의')
+    status = models.CharField(max_length=10, choices=PERMIT_STATE_CHOICES, default='idle',
+                              help_text='완료·진행중·미착수·미대상 (md 출력 시 진행중·미착수는 미완료로 합침)')
+    content = models.TextField(blank=True, default='',
+                               help_text='허가번호·용량·허가일자 등 (양식 §3 내용란)')
+    certainty = models.CharField(max_length=12, choices=CERTAINTY_CHOICES,
+                                 default='unconfirmed')
+    remark = models.TextField(blank=True, default='',
+                              help_text='허가/협의내용 특이사항 (양식 §3)')
     progress_pct = models.PositiveSmallIntegerField(
         default=0, validators=[MaxValueValidator(100)])
     received_date = models.DateField(null=True, blank=True)
@@ -182,3 +193,93 @@ class CommunityIssue(models.Model):
 
     def __str__(self):
         return f'{self.site.name} · {self.title}'
+
+
+class SiteFact(models.Model):
+    """사업개요 항목 — 양식의 "구분 | 내용 | 확정도 | 근거·비고" 표 한 줄.
+
+    항목을 컬럼으로 만들면 40개 항목 × 4속성 = 160컬럼이 되고 양식이 바뀔 때마다
+    스키마를 고쳐야 한다. 행으로 두면 constants.FACT_DEFS 만 고치면 된다.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='facts')
+    section = models.CharField(max_length=20, help_text='basic/spc/land/econ/pf')
+    key = models.CharField(max_length=40)
+    label = models.CharField(max_length=100)
+    value = models.TextField(blank=True, default='')
+    certainty = models.CharField(max_length=12, choices=CERTAINTY_CHOICES,
+                                 default='unconfirmed')
+    source = models.CharField(max_length=200, blank=True, default='', help_text='근거 문서')
+    note = models.CharField(max_length=200, blank=True, default='', help_text='비고')
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bizdev_site_facts'
+        ordering = ['sort_order']
+        constraints = [
+            models.UniqueConstraint(fields=['site', 'section', 'key'],
+                                    name='uniq_bizdev_fact_per_site'),
+        ]
+        verbose_name = '사업개요 항목'
+        verbose_name_plural = '사업개요 항목'
+
+    def __str__(self):
+        return f'{self.site.name} · {self.label}'
+
+
+class Contract(models.Model):
+    """계약 정보 — 양식 §5"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='contracts')
+    category = models.CharField(max_length=24, choices=CONTRACT_CATEGORY_CHOICES,
+                                default='etc')
+    counterparty = models.CharField(max_length=100, blank=True, default='', help_text='상대방')
+    summary = models.TextField(blank=True, default='', help_text='주요 내용')
+    certainty = models.CharField(max_length=12, choices=CERTAINTY_CHOICES,
+                                 default='unconfirmed')
+    status = models.CharField(max_length=10, choices=CONTRACT_STATUS_CHOICES, default='none')
+    note = models.CharField(max_length=200, blank=True, default='')
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'bizdev_contracts'
+        ordering = ['sort_order', 'created_at']
+        indexes = [models.Index(fields=['site'])]
+        verbose_name = '계약'
+        verbose_name_plural = '계약'
+
+    def __str__(self):
+        return f'{self.site.name} · {self.get_category_display()}'
+
+
+class SiteEvent(models.Model):
+    """진행경과 및 이슈 — 양식 §6.
+
+    일자가 "진행 중"인 행이 실제로 있으므로 event_date 는 비울 수 있고,
+    비어 있으면 is_ongoing 으로 표시한다.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='events')
+    event_date = models.DateField(null=True, blank=True, help_text='비우면 "진행 중"')
+    event_type = models.CharField(max_length=12, choices=EVENT_TYPE_CHOICES, default='etc')
+    summary = models.TextField(help_text='주요 내용')
+    certainty = models.CharField(max_length=12, choices=CERTAINTY_CHOICES,
+                                 default='confirmed')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'bizdev_site_events'
+        # 날짜 있는 행이 최신순으로, "진행 중"(날짜 없음)이 맨 위에 오도록
+        ordering = [models.F('event_date').desc(nulls_first=True), '-created_at']
+        indexes = [models.Index(fields=['site'])]
+        verbose_name = '진행경과'
+        verbose_name_plural = '진행경과'
+
+    @property
+    def is_ongoing(self):
+        return self.event_date is None
+
+    def __str__(self):
+        return f'{self.site.name} · {self.summary[:30]}'

@@ -21,12 +21,16 @@ from rest_framework.views import APIView
 from apps.documents.views import resolve_media_path
 
 from . import snapshots
-from .constants import STAGE_DEFS
-from .models import BudgetEntry, CommunityIssue, PermitDocument, PermitStage, Site
+from .constants import FACT_DEFS, FACT_SECTIONS, STAGE_DEFS
+from .models import (
+    BudgetEntry, CommunityIssue, Contract, PermitDocument, PermitStage,
+    Site, SiteEvent, SiteFact,
+)
 from .permissions import IsAdminOrSitePM, check_site_editable
 from .serializers import (
-    BudgetEntrySerializer, CommunityIssueSerializer, PermitDocumentSerializer,
-    PermitStageSerializer, SiteListSerializer, SiteWriteSerializer,
+    BudgetEntrySerializer, CommunityIssueSerializer, ContractSerializer,
+    PermitDocumentSerializer, PermitStageSerializer, SiteEventSerializer,
+    SiteFactSerializer, SiteListSerializer, SiteWriteSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -109,10 +113,20 @@ class SiteViewSet(viewsets.ModelViewSet):
                 pm_name=getattr(user, 'name', '') or user.username,
                 slug=make_slug(serializer.validated_data.get('name', '')),
             )
-            # 원본 createSite: 12단계 STAGE_DEFS 자동 생성
+            # 인허가 골격(법정절차 7 + 개별법 3)
             PermitStage.objects.bulk_create([
-                PermitStage(site=site, status='idle', progress_pct=0, **d)
-                for d in STAGE_DEFS
+                PermitStage(
+                    site=site, stage_no=d['stage_no'], name=d['name'],
+                    agency=d['agency'], category=d['category'],
+                    doc_label=d['doc_label'], status='idle', progress_pct=0,
+                    tier='major' if d['category'] == 'statutory' else 'minor',
+                ) for d in STAGE_DEFS
+            ])
+            # 사업개요 항목 골격 — 빈칸으로 만들어 두고 담당자가 채운다
+            SiteFact.objects.bulk_create([
+                SiteFact(site=site, section=section, key=key, label=label,
+                         sort_order=i)
+                for i, (section, key, label) in enumerate(FACT_DEFS)
             ])
 
     def create(self, request, *args, **kwargs):
@@ -162,6 +176,10 @@ class SiteViewSet(viewsets.ModelViewSet):
             site_data['address_detail'] = site.address_detail
         return Response({
             'site': site_data,
+            'sections': [{'key': k, 'label': v} for k, v in FACT_SECTIONS],
+            'facts': SiteFactSerializer(site.facts.all(), many=True).data,
+            'contracts': ContractSerializer(site.contracts.all(), many=True).data,
+            'events': SiteEventSerializer(site.events.all(), many=True).data,
             'stages': PermitStageSerializer(stages, many=True).data,
             'budget_entries': BudgetEntrySerializer(entries, many=True).data,
             'budget_summary': {
@@ -375,3 +393,37 @@ class LawListView(APIView):
 class OrdinanceListView(APIView):
     def get(self, request):
         return Response(snapshots.list_ordinances(request.query_params.get('sido')))
+
+
+class SiteFactViewSet(viewsets.ModelViewSet):
+    """사업개요 항목 — 값·확정도·근거·비고 수정 전용(추가/삭제는 정의가 소유)"""
+    queryset = SiteFact.objects.select_related('site')
+    serializer_class = SiteFactSerializer
+    permission_classes = [IsAdminOrSitePM]
+    pagination_class = None
+    filterset_fields = ['site', 'section']
+    http_method_names = ['get', 'patch', 'head', 'options']
+
+
+class ContractViewSet(viewsets.ModelViewSet):
+    queryset = Contract.objects.select_related('site')
+    serializer_class = ContractSerializer
+    permission_classes = [IsAdminOrSitePM]
+    pagination_class = None
+    filterset_fields = ['site', 'category', 'status']
+
+    def perform_create(self, serializer):
+        check_site_editable(self.request.user, serializer.validated_data['site'])
+        serializer.save()
+
+
+class SiteEventViewSet(viewsets.ModelViewSet):
+    queryset = SiteEvent.objects.select_related('site')
+    serializer_class = SiteEventSerializer
+    permission_classes = [IsAdminOrSitePM]
+    pagination_class = None
+    filterset_fields = ['site', 'event_type']
+
+    def perform_create(self, serializer):
+        check_site_editable(self.request.user, serializer.validated_data['site'])
+        serializer.save()
