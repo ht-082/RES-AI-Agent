@@ -1,8 +1,17 @@
 // 사업개발 대시보드 공용 상수 — 원본 Re-project-mng 로직 이식
-import type { Site, StageStatus, StageSummary } from './types'
+import type { Certainty, Site, SiteStatus, StageStatus, StageSummary } from './types'
 
-// 상태 → 표시 메타 (색은 RES 그린 테마 변수)
+// 인허가 상태 — 사업개요 양식 기준(완료/진행중/미착수/미대상)
 export const STATUS_META: Record<StageStatus, { label: string; color: string }> = {
+  done:   { label: '완료',   color: 'var(--green-accent)' },
+  active: { label: '진행중', color: 'var(--brand)' },
+  idle:   { label: '미착수', color: '#b8c4bd' },
+  na:     { label: '미대상', color: '#cbd5e1' },
+}
+export const STATUS_ORDER: StageStatus[] = ['idle', 'active', 'done', 'na']
+
+// 사업지 상태(지도 핀·배지) — 5단계 유지
+export const SITE_STATUS_META: Record<SiteStatus, { label: string; color: string }> = {
   done:   { label: '완료',   color: 'var(--green-accent)' },
   active: { label: '진행중', color: 'var(--brand)' },
   wait:   { label: '대기',   color: 'var(--amber)' },
@@ -10,11 +19,35 @@ export const STATUS_META: Record<StageStatus, { label: string; color: string }> 
   idle:   { label: '미착수', color: '#b8c4bd' },
 }
 
-// 상태 순환(원본 project.page.js:411)과 status↔progress 동기화(:412)
-export const STATUS_ORDER: StageStatus[] = ['idle', 'wait', 'active', 'risk', 'done']
-export const STATUS_PROG: Record<StageStatus, number> = {
-  done: 100, active: 60, risk: 45, wait: 30, idle: 0,
+// 확정도 — 사업개요 양식 전 항목 공통
+export const CERTAINTY_META: Record<Certainty, { label: string; color: string }> = {
+  confirmed:   { label: '확정',   color: 'var(--green-accent)' },
+  unconfirmed: { label: '미확정', color: 'var(--amber)' },
+  na:          { label: '해당없음', color: '#b8c4bd' },
 }
+
+export const CONTRACT_STATUS_META: Record<string, { label: string; color: string }> = {
+  signed:  { label: '체결',      color: 'var(--green-accent)' },
+  planned: { label: '체결 예정', color: 'var(--amber)' },
+  none:    { label: '미체결',    color: '#b8c4bd' },
+}
+
+// 계약 유형 — 서버 CONTRACT_CATEGORY_CHOICES 와 같은 순서
+export const CONTRACT_CATEGORIES: Array<[string, string]> = [
+  ['land_lease', '부지 임대차'], ['dev_service', '개발용역'],
+  ['asset_transfer', '자산양수도'], ['expansion_agreement', '사업확장 등 합의서'],
+  ['permit_service', '개발행위 인허가 용역'], ['elec_design', '전기설계 용역'],
+  ['eia_service', '환경영향평가 용역'], ['dia_service', '재해영향평가 용역'],
+  ['dev_support', '사업개발지원 용역'], ['community', '지역수용성 용역'],
+  ['grid_contract', '송전용전기설비이용계약'], ['epc', 'EPC'],
+  ['pf_loan', 'PF 대출약정'], ['ppa_rec', 'PPA / REC 매매'],
+  ['om', 'O&M (관리운영위탁)'], ['supervision', '감리 · OE'], ['etc', '기타'],
+]
+
+export const EVENT_TYPES: Array<[string, string]> = [
+  ['permit', '인허가'], ['complaint', '민원'], ['land', '토지'],
+  ['contract', '계약'], ['finance', '금융'], ['etc', '기타'],
+]
 
 export const ENERGY_META = {
   solar: { label: '태양광', color: '#f59e0b' },
@@ -49,17 +82,13 @@ export const PIPE_COLS = [
 ]
 
 export function colStatus(stages: StageSummary[], col: (typeof PIPE_COLS)[number]): StageStatus {
-  if (col.label === '착공') {
-    const g = stages.find(s => /공사계획/.test(s.name || ''))
-    return g && g.status === 'done' ? 'done' : 'idle'
-  }
   const m = stages.filter(s => col.kw.some(k => (s.name || '').includes(k)))
   if (!m.length) return 'idle'
-  if (m.every(x => x.status === 'done')) return 'done'
-  for (const st of ['risk', 'active', 'wait'] as StageStatus[]) {
-    if (m.some(x => x.status === st)) return st
-  }
-  return m.some(x => x.status === 'done') ? 'active' : 'idle'
+  const target = m.filter(x => x.status !== 'na')
+  if (!target.length) return 'na'
+  if (target.every(x => x.status === 'done')) return 'done'
+  if (target.some(x => x.status === 'active')) return 'active'
+  return target.some(x => x.status === 'done') ? 'active' : 'idle'
 }
 
 // ── 시·도 정규화 (원본 index.page.js:163-181 이식) ─────────────────

@@ -8,7 +8,56 @@ export interface StageSummary {
   tier: 'major' | 'minor'
 }
 
-export type StageStatus = 'done' | 'active' | 'wait' | 'risk' | 'idle'
+export interface SiteFact {
+  id: string
+  site: string
+  section: string
+  key: string
+  label: string
+  value: string
+  certainty: Certainty
+  source: string
+  note: string
+  sort_order: number
+}
+
+export interface Contract {
+  id: string
+  site: string
+  category: string
+  category_label: string
+  counterparty: string
+  summary: string
+  certainty: Certainty
+  status: 'signed' | 'planned' | 'none'
+  status_label: string
+  note: string
+  sort_order: number
+  created_at: string
+}
+
+export interface SiteEvent {
+  id: string
+  site: string
+  event_date: string | null
+  is_ongoing: boolean
+  event_type: string
+  type_label: string
+  summary: string
+  certainty: Certainty
+  created_at: string
+}
+
+export interface FactSection {
+  key: string
+  label: string
+}
+
+// 사업지 상태(지도 핀) — 5단계 유지
+export type SiteStatus = 'done' | 'active' | 'wait' | 'risk' | 'idle'
+// 인허가 상태 — 사업개요 양식 기준(완료/진행중/미착수/미대상)
+export type StageStatus = 'done' | 'active' | 'idle' | 'na'
+export type Certainty = 'confirmed' | 'unconfirmed' | 'na'
 
 export interface Site {
   id: string
@@ -18,7 +67,7 @@ export interface Site {
   location: string
   sido: string
   facility_type: string
-  status: StageStatus
+  status: SiteStatus
   risk_tag: string
   risk_level: '' | 'hi' | 'md'
   pm: string | null
@@ -57,7 +106,11 @@ export interface PermitStage {
   name: string
   agency: string
   tier: 'major' | 'minor'
+  category: 'statutory' | 'individual'
   status: StageStatus
+  content: string
+  certainty: Certainty
+  remark: string
   progress_pct: number
   received_date: string | null
   deadline: string | null
@@ -100,6 +153,10 @@ export interface CommunityIssue {
 
 export interface SiteDetailPayload {
   site: Site
+  sections: FactSection[]
+  facts: SiteFact[]
+  contracts: Contract[]
+  events: SiteEvent[]
   stages: PermitStage[]
   budget_entries: BudgetEntry[]
   budget_summary: BudgetSummary

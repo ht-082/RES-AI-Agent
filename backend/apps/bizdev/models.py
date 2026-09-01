@@ -264,7 +264,7 @@ class SiteEvent(models.Model):
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='events')
     event_date = models.DateField(null=True, blank=True, help_text='비우면 "진행 중"')
     event_type = models.CharField(max_length=12, choices=EVENT_TYPE_CHOICES, default='etc')
-    summary = models.TextField(help_text='주요 내용')
+    summary = models.TextField(blank=True, default='', help_text='주요 내용')
     certainty = models.CharField(max_length=12, choices=CERTAINTY_CHOICES,
                                  default='confirmed')
     created_at = models.DateTimeField(auto_now_add=True)

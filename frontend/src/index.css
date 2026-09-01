@@ -715,3 +715,17 @@ textarea.inp { resize: vertical; min-height: 84px; line-height: 1.55; }
 .bz-tl-item:last-child::before { display: none; }
 .bz-tl-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 3px; flex-shrink: 0;
   box-shadow: 0 0 0 3px var(--surface); z-index: 1; }
+
+/* 사업개요 양식 표 — 셀 안에서 바로 편집 */
+.bz-doc-tbl { table-layout: fixed; width: 100%; }
+.bz-doc-tbl th { font-size: 11px; }
+.bz-doc-tbl td { vertical-align: top; padding: 6px 8px; }
+.bz-cell-input { width: 100%; border: 1px solid transparent; border-radius: 6px;
+  padding: 4px 6px; font-size: 12px; font-family: inherit; color: var(--ink);
+  background: transparent; resize: vertical; line-height: 1.45; }
+.bz-cell-input:hover:not(:disabled) { border-color: var(--line); background: var(--surface-2); }
+.bz-cell-input:focus { outline: none; border-color: var(--brand); background: var(--surface); }
+.bz-cell-input:disabled { color: var(--ink-soft); cursor: default; }
+.bz-cell-input::placeholder { color: var(--ink-faint); }
+select.bz-cell-input { cursor: pointer; }
+.bz-cell-input.saving { border-color: var(--mint); background: var(--mint-soft); }
