@@ -8,6 +8,13 @@ export interface StageSummary {
   tier: 'major' | 'minor'
 }
 
+export interface FactInputSpec {
+  input: 'text' | 'select' | 'number' | 'date' | 'address' | 'substation'
+       | 'grid_distance' | 'aliases' | 'shareholders' | 'derived'
+  options?: string[]
+  unit?: string
+}
+
 export interface SiteFact {
   id: string
   site: string
@@ -19,6 +26,7 @@ export interface SiteFact {
   source: string
   note: string
   sort_order: number
+  input_spec: FactInputSpec
 }
 
 export interface Contract {

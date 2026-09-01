@@ -21,7 +21,9 @@ from rest_framework.views import APIView
 from apps.documents.views import resolve_media_path
 
 from . import snapshots
-from .constants import FACT_DEFS, FACT_SECTIONS, STAGE_DEFS
+from .constants import (
+    FACT_DEFS, FACT_SECTIONS, STAGE_DEFS, STAGE_TO_LIFECYCLE, fact_spec,
+)
 from .models import (
     BudgetEntry, CommunityIssue, Contract, PermitDocument, PermitStage,
     Site, SiteEvent, SiteFact,
@@ -124,9 +126,9 @@ class SiteViewSet(viewsets.ModelViewSet):
             ])
             # 사업개요 항목 골격 — 빈칸으로 만들어 두고 담당자가 채운다
             SiteFact.objects.bulk_create([
-                SiteFact(site=site, section=section, key=key, label=label,
-                         sort_order=i)
-                for i, (section, key, label) in enumerate(FACT_DEFS)
+                SiteFact(site=site, section=d['section'], key=d['key'],
+                         label=d['label'], sort_order=i)
+                for i, d in enumerate(FACT_DEFS)
             ])
 
     def create(self, request, *args, **kwargs):
@@ -396,13 +398,55 @@ class OrdinanceListView(APIView):
 
 
 class SiteFactViewSet(viewsets.ModelViewSet):
-    """사업개요 항목 — 값·확정도·근거·비고 수정 전용(추가/삭제는 정의가 소유)"""
+    """사업개요 항목 — 값·확정도 수정 전용(항목 추가/삭제는 정의가 소유)"""
     queryset = SiteFact.objects.select_related('site')
     serializer_class = SiteFactSerializer
     permission_classes = [IsAdminOrSitePM]
     pagination_class = None
     filterset_fields = ['site', 'section']
     http_method_names = ['get', 'patch', 'head', 'options']
+
+    def perform_update(self, serializer):
+        fact = serializer.save()
+        sync_bound_field(fact)
+
+
+def sync_bound_field(fact):
+    """항목 값을 Site 의 정규 컬럼에 반영한다.
+
+    지도·KPI·사업 List 는 Site 컬럼을 쓰므로, 표에서 용량을 고쳤는데 지도가
+    옛 값을 그대로 보여주는 일이 없도록 한 곳에서 맞춘다.
+    """
+    spec = fact_spec(fact.section, fact.key)
+    bound = (spec or {}).get('bound')
+    if not bound:
+        return
+    site, value = fact.site, (fact.value or '').strip()
+    if bound == 'capacity_mw':
+        num = re.search(r'[\d.]+', value)
+        if not num:
+            return
+        site.capacity_mw = num.group()
+    elif bound == 'lifecycle':
+        site.lifecycle = STAGE_TO_LIFECYCLE.get(value, site.lifecycle)
+    elif bound == 'facility_type':
+        site.facility_type = value
+        if '태양광' in value:
+            site.energy_type = 'solar'
+        elif '풍력' in value:
+            site.energy_type = 'wind'
+    elif bound == 'location':
+        site.location = value
+        # 계통·조례 조회 키(시·군)를 주소에서 뽑아 둔다
+        m = re.search(r'(\S+[시군구])', value)
+        if m:
+            site.sido = m.group(1)
+    elif bound == 'name':
+        if value:
+            site.name = value
+    else:
+        setattr(site, bound, value)
+    site.save()
 
 
 class ContractViewSet(viewsets.ModelViewSet):
@@ -427,3 +471,10 @@ class SiteEventViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         check_site_editable(self.request.user, serializer.validated_data['site'])
         serializer.save()
+
+
+class SubstationSearchView(APIView):
+    """연계점 선택용 변전소 검색 — KEPCO 스냅샷의 882개 변전소."""
+    def get(self, request):
+        q = (request.query_params.get('q') or '').strip()
+        return Response(snapshots.search_substations(q))

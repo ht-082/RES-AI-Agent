@@ -4,6 +4,7 @@ from .models import (
     BudgetEntry, CommunityIssue, Contract, PermitDocument, PermitStage,
     Site, SiteEvent, SiteFact,
 )
+from .constants import fact_spec
 from .permissions import can_edit_site
 
 
@@ -103,12 +104,50 @@ class SiteWriteSerializer(serializers.ModelSerializer):
 
 
 class SiteFactSerializer(serializers.ModelSerializer):
-    """사업개요 항목 — 값·확정도·근거·비고만 수정 가능(라벨/키는 정의가 소유)"""
+    """사업개요 항목.
+
+    input_spec 은 화면이 어떤 입력기를 그릴지 알려 준다(드롭다운·숫자·날짜 등).
+    derived 항목(총사업비·경제성)은 다른 섹션 값을 그대로 보여 주는 읽기 전용이라
+    여기서 값을 계산해 실어 보낸다 — 같은 수치가 두 곳에서 어긋나지 않게.
+    """
+    input_spec = serializers.SerializerMethodField()
+
     class Meta:
         model = SiteFact
         fields = ['id', 'site', 'section', 'key', 'label', 'value',
-                  'certainty', 'source', 'note', 'sort_order']
+                  'certainty', 'source', 'note', 'sort_order', 'input_spec']
         read_only_fields = ['id', 'site', 'section', 'key', 'label', 'sort_order']
+
+    def get_input_spec(self, obj):
+        spec = fact_spec(obj.section, obj.key) or {}
+        out = {'input': spec.get('input', 'text')}
+        for k in ('options', 'unit'):
+            if spec.get(k):
+                out[k] = spec[k]
+        return out
+
+    def to_representation(self, obj):
+        data = super().to_representation(obj)
+        spec = fact_spec(obj.section, obj.key) or {}
+        if spec.get('input') == 'derived':
+            data['value'] = self._derived(obj, spec)
+        return data
+
+    def _derived(self, obj, spec):
+        """다른 섹션 항목에서 값을 끌어온다(총사업비 = 경제성의 총사업비 등)."""
+        by_key = {(f.section, f.key): f for f in obj.site.facts.all()}
+        parts = []
+        for ref in (spec.get('source'), spec.get('also')):
+            if not ref:
+                continue
+            src = by_key.get(tuple(ref))
+            if src and src.value:
+                label = (fact_spec(*ref) or {}).get('label', '')
+                short = label.split('(')[0].strip()
+                unit = spec.get('unit') or ('%' if '%' in label else '')
+                parts.append(f'{short} {src.value}{unit}' if spec.get('also')
+                             else f'{src.value}{unit}')
+        return ' · '.join(parts)
 
 
 class ContractSerializer(serializers.ModelSerializer):

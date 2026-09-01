@@ -1,5 +1,6 @@
 import { apiSend } from '../api'
-import { CertaintyCell, EditableText } from './editors'
+import { CertaintyCell } from './editors'
+import FactCell from './FactCell'
 import type { SiteFact } from '../types'
 
 // 사업개요 항목 표 — "구분 | 내용 | 확정도".
@@ -35,8 +36,8 @@ export default function FactSection({ title, facts, canEdit, onChanged, compact,
           <tr key={f.id}>
             <td style={{ fontWeight: 600, color: 'var(--ink-soft)' }}>{f.label}</td>
             <td>
-              <EditableText value={f.value} multiline disabled={!canEdit}
-                            onSave={v => patch(f, { value: v })} />
+              <FactCell fact={f} canEdit={canEdit}
+                        onSave={v => patch(f, { value: v })} />
             </td>
             <td>
               <CertaintyCell value={f.certainty} disabled={!canEdit}
@@ -64,8 +65,8 @@ export default function FactSection({ title, facts, canEdit, onChanged, compact,
             <tr key={f.id}>
               <td style={{ fontWeight: 600, color: 'var(--ink-soft)' }}>{f.label}</td>
               <td>
-                <EditableText value={f.value} multiline disabled={!canEdit}
-                              onSave={v => patch(f, { value: v })} />
+                <FactCell fact={f} canEdit={canEdit}
+                          onSave={v => patch(f, { value: v })} />
               </td>
               <td>
                 <CertaintyCell value={f.certainty} disabled={!canEdit}

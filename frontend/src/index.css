@@ -735,3 +735,38 @@ select.bz-cell-input { cursor: pointer; }
   align-items: center; gap: 2px; margin-top: 2px; }
 .bz-subcells > span { font-size: 10px; color: var(--ink-faint); }
 .bz-subcells .bz-cell-input { font-size: 11px; padding: 2px 5px; }
+
+/* 항목별 입력기 */
+.bz-inline { display: flex; align-items: center; gap: 4px; }
+.bz-unit { font-size: 11px; color: var(--ink-faint); flex-shrink: 0; }
+.bz-hint { font-size: 10px; color: var(--ink-faint); margin-top: 2px; }
+.bz-muted { color: var(--ink-faint); font-weight: 400; }
+.bz-derived { font-size: 12px; padding: 4px 6px; color: var(--ink-soft);
+  background: var(--surface-2); border-radius: 6px; display: flex;
+  justify-content: space-between; align-items: center; gap: 6px; }
+.bz-derived-tag { font-size: 9.5px; color: var(--ink-faint); flex-shrink: 0; }
+.bz-picker { display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; text-align: left; }
+.bz-picker:disabled { cursor: default; }
+.bz-dropdown { position: absolute; z-index: 40; top: 100%; left: 0; width: 260px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow); padding: 6px; margin-top: 2px; }
+.bz-dropdown-list { max-height: 220px; overflow-y: auto; margin-top: 4px; }
+.bz-dropdown-item { display: flex; justify-content: space-between; gap: 8px;
+  width: 100%; padding: 5px 7px; font-size: 12px; border-radius: 6px;
+  background: none; border: none; cursor: pointer; text-align: left; }
+.bz-dropdown-item:hover { background: var(--mint-soft); }
+.bz-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.bz-chip-alias { display: inline-flex; align-items: center; gap: 3px;
+  background: var(--surface-2); color: var(--ink-soft); font-weight: 500; }
+.bz-chip-alias button { background: none; border: none; cursor: pointer;
+  color: var(--ink-faint); display: flex; padding: 0; }
+
+/* 제목 옆 별칭 배지 — hover 시 목록 */
+.bz-alias-badge { position: relative; display: inline-block; vertical-align: middle; cursor: default; }
+.bz-alias-pop { display: none; position: absolute; top: 100%; left: 0; z-index: 60;
+  margin-top: 4px; min-width: 180px; padding: 8px 10px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow);
+  font-size: 12px; font-weight: 400; color: var(--ink-soft); }
+.bz-alias-pop > span { display: block; padding: 2px 0; white-space: nowrap; }
+.bz-alias-badge:hover .bz-alias-pop { display: block; }

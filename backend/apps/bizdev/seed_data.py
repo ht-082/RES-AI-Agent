@@ -16,7 +16,7 @@ NL = chr(10)   # 여러 줄 값 구성용
 #  lifecycle, address_detail, annual_gwh, cod)
 SITES = [
     ('hongseong-solar', '홍성1 태양광', 99, '충남 홍성군 갈산면 기산리 780 일원', '홍성군',
-     '염해간척지 태양광', 'active', '계통 보강 대기', 'md', '', 1860000000,
+     '기타', 'active', '계통 보강 대기', 'md', '', 1860000000,
      36.68, 126.55, 'solar', 'dev', '충남 홍성군 갈산면 기산리 780', None, '2031.12.31'),
 ]
 
@@ -24,27 +24,22 @@ SITES = [
 FACTS = {
     'hongseong-solar': {
         ('basic', 'stage'): ('개발', 'confirmed', '', '세부: 인허가 진행 단계'),
-        ('basic', 'name_alias'): (
-            '대표: 홍성1 태양광' + NL + '별칭: 홍성빛나래솔라 태양광 / 홍성군 염해태양광 / 홍성1 PJT',
+        ('basic', 'name'): ('홍성1 태양광', 'confirmed', '발전사업허가증', ''),
+        ('basic', 'aliases'): (
+            '홍성빛나래솔라 태양광' + NL + '홍성군 염해태양광' + NL + '홍성1 PJT',
             'confirmed', '발전사업허가증', ''),
-        ('basic', 'type'): ('태양광', 'confirmed', '', ''),
-        ('basic', 'capacity'): ('99MW (AC) · 모듈 설치용량(DC) 미정', 'confirmed',
-                                '발전사업허가증', '허가 4건 합계'),
-        ('basic', 'location'): ('충남 홍성군 갈산면 기산리 780 일원', 'confirmed',
-                                '발전사업허가증', ''),
-        ('basic', 'grid_point'): ('은하변전소', 'confirmed', '발전사업허가증', ''),
-        ('basic', 'grid_distance'): ('약 20km · 지중 · 154kV', 'unconfirmed', '', ''),
-        ('basic', 'total_capex'): ('약 1,560억원', 'unconfirmed', '', ''),
+        ('basic', 'type'): ('기타', 'confirmed', '', '염해간척지 태양광'),
+        ('basic', 'capacity'): ('99', 'confirmed', '발전사업허가증', '허가 4건 합계 (AC)'),
+        ('basic', 'location'): ('충남 홍성군 갈산면 기산리 780', 'confirmed',
+                                '발전사업허가증', '대표 필지'),
+        ('basic', 'grid_point'): ('은하', 'confirmed', '발전사업허가증', ''),
+        ('basic', 'grid_distance'): ('20 · 지중 · 154kV', 'unconfirmed', '', ''),
+        ('basic', 'total_capex'): ('', 'unconfirmed', '', ''),
         ('basic', 'ownership'): (
-            '한국투자증권(주) — 트러스톤 ESG 신재생에너지 일반사모투자신탁 제2호 신탁업자 (지분 100%)',
+            '한국투자증권(주) — 트러스톤 ESG 신재생에너지 일반사모투자신탁 제2호 신탁업자 | 100',
             'confirmed', '', ''),
-        ('basic', 'profitability'): ('P.IRR 8.25%' + NL + 'E.IRR 8.94%', 'unconfirmed',
-                                     '', 'E.IRR은 펀드 기준'),
-        ('basic', 'period'): ('운영 개시(2031.12.31) 후 20년', 'confirmed', '',
-                              '부지 임대차 기간과 동일'),
-        ('basic', 'schedule'): (
-            '발전사업허가: 2025.08.26 완료' + NL + '착공: 미정' + NL + '상업운전: 2031.12.31',
-            'unconfirmed', '', '발전사업허가만 완료'),
+        ('basic', 'profitability'): ('', 'unconfirmed', '', 'E.IRR은 펀드 기준'),
+        ('basic', 'period'): ('2031-12-31', 'confirmed', '', '이후 20년 (부지 임대차와 동일)'),
 
         ('spc', 'corp_name'): ('주식회사 홍성빛나래솔라', 'confirmed', '발전사업허가증', ''),
         ('spc', 'corp_reg_no'): ('161411-0006603', 'confirmed', '사업자등록증', ''),

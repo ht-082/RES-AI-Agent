@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
-import SiteFormModal from './SiteFormModal'
+import { ArrowLeft, Trash2 } from 'lucide-react'
 import SiteListRail from './SiteListRail'
 import OverviewSection from './detail/OverviewSection'
 import FactSection from './detail/FactSection'
@@ -11,6 +10,7 @@ import BudgetCard from './detail/BudgetCard'
 import GridCard from './detail/GridCard'
 import OrdinanceCard from './detail/OrdinanceCard'
 import { apiGet, apiSend } from './api'
+import AliasBadge from './detail/AliasBadge'
 import type { AppUser, Site, SiteDetailPayload } from './types'
 
 export interface DetailProps {
@@ -27,7 +27,6 @@ export interface DetailProps {
 export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, onSitesChanged }: DetailProps) {
   const [data, setData] = useState<SiteDetailPayload | null>(null)
   const [error, setError] = useState('')
-  const [editing, setEditing] = useState(false)
 
   const reload = useCallback(async () => {
     try {
@@ -76,6 +75,7 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
           </button>
           <h2>
             {data?.site.name || '...'}{' '}
+            <AliasBadge facts={data?.facts} />{' '}
             <span style={{ fontSize: 13, color: 'var(--ink-faint)', fontWeight: 500 }}>개발 사업 상세</span>
           </h2>
           {data && (
@@ -93,12 +93,6 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
           )}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {canEdit && data && (
-            <button className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 5 }}
-                    onClick={() => setEditing(true)}>
-              <Pencil size={14} /> 집계 정보 수정
-            </button>
-          )}
           {isAdmin && data && (
             <button className="btn-ghost" style={{ color: 'var(--red)', display: 'flex', alignItems: 'center', gap: 5 }} onClick={removeSite}>
               <Trash2 size={14} /> 사업 삭제
@@ -107,10 +101,6 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
         </div>
       </div>
       {error && <p className="note" style={{ color: 'var(--red)' }}>{error}</p>}
-
-      {editing && data && (
-        <SiteFormModal site={data.site} onClose={() => setEditing(false)} onSaved={reload} />
-      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '190px minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
         <SiteListRail sites={sites} selectedId={siteId} onSelect={onSelectSite} />

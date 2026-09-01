@@ -64,58 +64,93 @@ EVENT_TYPE_CHOICES = [
 # 사업개요 항목 정의 — SiteFact 골격의 단일 소스.
 # (section, key, label) 순서대로 사업 등록 시 빈 항목이 자동 생성된다.
 FACT_SECTIONS = [
-    ('basic', '1. 사업 기본 정보'),
+    ('basic', '사업 개요'),
     ('spc', '2. SPC 정보'),
     ('land', '4. 부지 정보'),
     ('econ', '7. 경제성 및 총사업비'),
     ('pf', '8. 금융(PF)'),
 ]
+
+# 사업 단계 — 파이프라인 집계 기준
+SITE_STAGE_OPTIONS = ['검토', '개발', '운영']
+# 설비 유형
+FACILITY_TYPE_OPTIONS = [
+    '육상태양광', '수상태양광', '영농형태양광', '지붕형태양광',
+    '육상풍력', '해상풍력', '기타',
+]
+GRID_METHOD_OPTIONS = ['지중', '가공']
+GRID_VOLTAGE_OPTIONS = ['22.9kV', '154kV', '345kV']
+
+# 사업개요 항목 정의 — SiteFact 골격의 단일 소스.
+#   input : 화면이 그릴 입력기 (text/select/number/date/address/substation/
+#           grid_distance/aliases/shareholders/derived)
+#   bound : 값을 Site 의 정규 컬럼에도 반영한다(지도·KPI 집계가 쓰는 값).
+#   source: derived 항목이 값을 가져올 곳 (section, key)
 FACT_DEFS = [
-    ('basic', 'stage', '사업단계'),
-    ('basic', 'name_alias', '사업명 (대표 / 별칭)'),
-    ('basic', 'type', '유형'),
-    ('basic', 'capacity', '용량'),
-    ('basic', 'location', '위치'),
-    ('basic', 'grid_point', '연계점'),
-    ('basic', 'grid_distance', '연계거리'),
-    ('basic', 'total_capex', '총사업비'),
-    ('basic', 'ownership', '지분구조'),
-    ('basic', 'profitability', '경제성'),
-    ('basic', 'period', '사업기간'),
-    ('basic', 'schedule', '일정 및 계획'),
+    {'section': 'basic', 'key': 'stage', 'label': '사업단계',
+     'input': 'select', 'options': SITE_STAGE_OPTIONS, 'bound': 'lifecycle'},
+    {'section': 'basic', 'key': 'name', 'label': '사업명',
+     'input': 'text', 'bound': 'name'},
+    {'section': 'basic', 'key': 'aliases', 'label': '별칭', 'input': 'aliases'},
+    {'section': 'basic', 'key': 'type', 'label': '유형',
+     'input': 'select', 'options': FACILITY_TYPE_OPTIONS, 'bound': 'facility_type'},
+    {'section': 'basic', 'key': 'capacity', 'label': '용량',
+     'input': 'number', 'unit': 'MW', 'bound': 'capacity_mw'},
+    {'section': 'basic', 'key': 'location', 'label': '위치 (대표 필지)',
+     'input': 'address', 'bound': 'location'},
+    {'section': 'basic', 'key': 'grid_point', 'label': '연계점', 'input': 'substation'},
+    {'section': 'basic', 'key': 'grid_distance', 'label': '연계거리',
+     'input': 'grid_distance'},
+    {'section': 'basic', 'key': 'total_capex', 'label': '총사업비',
+     'input': 'derived', 'source': ('econ', 'total_capex'), 'unit': '억원'},
+    {'section': 'basic', 'key': 'ownership', 'label': '지분구조', 'input': 'shareholders'},
+    {'section': 'basic', 'key': 'profitability', 'label': '경제성',
+     'input': 'derived', 'source': ('econ', 'e_irr'), 'also': ('econ', 'p_irr_pretax')},
+    {'section': 'basic', 'key': 'period', 'label': '운영개시일',
+     'input': 'date', 'bound': 'cod'},
 
-    ('spc', 'corp_name', '회사명'),
-    ('spc', 'corp_reg_no', '법인등록번호'),
-    ('spc', 'biz_reg_no', '사업자등록번호'),
-    ('spc', 'head_office', '본점'),
-    ('spc', 'directors', '이사진'),
-    ('spc', 'capital', '자본금'),
+    {'section': 'spc', 'key': 'corp_name', 'label': '회사명'},
+    {'section': 'spc', 'key': 'corp_reg_no', 'label': '법인등록번호'},
+    {'section': 'spc', 'key': 'biz_reg_no', 'label': '사업자등록번호'},
+    {'section': 'spc', 'key': 'head_office', 'label': '본점'},
+    {'section': 'spc', 'key': 'directors', 'label': '이사진'},
+    {'section': 'spc', 'key': 'capital', 'label': '자본금'},
 
-    ('land', 'area', '부지 면적'),
-    ('land', 'land_type', '부지 유형'),
-    ('land', 'zoning', '용도지역'),
-    ('land', 'parcels', '필지 수'),
-    ('land', 'category', '지목'),
-    ('land', 'lease_period', '계약 기간'),
-    ('land', 'rent', '임대료'),
+    {'section': 'land', 'key': 'area', 'label': '부지 면적'},
+    {'section': 'land', 'key': 'land_type', 'label': '부지 유형'},
+    {'section': 'land', 'key': 'zoning', 'label': '용도지역'},
+    {'section': 'land', 'key': 'parcels', 'label': '필지 수'},
+    {'section': 'land', 'key': 'category', 'label': '지목'},
+    {'section': 'land', 'key': 'lease_period', 'label': '계약 기간'},
+    {'section': 'land', 'key': 'rent', 'label': '임대료'},
 
-    ('econ', 'total_capex', '총사업비 (억원)'),
-    ('econ', 'epc_cost', 'EPC 공사비 (억원)'),
-    ('econ', 'equity_debt', 'Equity / Debt 비율'),
-    ('econ', 'es_investment', 'E&S 총 투자비 (억원)'),
-    ('econ', 'gen_hours', '발전시간 (h)'),
-    ('econ', 'annual_revenue', '연간 매출 (억원)'),
-    ('econ', 'operating_profit', '영업이익 (억원)'),
-    ('econ', 'net_profit', '당기순이익 (억원)'),
-    ('econ', 'e_irr', 'E.IRR (%)'),
-    ('econ', 'p_irr_pretax', 'P.IRR 세전 (%)'),
-    ('econ', 'p_irr_aftertax', 'P.IRR 세후 (%)'),
+    {'section': 'econ', 'key': 'total_capex', 'label': '총사업비 (억원)', 'input': 'number'},
+    {'section': 'econ', 'key': 'epc_cost', 'label': 'EPC 공사비 (억원)', 'input': 'number'},
+    {'section': 'econ', 'key': 'equity_debt', 'label': 'Equity / Debt 비율'},
+    {'section': 'econ', 'key': 'es_investment', 'label': 'E&S 총 투자비 (억원)',
+     'input': 'number'},
+    {'section': 'econ', 'key': 'gen_hours', 'label': '발전시간 (h)', 'input': 'number'},
+    {'section': 'econ', 'key': 'annual_revenue', 'label': '연간 매출 (억원)', 'input': 'number'},
+    {'section': 'econ', 'key': 'operating_profit', 'label': '영업이익 (억원)', 'input': 'number'},
+    {'section': 'econ', 'key': 'net_profit', 'label': '당기순이익 (억원)', 'input': 'number'},
+    {'section': 'econ', 'key': 'e_irr', 'label': 'E.IRR (%)', 'input': 'number'},
+    {'section': 'econ', 'key': 'p_irr_pretax', 'label': 'P.IRR 세전 (%)', 'input': 'number'},
+    {'section': 'econ', 'key': 'p_irr_aftertax', 'label': 'P.IRR 세후 (%)', 'input': 'number'},
 
-    ('pf', 'commitment', '대주별 약정금액'),
-    ('pf', 'interest_rate', 'PF 금리'),
-    ('pf', 'maturity', '만기 · 상환 방식'),
+    {'section': 'pf', 'key': 'commitment', 'label': '대주별 약정금액'},
+    {'section': 'pf', 'key': 'interest_rate', 'label': 'PF 금리'},
+    {'section': 'pf', 'key': 'maturity', 'label': '만기 · 상환 방식'},
 ]
 
+# 사업단계 → Site.lifecycle (상세 화면 분기·KPI 집계용)
+STAGE_TO_LIFECYCLE = {'검토': 'dev', '개발': 'dev', '운영': 'ops'}
+LIFECYCLE_TO_STAGE = {'dev': '개발', 'ops': '운영'}
+
+
+def fact_spec(section, key):
+    for d in FACT_DEFS:
+        if d['section'] == section and d['key'] == key:
+            return d
 STATUS_CHOICES = [
     ('done', '완료'), ('active', '진행중'), ('wait', '대기'),
     ('risk', '리스크'), ('idle', '미착수'),

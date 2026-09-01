@@ -137,3 +137,20 @@ def list_ordinances(sido=None):
         l for l in rows
         if any(t in (l['ministry'] + l['law_name']) for t in tokens)
     ]
+
+
+def search_substations(query='', limit=30):
+    """변전소 이름·지역 부분일치 검색. 접속 여유용량을 함께 돌려준다."""
+    rows = _grid_snapshot().get('substations') or []
+    q = (query or '').strip()
+    if q:
+        rows = [s for s in rows
+                if q in (s.get('substation') or '') or q in (s.get('region') or '')]
+    rows = sorted(rows, key=lambda s: -(s.get('hosting') or 0))[:limit]
+    return [{
+        'name': s.get('substation'),
+        'region': s.get('region'),
+        'available_mw': round(s.get('hosting') or 0),
+        'n_dl': s.get('n_dl'),
+        'n_sat': s.get('n_sat'),
+    } for s in rows]

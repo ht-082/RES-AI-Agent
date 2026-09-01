@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Pencil, Zap } from 'lucide-react'
+import { ArrowLeft, Zap } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import SiteFormModal from './SiteFormModal'
 import SiteListRail from './SiteListRail'
 import OverviewCard from './detail/OverviewCard'
 import FactSection from './detail/FactSection'
@@ -10,6 +9,7 @@ import EventSection from './detail/EventSection'
 import GridCard from './detail/GridCard'
 import { apiGet } from './api'
 import { formatKRW } from './constants'
+import AliasBadge from './detail/AliasBadge'
 import type { SiteDetailPayload } from './types'
 import type { DetailProps } from './SiteDetail'
 
@@ -22,7 +22,6 @@ const MONTH_WEIGHT = [0.062, 0.070, 0.090, 0.098, 0.104, 0.096,
 export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSite, onSitesChanged }: DetailProps) {
   const [data, setData] = useState<SiteDetailPayload | null>(null)
   const [error, setError] = useState('')
-  const [editing, setEditing] = useState(false)
 
   const reload = useCallback(async () => {
     try {
@@ -61,22 +60,13 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
           </button>
           <h2>
             {data?.site.name || '...'}{' '}
+            <AliasBadge facts={data?.facts} />{' '}
             <span style={{ fontSize: 13, color: 'var(--ink-faint)', fontWeight: 500 }}>운영 사업 상세</span>
           </h2>
           <p>상업운전 중 자산 — 발전 실적·경제성 중심 (실시간 계측 연동은 후속)</p>
         </div>
-        {canEdit && data && (
-          <button className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 5 }}
-                  onClick={() => setEditing(true)}>
-            <Pencil size={14} /> 집계 정보 수정
-          </button>
-        )}
       </div>
       {error && <p className="note" style={{ color: 'var(--red)' }}>{error}</p>}
-
-      {editing && data && (
-        <SiteFormModal site={data.site} onClose={() => setEditing(false)} onSaved={reload} />
-      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '190px minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
         <SiteListRail sites={sites} selectedId={siteId} onSelect={onSelectSite} />

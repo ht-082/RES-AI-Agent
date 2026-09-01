@@ -4,7 +4,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     BudgetEntryViewSet, CommunityIssueViewSet, ContractViewSet, GridCapacityView,
     GridNearbyView, LawListView, OrdinanceListView, PermitDocumentViewSet,
-    PermitStageViewSet, SiteEventViewSet, SiteFactViewSet, SiteViewSet, SummaryView,
+    PermitStageViewSet, SiteEventViewSet, SiteFactViewSet, SiteViewSet,
+    SubstationSearchView, SummaryView,
 )
 
 router = DefaultRouter()
@@ -21,6 +22,7 @@ urlpatterns = [
     path('bizdev/summary/', SummaryView.as_view(), name='bizdev-summary'),
     path('bizdev/grid/capacity/', GridCapacityView.as_view(), name='bizdev-grid-capacity'),
     path('bizdev/grid/nearby/', GridNearbyView.as_view(), name='bizdev-grid-nearby'),
+    path('bizdev/grid/substations/', SubstationSearchView.as_view(), name='bizdev-substations'),
     path('bizdev/laws/', LawListView.as_view(), name='bizdev-laws'),
     path('bizdev/ordinances/', OrdinanceListView.as_view(), name='bizdev-ordinances'),
     path('', include(router.urls)),

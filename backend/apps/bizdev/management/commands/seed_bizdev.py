@@ -62,7 +62,13 @@ class Command(BaseCommand):
     # ── 사업개요 항목: 정의 골격을 깔고 시드 값이 있으면 채운다 ──────────
     def _sync_facts(self, site, values):
         existing = {(f.section, f.key): f for f in site.facts.all()}
-        for order, (section, key, label) in enumerate(FACT_DEFS):
+        defined = {(d['section'], d['key']) for d in FACT_DEFS}
+        # 정의에서 빠진 항목(구 '일정 및 계획' 등)은 정리한다
+        for pair, fact in existing.items():
+            if pair not in defined:
+                fact.delete()
+        for order, d in enumerate(FACT_DEFS):
+            section, key, label = d['section'], d['key'], d['label']
             fact = existing.get((section, key))
             seeded = values.get((section, key))
             if fact is None:
