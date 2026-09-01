@@ -86,3 +86,9 @@ backend/downloaded_draft.*
 backend/.bench_*.json
 backend/chunking_strategy.md
 _archive_초기개발/
+
+# baseline 데이터 (대용량·사내 데이터 — Git 금지, 별도 채널 전달)
+baseline/*.dump
+baseline/*.sql
+baseline/*.snapshot
+baseline/qdrant/*
