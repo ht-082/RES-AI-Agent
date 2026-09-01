@@ -92,3 +92,7 @@ baseline/*.dump
 baseline/*.sql
 baseline/*.snapshot
 baseline/qdrant/*
+
+# SSH 키 — 절대 커밋 금지 (public 저장소)
+*.pem
+*.ppk
