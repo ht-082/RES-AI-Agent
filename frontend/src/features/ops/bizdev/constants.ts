@@ -37,9 +37,6 @@ export const ISSUE_STATUS_META = {
 
 export const ISSUE_TYPE_LABEL = { complaint: '민원성', grid: '계통', etc: '기타' } as const
 
-// 전체 파이프라인 KPI 상수 (원본 index.page.js:24 — 발굴·검토 포함 가정치)
-export const TOTAL_PIPELINE = { sites: 32, gw: 5 }
-
 // ── 파이프라인 7컬럼 (원본 index.page.js:219-236 이식) ──────────────
 export const PIPE_COLS = [
   { label: '발전사업\n허가', kw: ['발전사업허가'] },

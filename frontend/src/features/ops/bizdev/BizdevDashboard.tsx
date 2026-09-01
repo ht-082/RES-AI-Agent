@@ -7,7 +7,6 @@ import LawRail from './LawRail'
 import PipelineTable from './PipelineTable'
 import SiteFormModal from './SiteFormModal'
 import { apiGet } from './api'
-import { TOTAL_PIPELINE } from './constants'
 import type { AppUser, Law, Site } from './types'
 
 interface Summary {
@@ -34,7 +33,11 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
     return () => { cancelled = true }
   }, [])
 
+  const mw = (list: Site[]) => list.reduce((a, s) => a + Number(s.capacity_mw || 0), 0)
   const devSites = useMemo(() => sites.filter(s => s.lifecycle === 'dev'), [sites])
+  const opsSites = useMemo(() => sites.filter(s => s.lifecycle === 'ops'), [sites])
+  const totalGw = mw(sites) / 1000
+  const opsGw = mw(opsSites) / 1000
   const devMw = devSites.reduce((a, s) => a + Number(s.capacity_mw || 0), 0)
   const solar = devSites.filter(s => s.energy_type === 'solar')
   const wind = devSites.filter(s => s.energy_type === 'wind')
@@ -74,9 +77,9 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
       {/* KPI 4장 */}
       <div className="kpi-row">
         <div className="kpi">
-          <div className="k-lab"><Landmark size={15} /> 전체 파이프라인</div>
-          <div className="k-val">{TOTAL_PIPELINE.sites}<span className="u">개소</span> · {TOTAL_PIPELINE.gw}<span className="u">GW</span></div>
-          <div className="k-sub">개발중 {devSites.length}개소 {devGw.toFixed(1)}GW · 발굴·검토 {TOTAL_PIPELINE.sites - devSites.length}개소 {(TOTAL_PIPELINE.gw - devGw).toFixed(1)}GW</div>
+          <div className="k-lab"><Landmark size={15} /> 전체 등록 사업</div>
+          <div className="k-val">{sites.length}<span className="u">개소</span> · {totalGw.toFixed(2)}<span className="u">GW</span></div>
+          <div className="k-sub">개발중 {devSites.length}개소 {devGw.toFixed(2)}GW · 운영중 {opsSites.length}개소 {opsGw.toFixed(2)}GW</div>
         </div>
         <div className="kpi">
           <div className="k-lab"><Sun size={15} /> 개발 중 파이프라인</div>
