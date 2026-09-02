@@ -130,7 +130,7 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
               <FactSection title={labelOf('pf')} facts={factsOf('pf')}
                            canEdit={canEdit} onChanged={reload} />
 
-              <div className="grid-2 lean">
+              <div className="grid-2 bz-even-row">
                 <GridCard sido={data.site.sido || data.site.location} />
                 <OrdinanceCard sido={data.site.sido || data.site.location} />
               </div>
