@@ -37,16 +37,22 @@ export default function OverviewSection({ site, facts, canEdit, onChanged }: {
       }),
     }).addTo(map)
     mapRef.current = map
-    return () => { map.remove(); mapRef.current = null }
+
+    // 지도 높이가 카드 높이에 따라 달라지므로 컨테이너가 바뀌면 다시 그리게 한다.
+    // (Leaflet 은 컨테이너 크기를 스스로 감지하지 못해 타일이 잘린 채 남는다)
+    const ro = new ResizeObserver(() => map.invalidateSize())
+    ro.observe(boxRef.current)
+
+    return () => { ro.disconnect(); map.remove(); mapRef.current = null }
   }, [site.id, site.lat, site.lng, site.energy_type])
 
   const updatedAt = lastEdited(facts.map(f => f.updated_at))
 
   return (
-    <div className="card block">
+    <div className="card block bz-overview">
       <SectionHead title="사업 개요" updatedAt={updatedAt} canEdit={canEdit}
                    onEdit={() => setEditing(true)} />
-      <div ref={boxRef} style={{ height: 190, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)' }}>
+      <div ref={boxRef} className="bz-overview-map">
         {(site.lat == null || site.lng == null) && (
           <p className="note" style={{ padding: 20 }}>위경도 미입력 — 지도 표시 불가</p>
         )}

@@ -852,3 +852,9 @@ select.bz-cell-input { cursor: pointer; }
 .bz-registry-row { display: flex; align-items: center; gap: 6px;
   font-size: 11.5px; padding: 2px 0; }
 .bz-registry-label { width: 92px; flex-shrink: 0; font-weight: 600; color: var(--ink-soft); }
+
+/* 사업 개요 — 표 아래가 카드 아래에 닿도록 지도가 남는 높이를 채운다 */
+.bz-overview { display: flex; flex-direction: column; height: 100%; }
+.bz-overview-map { flex: 1 1 auto; min-height: 150px; border-radius: 10px;
+  overflow: hidden; background: var(--surface-2); }
+.bz-overview > .bz-fact-tbl { flex: 0 0 auto; }
