@@ -263,7 +263,7 @@ class PermitStageViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             locked = PermitStage.objects.select_for_update().filter(site=site)
             next_no = (locked.aggregate(m=Max('stage_no'))['m'] or 0) + 1
-            serializer.save(stage_no=next_no)
+            serializer.save(stage_no=next_no, is_custom=True)
 
     @action(detail=False, methods=['post'])
     def reorder(self, request):

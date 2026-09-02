@@ -25,8 +25,8 @@ class PermitStageSerializer(serializers.ModelSerializer):
         fields = ['id', 'site', 'stage_no', 'name', 'agency', 'category', 'tier',
                   'status', 'content', 'certainty', 'remark', 'progress_pct',
                   'received_date', 'deadline', 'detail', 'dday_label', 'doc_label',
-                  'documents', 'updated_at']
-        read_only_fields = ['id', 'stage_no']  # stage_no 는 서버가 부여/재정렬
+                  'documents', 'updated_at', 'is_custom']
+        read_only_fields = ['id', 'stage_no', 'is_custom']  # 서버가 부여/재정렬
 
 
 class StageSummarySerializer(serializers.ModelSerializer):

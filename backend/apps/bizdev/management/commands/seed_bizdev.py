@@ -63,9 +63,10 @@ class Command(BaseCommand):
     def _sync_facts(self, site, values):
         existing = {(f.section, f.key): f for f in site.facts.all()}
         defined = {(d['section'], d['key']) for d in FACT_DEFS}
-        # 정의에서 빠진 항목(구 '일정 및 계획' 등)은 정리한다
+        # 정의에서 빠진 항목(구 '일정 및 계획' 등)은 정리한다.
+        # 사용자가 직접 추가한 항목은 정의에 없어도 남긴다.
         for pair, fact in existing.items():
-            if pair not in defined:
+            if pair not in defined and not fact.is_custom:
                 fact.delete()
         for order, d in enumerate(FACT_DEFS):
             section, key, label = d['section'], d['key'], d['label']
@@ -88,7 +89,7 @@ class Command(BaseCommand):
         defined_names = {d['name'] for d in STAGE_DEFS}
         # 정의에서 빠진 구(舊) 항목 정리 — 문서가 붙어 있으면 남긴다
         for stage in site.stages.exclude(name__in=defined_names):
-            if not stage.documents.exists():
+            if not stage.documents.exists() and not stage.is_custom:
                 stage.delete()
 
         # 남은 항목을 임시 번호대로 밀어 둔다. 그러지 않으면 새 번호를 매기는

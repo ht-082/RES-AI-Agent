@@ -112,6 +112,7 @@ FACT_DEFS = [
      'input': 'date', 'bound': 'cod'},
     {'section': 'basic', 'key': 'manager', 'label': '담당자',
      'input': 'text', 'bound': 'pm_name'},
+    {'section': 'basic', 'key': 'etc', 'label': '기타'},
 
     {'section': 'spc', 'key': 'corp_name', 'label': '회사명'},
     {'section': 'spc', 'key': 'corp_reg_no', 'label': '법인등록번호'},
@@ -121,6 +122,7 @@ FACT_DEFS = [
     {'section': 'spc', 'key': 'capital', 'label': '자본금'},
     {'section': 'spc', 'key': 'established', 'label': '설립일', 'input': 'date'},
     {'section': 'spc', 'key': 'ownership', 'label': '지분구조', 'input': 'shareholders'},
+    {'section': 'spc', 'key': 'etc', 'label': '기타'},
 
     {'section': 'land', 'key': 'area', 'label': '부지 면적'},
     {'section': 'land', 'key': 'land_type', 'label': '부지 유형'},
@@ -129,6 +131,7 @@ FACT_DEFS = [
     {'section': 'land', 'key': 'category', 'label': '지목'},
     {'section': 'land', 'key': 'lease_period', 'label': '계약 기간'},
     {'section': 'land', 'key': 'rent', 'label': '임대료'},
+    {'section': 'land', 'key': 'etc', 'label': '기타'},
 
     {'section': 'econ', 'key': 'total_capex', 'label': '총사업비 (억원)', 'input': 'number'},
     {'section': 'econ', 'key': 'epc_cost', 'label': 'EPC 공사비 (억원)', 'input': 'number'},
@@ -142,10 +145,12 @@ FACT_DEFS = [
     {'section': 'econ', 'key': 'e_irr', 'label': 'E.IRR (%)', 'input': 'number'},
     {'section': 'econ', 'key': 'p_irr_pretax', 'label': 'P.IRR 세전 (%)', 'input': 'number'},
     {'section': 'econ', 'key': 'p_irr_aftertax', 'label': 'P.IRR 세후 (%)', 'input': 'number'},
+    {'section': 'econ', 'key': 'etc', 'label': '기타'},
 
     {'section': 'pf', 'key': 'commitment', 'label': '대주별 약정금액'},
     {'section': 'pf', 'key': 'interest_rate', 'label': 'PF 금리'},
     {'section': 'pf', 'key': 'maturity', 'label': '만기 · 상환 방식'},
+    {'section': 'pf', 'key': 'etc', 'label': '기타'},
 ]
 
 # 사업단계 → Site.lifecycle (상세 화면 분기·KPI 집계용)
