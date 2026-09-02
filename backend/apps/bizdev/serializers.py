@@ -1,8 +1,8 @@
 from rest_framework import serializers
 
 from .models import (
-    BudgetEntry, CommunityIssue, Contract, PermitDocument, PermitStage,
-    Site, SiteEvent, SiteFact,
+    BudgetApproval, BudgetEntry, CommunityIssue, Contract, PermitDocument,
+    PermitStage, Site, SiteEvent, SiteFact,
 )
 from .constants import fact_spec
 from .permissions import can_edit_site
@@ -36,14 +36,27 @@ class StageSummarySerializer(serializers.ModelSerializer):
         fields = ['id', 'stage_no', 'name', 'status', 'progress_pct', 'tier']
 
 
+class BudgetApprovalSerializer(serializers.ModelSerializer):
+    category_label = serializers.CharField(source='get_category_display', read_only=True)
+
+    class Meta:
+        model = BudgetApproval
+        fields = ['id', 'site', 'category', 'category_label', 'amount_krw',
+                  'approved_date', 'memo', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
 class BudgetEntrySerializer(serializers.ModelSerializer):
     has_receipt = serializers.SerializerMethodField()
+    category_label = serializers.CharField(source='get_category_display', read_only=True)
 
     class Meta:
         model = BudgetEntry
-        fields = ['id', 'site', 'category', 'amount_krw', 'exec_date', 'memo',
-                  'receipt_name', 'has_receipt', 'created_by', 'created_at']
-        read_only_fields = ['id', 'receipt_name', 'created_by', 'created_at']
+        fields = ['id', 'site', 'category', 'category_label', 'amount_krw',
+                  'exec_date', 'memo', 'receipt_name', 'has_receipt',
+                  'created_by', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'receipt_name', 'created_by', 'created_at',
+                            'updated_at']
 
     def get_has_receipt(self, obj):
         return bool(obj.receipt_uri)

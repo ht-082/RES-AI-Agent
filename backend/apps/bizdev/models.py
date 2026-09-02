@@ -143,8 +143,42 @@ class PermitDocument(models.Model):
         return f'{self.file_name} v{self.version}'
 
 
+class BudgetApproval(models.Model):
+    """예산 승인 내역 — 용도별로 여러 건을 쌓을 수 있다(최초 승인·증액 등).
+
+    사업의 승인 예산은 이 행들의 합이다. Site.approved_budget_krw 는
+    지도·KPI 가 쓰는 집계 사본이라 저장할 때 함께 맞춘다.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site = models.ForeignKey(Site, on_delete=models.CASCADE,
+                             related_name='budget_approvals')
+    category = models.CharField(max_length=10, choices=BUDGET_CATEGORY_CHOICES)
+    amount_krw = models.BigIntegerField()
+    approved_date = models.DateField(null=True, blank=True)
+    memo = models.TextField(blank=True, default='')
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL,
+                                   null=True, blank=True,
+                                   related_name='bizdev_budget_approvals')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bizdev_budget_approvals'
+        ordering = ['category', 'approved_date', 'created_at']
+        indexes = [models.Index(fields=['site'])]
+        constraints = [
+            models.CheckConstraint(check=Q(amount_krw__gt=0),
+                                   name='bizdev_approval_amount_positive'),
+        ]
+        verbose_name = '예산 승인'
+        verbose_name_plural = '예산 승인'
+
+    def __str__(self):
+        return f'{self.site.name} · {self.get_category_display()} {self.amount_krw:,}원'
+
+
 class BudgetEntry(models.Model):
-    """예산 집행 내역"""
+    """예산 집행 내역 — 용도별 승인 항목에 대응해 집행한다"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     site = models.ForeignKey(Site, on_delete=models.CASCADE,
                              related_name='budget_entries')
@@ -158,6 +192,7 @@ class BudgetEntry(models.Model):
                                    null=True, blank=True,
                                    related_name='bizdev_budget_entries')
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'bizdev_budget_entries'

@@ -134,10 +134,25 @@ export interface PermitStage {
   updated_at: string
 }
 
+export type BudgetCategory = 'land' | 'permit' | 'design' | 'legal' | 'etc'
+
+export interface BudgetApproval {
+  id: string
+  site: string
+  category: BudgetCategory
+  category_label: string
+  amount_krw: number
+  approved_date: string | null
+  memo: string
+  created_at: string
+  updated_at: string
+}
+
 export interface BudgetEntry {
   id: string
   site: string
-  category: 'land' | 'permit' | 'design' | 'legal' | 'etc'
+  category: BudgetCategory
+  category_label: string
   amount_krw: number
   exec_date: string
   memo: string
@@ -145,10 +160,12 @@ export interface BudgetEntry {
   has_receipt: boolean
   created_by: string | null
   created_at: string
+  updated_at: string
 }
 
 export interface BudgetSummary {
   by_category: Record<string, number>
+  approved_by_category: Record<string, number>
   total: number
   approved: number
   exec_pct: number
@@ -173,6 +190,7 @@ export interface SiteDetailPayload {
   events: SiteEvent[]
   stages: PermitStage[]
   budget_entries: BudgetEntry[]
+  budget_approvals: BudgetApproval[]
   budget_summary: BudgetSummary
   issues: CommunityIssue[]
 }

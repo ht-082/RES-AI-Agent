@@ -2,7 +2,8 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
-    BudgetEntryViewSet, CommunityIssueViewSet, ContractViewSet, GridCapacityView,
+    BudgetApprovalViewSet, BudgetEntryViewSet, CommunityIssueViewSet,
+    ContractViewSet, GridCapacityView,
     GridNearbyView, LawListView, OrdinanceListView, PermitDocumentViewSet,
     PermitStageViewSet, SiteEventViewSet, SiteFactViewSet, SiteViewSet,
     SubstationSearchView, SummaryView,
@@ -13,6 +14,7 @@ router.register('bizdev/sites', SiteViewSet, basename='bizdev-site')
 router.register('bizdev/stages', PermitStageViewSet, basename='bizdev-stage')
 router.register('bizdev/documents', PermitDocumentViewSet, basename='bizdev-document')
 router.register('bizdev/budget-entries', BudgetEntryViewSet, basename='bizdev-budget')
+router.register('bizdev/budget-approvals', BudgetApprovalViewSet, basename='bizdev-approval')
 router.register('bizdev/issues', CommunityIssueViewSet, basename='bizdev-issue')
 router.register('bizdev/facts', SiteFactViewSet, basename='bizdev-fact')
 router.register('bizdev/contracts', ContractViewSet, basename='bizdev-contract')

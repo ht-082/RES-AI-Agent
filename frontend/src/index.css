@@ -866,3 +866,20 @@ select.bz-cell-input { cursor: pointer; }
 .bz-contract-tbl th:nth-child(5), .bz-contract-tbl td:nth-child(5) { width: 15%; }
 .bz-contract-tbl .bz-col-act { width: 30px; }
 .bz-contract-tbl .bz-cell-input { min-width: 0; }
+
+/* 예산 승인·집행 */
+.bz-budget-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.bz-empty { text-align: center; color: var(--ink-faint); font-size: 12px; }
+/* 예산 그래프 — 제목을 붙여 무엇을 뜻하는지 보이게 */
+.bz-chart { margin-top: 14px; }
+.bz-chart-head { display: flex; justify-content: space-between; align-items: baseline;
+  gap: 8px; margin-bottom: 5px; }
+.bz-chart-title { font-size: 12px; font-weight: 700; }
+.bz-chart-note { font-size: 10.5px; color: var(--ink-faint); }
+.bz-chart-axis { display: flex; justify-content: space-between; margin-top: 4px;
+  font-size: 10.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.bz-stackbar { display: flex; height: 12px; border-radius: 6px; overflow: hidden;
+  background: var(--line-soft); }
+.bz-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; }
+.bz-legend-item { display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }

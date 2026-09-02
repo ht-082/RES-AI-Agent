@@ -130,7 +130,8 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
                   높이가 크게 달라 억지로 맞추면 빈 공간이 생기므로 각자 높이대로 둔다. */}
               <div className="grid-2" style={{ alignItems: 'start' }}>
                 <BudgetCard siteId={siteId} entries={data.budget_entries}
-                            summary={data.budget_summary} canEdit={canEdit} onChanged={reload} />
+                            approvals={data.budget_approvals} summary={data.budget_summary}
+                            canEdit={canEdit} onChanged={reload} />
                 <ContractSection siteId={siteId} contracts={data.contracts}
                                  canEdit={canEdit} onChanged={reload} onError={setError} />
               </div>

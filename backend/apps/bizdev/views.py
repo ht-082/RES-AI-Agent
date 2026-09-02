@@ -25,12 +25,13 @@ from .constants import (
     FACT_DEFS, FACT_SECTIONS, STAGE_DEFS, STAGE_TO_LIFECYCLE, fact_spec,
 )
 from .models import (
-    BudgetEntry, CommunityIssue, Contract, PermitDocument, PermitStage,
-    Site, SiteEvent, SiteFact,
+    BudgetApproval, BudgetEntry, CommunityIssue, Contract, PermitDocument,
+    PermitStage, Site, SiteEvent, SiteFact,
 )
 from .permissions import IsAdminOrSitePM, check_site_editable
 from .serializers import (
-    BudgetEntrySerializer, CommunityIssueSerializer, ContractSerializer,
+    BudgetApprovalSerializer, BudgetEntrySerializer, CommunityIssueSerializer,
+    ContractSerializer,
     PermitDocumentSerializer, PermitStageSerializer, SiteEventSerializer,
     SiteFactSerializer, SiteListSerializer, SiteWriteSerializer,
 )
@@ -223,11 +224,16 @@ class SiteViewSet(viewsets.ModelViewSet):
         site = self.get_object()
         stages = site.stages.prefetch_related('documents').order_by('stage_no')
         entries = site.budget_entries.all()
+        approvals = site.budget_approvals.all()
         by_cat = {}
         for e in entries:
             by_cat[e.category] = by_cat.get(e.category, 0) + e.amount_krw
+        approved_by_cat = {}
+        for a in approvals:
+            approved_by_cat[a.category] = approved_by_cat.get(a.category, 0) + a.amount_krw
         total = sum(by_cat.values())
-        approved = site.approved_budget_krw or 0
+        # 승인 내역이 있으면 그 합이 승인 예산이다(Site 컬럼은 집계 사본)
+        approved = sum(approved_by_cat.values()) or (site.approved_budget_krw or 0)
         site_data = SiteListSerializer(site, context=self.get_serializer_context()).data
         # address_detail 은 편집 권한자(admin/PM)에게만 — 원본 "백데이터 비노출" 정책
         if site_data.get('can_edit'):
@@ -240,8 +246,10 @@ class SiteViewSet(viewsets.ModelViewSet):
             'events': SiteEventSerializer(site.events.all(), many=True).data,
             'stages': PermitStageSerializer(stages, many=True).data,
             'budget_entries': BudgetEntrySerializer(entries, many=True).data,
+            'budget_approvals': BudgetApprovalSerializer(approvals, many=True).data,
             'budget_summary': {
                 'by_category': by_cat,
+                'approved_by_category': approved_by_cat,
                 'total': total,
                 'approved': approved,
                 'exec_pct': round(total / approved * 100) if approved else 0,
@@ -398,6 +406,38 @@ class BudgetEntryViewSet(viewsets.ModelViewSet):
             return Response({'error': '증빙 파일이 없습니다.'},
                             status=status.HTTP_404_NOT_FOUND)
         return _file_response(entry.receipt_uri, entry.receipt_name or 'receipt')
+
+
+class BudgetApprovalViewSet(viewsets.ModelViewSet):
+    """예산 승인 내역 — 용도별로 여러 건"""
+    queryset = BudgetApproval.objects.select_related('site')
+    serializer_class = BudgetApprovalSerializer
+    permission_classes = [IsAdminOrSitePM]
+    pagination_class = None
+    filterset_fields = ['site', 'category']
+
+    def perform_create(self, serializer):
+        check_site_editable(self.request.user, serializer.validated_data['site'])
+        sync_approved_total(serializer.save(created_by=self.request.user).site)
+
+    def perform_update(self, serializer):
+        sync_approved_total(serializer.save().site)
+
+    def perform_destroy(self, instance):
+        site = instance.site
+        instance.delete()
+        sync_approved_total(site)
+
+
+def sync_approved_total(site):
+    """승인 내역 합계를 Site.approved_budget_krw 에 반영한다.
+
+    지도·KPI·운영 상세가 이 컬럼을 읽으므로 한 곳에서 맞춰 둔다.
+    """
+    total = sum(a.amount_krw for a in site.budget_approvals.all())
+    if total and site.approved_budget_krw != total:
+        site.approved_budget_krw = total
+        site.save(update_fields=['approved_budget_krw', 'updated_at'])
 
 
 class CommunityIssueViewSet(viewsets.ModelViewSet):
