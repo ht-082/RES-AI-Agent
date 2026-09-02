@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { apiSend } from '../api'
-import { CONTRACT_CATEGORIES, CONTRACT_STATUS_META } from '../constants'
+import { CERTAINTY_META, CONTRACT_CATEGORIES, CONTRACT_STATUS_META } from '../constants'
+import SectionModal from './SectionModal'
+import Lines from './Lines'
 import { CertaintyCell, EditableSelect, EditableText } from './editors'
 import type { Contract } from '../types'
 
@@ -18,6 +20,7 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
   onError: (msg: string) => void
 }) {
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   const patch = async (row: Contract, body: Partial<Contract>) => {
     await apiSend('PATCH', `/api/bizdev/contracts/${row.id}/`, body)
@@ -51,22 +54,22 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
 
   const signed = contracts.filter(c => c.status === 'signed').length
 
-  return (
-    <div className="card block">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+  const header = (
+      <div className="bz-sec-head">
         <h3>5. 계약 정보</h3>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div className="bz-sec-actions">
           <span className="bz-chip" style={{ background: 'var(--mint-soft)', color: 'var(--green-600)' }}>
             체결 {signed} / {contracts.length}
           </span>
           {canEdit && (
-            <button className="btn-ghost" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}
-                    onClick={add} disabled={adding}>
-              <Plus size={13} /> 계약 추가
+            <button className="btn-ghost bz-edit-btn" onClick={() => setEditing(true)}>
+              <Pencil size={13} /> 편집
             </button>
           )}
         </div>
       </div>
+  )
+  const table = (editable: boolean) => (
       <table className="tbl bz-doc-tbl" style={{ marginTop: 10 }}>
         <thead>
           <tr>
@@ -75,44 +78,64 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
             <th>주요 내용</th>
             <th style={{ width: 90 }}>확정도</th>
             <th style={{ width: 96 }}>체결</th>
-            {canEdit && <th style={{ width: 34 }} />}
+            {canEdit && editable && <th style={{ width: 34 }} />}
           </tr>
         </thead>
         <tbody>
           {contracts.length === 0 && (
-            <tr><td colSpan={canEdit ? 6 : 5} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
+            <tr><td colSpan={canEdit && editable ? 6 : 5} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
               등록된 계약이 없습니다.
             </td></tr>
           )}
           {contracts.map(row => (
             <tr key={row.id}>
               <td>
-                <EditableSelect value={row.category} options={CONTRACT_CATEGORIES} disabled={!canEdit}
-                                onSave={v => patch(row, { category: v })} />
+                {editable
+                  ? <EditableSelect value={row.category} options={CONTRACT_CATEGORIES} disabled={!canEdit}
+                                    onSave={v => patch(row, { category: v })} />
+                  : <span style={{ fontWeight: 600 }}>{row.category_label}</span>}
               </td>
               <td>
-                <EditableText value={row.counterparty} placeholder="미정" disabled={!canEdit}
-                              onSave={v => patch(row, { counterparty: v })} />
+                {editable
+                  ? <EditableText value={row.counterparty} placeholder="미정" disabled={!canEdit}
+                                  onSave={v => patch(row, { counterparty: v })} />
+                  : <span>{row.counterparty || <span className="bz-muted">미정</span>}</span>}
               </td>
               <td>
-                <EditableText value={row.summary} multiline placeholder="—" disabled={!canEdit}
-                              onSave={v => patch(row, { summary: v })} />
+                {editable
+                  ? <EditableText value={row.summary} multiline placeholder="—" disabled={!canEdit}
+                                  onSave={v => patch(row, { summary: v })} />
+                  : <Lines text={row.summary} />}
               </td>
               <td>
-                <CertaintyCell value={row.certainty} disabled={!canEdit}
-                               onSave={v => patch(row, { certainty: v as Contract['certainty'] })} />
+                {editable ? (
+                  <CertaintyCell value={row.certainty} disabled={!canEdit}
+                                 onSave={v => patch(row, { certainty: v as Contract['certainty'] })} />
+                ) : (
+                  <span className="bz-chip" style={{
+                    background: `color-mix(in srgb, ${CERTAINTY_META[row.certainty].color} 12%, transparent)`,
+                    color: CERTAINTY_META[row.certainty].color,
+                  }}>{CERTAINTY_META[row.certainty].label}</span>
+                )}
               </td>
               <td>
-                <EditableSelect
-                  value={row.status} options={STATUS_OPTIONS} disabled={!canEdit}
-                  onSave={v => patch(row, { status: v as Contract['status'] })}
-                  style={{
-                    color: CONTRACT_STATUS_META[row.status]?.color, fontWeight: 700, fontSize: 11,
+                {editable ? (
+                  <EditableSelect
+                    value={row.status} options={STATUS_OPTIONS} disabled={!canEdit}
+                    onSave={v => patch(row, { status: v as Contract['status'] })}
+                    style={{
+                      color: CONTRACT_STATUS_META[row.status]?.color, fontWeight: 700, fontSize: 11,
+                      background: `color-mix(in srgb, ${CONTRACT_STATUS_META[row.status]?.color} 12%, transparent)`,
+                      borderRadius: 6, textAlign: 'center', width: 84,
+                    }} />
+                ) : (
+                  <span className="bz-chip" style={{
                     background: `color-mix(in srgb, ${CONTRACT_STATUS_META[row.status]?.color} 12%, transparent)`,
-                    borderRadius: 6, textAlign: 'center', width: 84,
-                  }} />
+                    color: CONTRACT_STATUS_META[row.status]?.color,
+                  }}>{row.status_label}</span>
+                )}
               </td>
-              {canEdit && (
+              {canEdit && editable && (
                 <td>
                   <button className="btn-ghost" style={{ padding: 3 }} onClick={() => remove(row)} aria-label="삭제">
                     <Trash2 size={13} />
@@ -123,6 +146,24 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
           ))}
         </tbody>
       </table>
+  )
+
+  return (
+    <div className="card block">
+      {header}
+      {table(false)}
+      {editing && (
+        <SectionModal title="5. 계약 정보" hint="행을 추가·삭제하고 각 칸을 고칠 수 있습니다"
+                      onClose={() => { setEditing(false); onChanged() }}>
+          {canEdit && (
+            <button className="btn-ghost" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}
+                    onClick={add} disabled={adding}>
+              <Plus size={13} /> 계약 추가
+            </button>
+          )}
+          {table(true)}
+        </SectionModal>
+      )}
     </div>
   )
 }

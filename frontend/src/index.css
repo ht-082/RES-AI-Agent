@@ -770,3 +770,18 @@ select.bz-cell-input { cursor: pointer; }
   font-size: 12px; font-weight: 400; color: var(--ink-soft); }
 .bz-alias-pop > span { display: block; padding: 2px 0; white-space: nowrap; }
 .bz-alias-badge:hover .bz-alias-pop { display: block; }
+
+/* 섹션 헤더 + 편집 버튼 */
+.bz-sec-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.bz-sec-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.bz-edit-btn { font-size: 12px; display: flex; align-items: center; gap: 4px; padding: 3px 9px; }
+
+/* 나란히 놓인 카드끼리 표 열 너비를 맞춘다 */
+.bz-fact-tbl { table-layout: fixed; }
+.bz-fact-tbl th:nth-child(1), .bz-fact-tbl td:nth-child(1) { width: 38%; }
+.bz-fact-tbl th:nth-child(3), .bz-fact-tbl td:nth-child(3) { width: 86px; }
+.bz-fact-label { font-weight: 600; color: var(--ink-soft); }
+.bz-line { display: block; }
+
+/* 편집 팝업 — 표가 들어가므로 넓게 */
+.bz-modal-wide { max-width: 980px; }

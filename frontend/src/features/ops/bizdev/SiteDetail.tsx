@@ -110,12 +110,13 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
             <>
               {/* 사업 개요(기본 정보 + 부지 지도)를 왼쪽 절반에.
                   오른쪽 칸은 SPC 정보 자리로 비워 둔다. */}
-              <div className="grid-2 lean" style={{ alignItems: 'start' }}>
+              {/* 사업 개요(좌) · SPC 정보(우) — 같은 너비로 나란히 */}
+              <div className="grid-2" style={{ alignItems: 'start' }}>
                 <OverviewSection site={data.site} facts={factsOf('basic')}
                                  canEdit={canEdit} onChanged={reload} />
+                <FactSection title={labelOf('spc')} facts={factsOf('spc')}
+                             canEdit={canEdit} onChanged={reload} />
               </div>
-              <FactSection title={labelOf('spc')} facts={factsOf('spc')}
-                           canEdit={canEdit} onChanged={reload} />
               <PermitSection stages={data.stages} canEdit={canEdit}
                              onChanged={reload} onError={setError} />
               <FactSection title={labelOf('land')} facts={factsOf('land')}

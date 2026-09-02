@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
-import FactSection from './FactSection'
+import { Pencil } from 'lucide-react'
+import FactTable from './FactTable'
+import SectionModal from './SectionModal'
 import { ENERGY_META } from '../constants'
 import type { Site, SiteFact } from '../types'
 
@@ -14,6 +16,7 @@ export default function OverviewSection({ site, facts, canEdit, onChanged }: {
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
+  const [editing, setEditing] = useState(false)
 
   useEffect(() => {
     if (!boxRef.current) return
@@ -41,13 +44,20 @@ export default function OverviewSection({ site, facts, canEdit, onChanged }: {
 
   return (
     <div className="card block">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+      <div className="bz-sec-head">
         <h3>사업 개요</h3>
-        {unconfirmed > 0 && (
-          <span className="bz-chip" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>
-            미확정 {unconfirmed}
-          </span>
-        )}
+        <div className="bz-sec-actions">
+          {unconfirmed > 0 && (
+            <span className="bz-chip" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>
+              미확정 {unconfirmed}
+            </span>
+          )}
+          {canEdit && (
+            <button className="btn-ghost bz-edit-btn" onClick={() => setEditing(true)}>
+              <Pencil size={13} /> 편집
+            </button>
+          )}
+        </div>
       </div>
       <div className="h-sub" style={{ marginBottom: 10 }}>
         {site.pm_name ? `담당 ${site.pm_name}` : '담당 미지정'} · 인허가 진척 {site.overall_pct}%
@@ -59,7 +69,13 @@ export default function OverviewSection({ site, facts, canEdit, onChanged }: {
         )}
       </div>
 
-      <FactSection title="" facts={facts} canEdit={canEdit} onChanged={onChanged} bare />
+      <FactTable facts={facts} canEdit={canEdit} onChanged={onChanged} />
+
+      {editing && (
+        <SectionModal title="사업 개요" onClose={() => { setEditing(false); onChanged() }}>
+          <FactTable facts={facts} editable canEdit={canEdit} onChanged={onChanged} />
+        </SectionModal>
+      )}
     </div>
   )
 }
