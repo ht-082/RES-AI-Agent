@@ -916,11 +916,20 @@ select.bz-cell-input { cursor: pointer; }
 .bz-even-row { row-gap: 20px; }
 .bz-even-row .card > table:last-of-type { flex: 1 1 auto; }
 /* 진행경과 표 — 주요 내용에 남는 폭을 몰아 준다(반폭 카드 기준) */
-.bz-event-tbl th:nth-child(1) { width: 16%; }   /* 등록 일자(26.09.01) */
-.bz-event-tbl th:nth-child(2) { width: 14%; }   /* 유형   */
-.bz-event-tbl th:nth-child(3) { width: 16%; }   /* 현황   */
-.bz-event-tbl th:nth-child(5) { width: 16%; }   /* 확정도 */
 .bz-event-tbl.wide th:nth-child(1) { width: 130px; }  /* 팝업에선 달력 입력 */
 .bz-event-tbl.wide th:nth-child(2) { width: 96px; }
 .bz-event-tbl.wide th:nth-child(3) { width: 96px; }
 .bz-event-tbl.wide th:nth-child(5) { width: 96px; }
+
+/* 경제성 — 구분 라벨이 길고(최장 101px) 비고를 함께 쓴다 */
+.bz-fact-tbl.with-note th:nth-child(1) { width: 30%; }   /* 구분   */
+.bz-fact-tbl.with-note th:nth-child(2) { width: 30%; }   /* 내용   */
+.bz-fact-tbl.with-note th:nth-child(3) { width: auto; }  /* 비고   */
+.bz-fact-tbl.with-note th:nth-child(4) { width: 16%; }   /* 확정도 */
+
+/* 진행경과 — 짧은 열을 줄이고 주요 내용을 넓힌다
+   (실측: 날짜 47 · 유형 32 · 상태칩 40, 셀 여백 12) */
+.bz-event-tbl th:nth-child(1) { width: 15%; }
+.bz-event-tbl th:nth-child(2) { width: 12%; }
+.bz-event-tbl th:nth-child(3) { width: 14%; }
+.bz-event-tbl th:nth-child(5) { width: 14%; }

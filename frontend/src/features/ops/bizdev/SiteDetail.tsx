@@ -121,7 +121,7 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
                 <ContractSection siteId={siteId} contracts={data.contracts}
                                  canEdit={canEdit} onChanged={reload} onError={setError} />
                 <FactSection title={labelOf('econ')} facts={factsOf('econ')}
-                             canEdit={canEdit} onChanged={reload} />
+                             canEdit={canEdit} onChanged={reload} showNote />
                 <EventSection siteId={siteId} events={data.events}
                               canEdit={canEdit} onChanged={reload} onError={setError} />
               </div>

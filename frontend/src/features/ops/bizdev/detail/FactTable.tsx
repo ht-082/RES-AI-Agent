@@ -1,6 +1,6 @@
 import { apiSend } from '../api'
 import { CERTAINTY_META } from '../constants'
-import { CertaintyCell } from './editors'
+import { CertaintyCell, EditableText } from './editors'
 import FactCell from './FactCell'
 import { parseShareholders } from './ShareholderBlock'
 import type { SiteFact } from '../types'
@@ -8,11 +8,12 @@ import type { SiteFact } from '../types'
 // 사업개요 항목 표.
 //  editable=false → 보기 전용(기본 화면). editable=true → 편집 팝업 안.
 // 열 너비를 % 로 고정해, 나란히 놓인 카드끼리 표가 어긋나 보이지 않게 한다.
-export default function FactTable({ facts, editable, canEdit, onChanged }: {
+export default function FactTable({ facts, editable, canEdit, onChanged, showNote }: {
   facts: SiteFact[]
   editable?: boolean
   canEdit: boolean
   onChanged: () => void
+  showNote?: boolean      // 경제성처럼 근거·단서를 함께 적어야 하는 섹션
 }) {
   const patch = async (fact: SiteFact, body: Partial<SiteFact>) => {
     await apiSend('PATCH', `/api/bizdev/facts/${fact.id}/`, body)
@@ -20,11 +21,12 @@ export default function FactTable({ facts, editable, canEdit, onChanged }: {
   }
 
   return (
-    <table className="tbl bz-doc-tbl bz-fact-tbl">
+    <table className={`tbl bz-doc-tbl bz-fact-tbl${showNote ? ' with-note' : ''}`}>
       <thead>
         <tr>
           <th>구분</th>
           <th>내용</th>
+          {showNote && <th>비고</th>}
           <th>확정도</th>
         </tr>
       </thead>
@@ -40,6 +42,14 @@ export default function FactTable({ facts, editable, canEdit, onChanged }: {
                 ? <FactCell fact={f} canEdit={canEdit} onSave={v => patch(f, { value: v })} />
                 : <FactValue fact={f} />}
             </td>
+            {showNote && (
+              <td>
+                {editable
+                  ? <EditableText value={f.note} placeholder="—" disabled={!canEdit}
+                                  onSave={v => patch(f, { note: v })} />
+                  : (f.note || <span className="bz-muted">—</span>)}
+              </td>
+            )}
             <td>
               {editable
                 ? <CertaintyCell value={f.certainty} disabled={!canEdit}
