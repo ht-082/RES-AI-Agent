@@ -141,3 +141,10 @@ export function ddayLabel(deadline: string | null, fallback: string): string {
   if (diff === 0) return 'D-DAY'
   return diff > 0 ? `D-${diff}` : `D+${-diff}`
 }
+
+/** 좁은 표에서 쓰는 짧은 날짜 표기 — 2026-04-03 → 26.04.03 */
+export function shortDate(value: string | null): string {
+  if (!value) return ''
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  return m ? `${m[1].slice(2)}.${m[2]}.${m[3]}` : value
+}

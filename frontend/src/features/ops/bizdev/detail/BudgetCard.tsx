@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Paperclip } from 'lucide-react'
 import BudgetEditModal from './BudgetEditModal'
 import SectionHead, { lastEdited } from './SectionHead'
-import { BUDGET_CATS, formatKRW } from '../constants'
+import { BUDGET_CATS, formatKRW, shortDate } from '../constants'
 import type { BudgetApproval, BudgetEntry, BudgetSummary } from '../types'
 
 // 예산 승인 · 집행 — 보기 전용(그래프 2개 + 집행 목록).
@@ -127,7 +127,7 @@ export default function BudgetCard({ siteId, entries, approvals, summary, canEdi
                     </span>
                   </td>
                   <td className="bz-num bz-nowrap">{formatKRW(a.amount_krw)}</td>
-                  <td className="bz-nowrap">{a.approved_date || <span className="bz-muted">—</span>}</td>
+                  <td className="bz-nowrap">{shortDate(a.approved_date) || <span className="bz-muted">—</span>}</td>
                   <td>{a.memo || <span className="bz-muted">—</span>}</td>
                 </tr>
               )
@@ -160,7 +160,7 @@ export default function BudgetCard({ siteId, entries, approvals, summary, canEdi
                     </span>
                   </td>
                   <td className="bz-num bz-nowrap">{formatKRW(e.amount_krw)}</td>
-                  <td className="bz-nowrap">{e.exec_date}</td>
+                  <td className="bz-nowrap">{shortDate(e.exec_date)}</td>
                   <td className="bz-nowrap">{e.payee || <span className="bz-muted">—</span>}</td>
                   <td>{e.memo || <span className="bz-muted">—</span>}</td>
                   <td>

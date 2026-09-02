@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Paperclip, Plus, Trash2 } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Paperclip, Plus, Trash2, X } from 'lucide-react'
 import SectionModal from './SectionModal'
 import { EditableSelect, EditableText } from './editors'
 import { apiSend, apiUpload } from '../api'
@@ -20,8 +20,10 @@ export default function BudgetEditModal({ siteId, entries, approvals, canEdit, o
   onClose: () => void
 }) {
   const [error, setError] = useState('')
-  const [receipt, setReceipt] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
+  // 증빙은 집행 항목마다 따로 붙인다 — 어느 행에 붙일지 눌린 행을 기억해 둔다
+  const receiptTarget = useRef<string | null>(null)
+  const receiptInput = useRef<HTMLInputElement>(null)
 
   const fail = (e: unknown, fb: string) => setError(e instanceof Error ? e.message : fb)
 
@@ -63,12 +65,29 @@ export default function BudgetEditModal({ siteId, entries, approvals, canEdit, o
       form.append('exec_date', new Date().toISOString().slice(0, 10))
       form.append('payee', '')
       form.append('memo', '')
-      if (receipt) form.append('receipt', receipt)
       await apiUpload('/api/bizdev/budget-entries/', form)
-      setReceipt(null)
       onChanged()
     } catch (e) { fail(e, '집행 내역 추가 실패') } finally { setBusy(false) }
   }
+  const attachReceipt = async (file: File | undefined) => {
+    const id = receiptTarget.current
+    if (!file || !id) return
+    const form = new FormData()
+    form.append('receipt', file)
+    try {
+      await apiUpload(`/api/bizdev/budget-entries/${id}/`, form, 'PATCH')
+      onChanged()
+    } catch (e) { fail(e, '증빙 첨부 실패') }
+    if (receiptInput.current) receiptInput.current.value = ''
+  }
+  const detachReceipt = async (row: BudgetEntry) => {
+    if (!confirm(`증빙 "${row.receipt_name}"을 떼어 낼까요?`)) return
+    try {
+      await apiSend('DELETE', `/api/bizdev/budget-entries/${row.id}/receipt-file/`)
+      onChanged()
+    } catch (e) { fail(e, '증빙 삭제 실패') }
+  }
+
   const removeEntry = async (row: BudgetEntry) => {
     if (!confirm('이 집행 내역을 삭제할까요?')) return
     try {
@@ -145,18 +164,13 @@ export default function BudgetEditModal({ siteId, entries, approvals, canEdit, o
       <div className="bz-block-title" style={{ justifyContent: 'space-between', marginTop: 20 }}>
         <span>2. 예산 집행 내역</span>
         {canEdit && (
-          <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <label className="btn-ghost bz-edit-btn" style={{ cursor: 'pointer' }}>
-              <Paperclip size={13} /> {receipt ? receipt.name.slice(0, 14) : '증빙 첨부'}
-              <input type="file" style={{ display: 'none' }}
-                     onChange={e => setReceipt(e.target.files?.[0] || null)} />
-            </label>
-            <button className="btn-ghost bz-edit-btn" onClick={addEntry} disabled={busy}>
-              <Plus size={13} /> 집행 추가
-            </button>
-          </span>
+          <button className="btn-ghost bz-edit-btn" onClick={addEntry} disabled={busy}>
+            <Plus size={13} /> 집행 추가
+          </button>
         )}
       </div>
+      <input ref={receiptInput} type="file" style={{ display: 'none' }}
+             onChange={e => attachReceipt(e.target.files?.[0])} />
       <table className="tbl bz-doc-tbl">
         <thead>
           <tr>
@@ -165,7 +179,7 @@ export default function BudgetEditModal({ siteId, entries, approvals, canEdit, o
             <th style={{ width: 124 }}>집행일</th>
             <th style={{ width: 120 }}>상대방</th>
             <th>적요</th>
-            <th className="bz-col-doc">증빙</th>
+            <th style={{ width: 78 }}>증빙</th>
             {canEdit && <th style={{ width: 34 }} />}
           </tr>
         </thead>
@@ -203,13 +217,29 @@ export default function BudgetEditModal({ siteId, entries, approvals, canEdit, o
                   <EditableText value={row.memo} placeholder="—" disabled={!canEdit}
                                 onSave={v => patchEntry(row, { memo: v })} />
                 </td>
-                <td>
-                  {row.has_receipt ? (
+                <td className="bz-nowrap">
+                  {row.has_receipt && (
                     <a href={`/api/bizdev/budget-entries/${row.id}/receipt/`} target="_blank"
-                       rel="noreferrer" title={row.receipt_name} style={{ color: 'var(--green-accent)' }}>
-                      <Paperclip size={14} />
+                       rel="noreferrer" title={row.receipt_name}
+                       style={{ color: 'var(--green-accent)' }}>
+                      <Paperclip size={13} />
                     </a>
-                  ) : <span className="bz-muted">—</span>}
+                  )}
+                  {canEdit && (
+                    <button className="btn-ghost" style={{ padding: 2 }}
+                            title={row.has_receipt ? '증빙 교체' : '증빙 첨부'}
+                            onClick={() => {
+                              receiptTarget.current = row.id
+                              receiptInput.current?.click()
+                            }}>
+                      {row.has_receipt ? <Paperclip size={12} /> : <Plus size={12} />}
+                    </button>
+                  )}
+                  {canEdit && row.has_receipt && (
+                    <button className="btn-ghost" style={{ padding: 2 }} title="증빙 떼기"
+                            onClick={() => detachReceipt(row)}><X size={11} /></button>
+                  )}
+                  {!row.has_receipt && !canEdit && <span className="bz-muted">—</span>}
                 </td>
                 {canEdit && (
                   <td>

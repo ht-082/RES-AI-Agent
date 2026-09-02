@@ -394,6 +394,36 @@ class BudgetEntryViewSet(viewsets.ModelViewSet):
             extra.update(receipt_uri=uri, receipt_name=receipt.name)
         serializer.save(**extra)
 
+    def perform_update(self, serializer):
+        """기존 집행 항목에 증빙을 붙이거나 갈아 끼운다(항목별 첨부)."""
+        entry = serializer.save()
+        receipt = self.request.FILES.get('receipt')
+        if not receipt:
+            return
+        try:
+            uri, _, _ = _save_upload(receipt, 'receipts')
+        except ValueError as e:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'receipt': str(e)})
+        old_uri = entry.receipt_uri
+        entry.receipt_uri = uri
+        entry.receipt_name = receipt.name
+        entry.save(update_fields=['receipt_uri', 'receipt_name', 'updated_at'])
+        if old_uri:
+            _delete_stored(old_uri)
+
+    @action(detail=True, methods=['delete'], url_path='receipt-file')
+    def receipt_file(self, request, pk=None):
+        """증빙만 떼어 낸다(집행 내역 자체는 남긴다)."""
+        entry = self.get_object()
+        check_site_editable(request.user, entry.site)
+        if entry.receipt_uri:
+            _delete_stored(entry.receipt_uri)
+            entry.receipt_uri = ''
+            entry.receipt_name = ''
+            entry.save(update_fields=['receipt_uri', 'receipt_name', 'updated_at'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     def perform_destroy(self, instance):
         if instance.receipt_uri:
             _delete_stored(instance.receipt_uri)

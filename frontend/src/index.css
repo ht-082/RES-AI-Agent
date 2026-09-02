@@ -899,7 +899,7 @@ select.bz-cell-input { cursor: pointer; }
 .bz-budget-tbl.approval th:nth-child(3) { width: 22%; }   /* 승인일 */
 .bz-budget-tbl.entry th:nth-child(1) { width: 12%; }      /* 용도   */
 .bz-budget-tbl.entry th:nth-child(2) { width: 15%; }      /* 금액   */
-.bz-budget-tbl.entry th:nth-child(3) { width: 22%; }      /* 집행일 */
+.bz-budget-tbl.entry th:nth-child(3) { width: 16%; }      /* 집행일(26.04.03) */
 .bz-budget-tbl.entry th:nth-child(4) { width: 15%; }      /* 상대방 */
 .bz-budget-tbl.entry th:nth-child(6) { width: 9%; }       /* 증빙   */
 

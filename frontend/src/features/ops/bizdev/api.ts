@@ -34,11 +34,12 @@ export async function apiSend<T>(method: string, url: string, body?: unknown): P
   return res.json()
 }
 
-export async function apiUpload<T>(url: string, form: FormData): Promise<T> {
+export async function apiUpload<T>(url: string, form: FormData,
+                                   method: 'POST' | 'PATCH' = 'POST'): Promise<T> {
   const csrf = await getCsrf()
   // FormData 는 Content-Type 을 브라우저가 정한다 (boundary 포함)
   const res = await fetch(url, {
-    method: 'POST',
+    method,
     headers: { 'X-CSRFToken': csrf },
     body: form,
     credentials: 'include',
