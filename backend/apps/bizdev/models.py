@@ -14,7 +14,7 @@ from django.db.models import Q
 from .constants import (
     BUDGET_CATEGORY_CHOICES, CERTAINTY_CHOICES, CONTRACT_CATEGORY_CHOICES,
     CONTRACT_STATUS_CHOICES, ENERGY_CHOICES, EVENT_TYPE_CHOICES,
-    ISSUE_STATUS_CHOICES, ISSUE_TYPE_CHOICES, LIFECYCLE_CHOICES,
+    EVENT_STATUS_CHOICES, ISSUE_STATUS_CHOICES, ISSUE_TYPE_CHOICES, LIFECYCLE_CHOICES,
     PERMIT_CATEGORY_CHOICES, PERMIT_STATE_CHOICES, RISK_LEVEL_CHOICES,
     STATUS_CHOICES, TIER_CHOICES,
 )
@@ -300,13 +300,16 @@ class Contract(models.Model):
 class SiteEvent(models.Model):
     """진행경과 및 이슈 — 양식 §6.
 
-    일자가 "진행 중"인 행이 실제로 있으므로 event_date 는 비울 수 있고,
-    비어 있으면 is_ongoing 으로 표시한다.
+    event_date 는 등록 일자다. 진행 상태는 status 로 따로 관리한다
+    (예전에는 날짜를 비워 "진행 중"을 나타냈는데, 그러면 언제 올라온 건인지
+    알 수 없었다).
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='events')
-    event_date = models.DateField(null=True, blank=True, help_text='비우면 "진행 중"')
+    event_date = models.DateField(null=True, blank=True, help_text='등록 일자')
     event_type = models.CharField(max_length=12, choices=EVENT_TYPE_CHOICES, default='etc')
+    status = models.CharField(max_length=10, choices=EVENT_STATUS_CHOICES,
+                              default='ongoing', help_text='진행중 / 보류 / 완료')
     summary = models.TextField(blank=True, default='', help_text='주요 내용')
     certainty = models.CharField(max_length=12, choices=CERTAINTY_CHOICES,
                                  default='confirmed')

@@ -130,18 +130,21 @@ CONTRACTS = {
     ],
 }
 
-# 진행경과 — {slug: [(event_date | None, event_type, summary, certainty)]}
+# 진행경과 — {slug: [(event_date, event_type, status, summary, certainty)]}
+#   event_date 는 등록 일자, status 는 진행중/보류/완료
 EVENTS = {
     'hongseong-solar': [
-        (date(2026, 7, 20), 'permit', '송전용전기설비 접속제의서 수령 (한전)', 'confirmed'),
-        (date(2026, 5, 21), 'permit', '개발행위허가 신청', 'confirmed'),
-        (date(2025, 9, 17), 'permit', '계통접속 신청', 'confirmed'),
-        (date(2025, 8, 26), 'permit',
+        (date(2026, 7, 20), 'permit', 'done', '송전용전기설비 접속제의서 수령 (한전)', 'confirmed'),
+        (date(2026, 5, 21), 'permit', 'done', '개발행위허가 신청', 'confirmed'),
+        (date(2025, 9, 17), 'permit', 'done', '계통접속 신청', 'confirmed'),
+        (date(2025, 8, 26), 'permit', 'done',
          '발전사업허가 취득 (제2025-68~71호 · 합계 99MW · 조건부)', 'confirmed'),
-        (date(2025, 7, 2), 'permit', '발전사업허가 신청', 'confirmed'),
-        (None, 'complaint', '사업부지 해당 마을에서 빠르게 사업 추진할 것 요구 중', 'unconfirmed'),
-        (None, 'complaint', '인근 부지 확보 중인 경쟁사 관련 이장님 민원 사항 관리 중', 'unconfirmed'),
-        (None, 'land', '송전선로 용지 교섭 협의 중', 'unconfirmed'),
+        (date(2025, 7, 2), 'permit', 'done', '발전사업허가 신청', 'confirmed'),
+        (('days_ago', 5), 'complaint', 'ongoing',
+         '사업부지 해당 마을에서 빠르게 사업 추진할 것 요구 중', 'unconfirmed'),
+        (('days_ago', 12), 'complaint', 'ongoing',
+         '인근 부지 확보 중인 경쟁사 관련 이장님 민원 사항 관리 중', 'unconfirmed'),
+        (('days_ago', 20), 'land', 'ongoing', '송전선로 용지 교섭 협의 중', 'unconfirmed'),
     ],
 }
 

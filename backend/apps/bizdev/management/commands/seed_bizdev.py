@@ -127,8 +127,8 @@ class Command(BaseCommand):
         if not site.events.exists():
             SiteEvent.objects.bulk_create([
                 SiteEvent(site=site, event_date=_resolve_date(d), event_type=etype,
-                          summary=summary, certainty=certainty)
-                for (d, etype, summary, certainty) in sd.EVENTS.get(slug, [])
+                          status=st, summary=summary, certainty=certainty)
+                for (d, etype, st, summary, certainty) in sd.EVENTS.get(slug, [])
             ])
         if not site.budget_entries.exists():
             BudgetEntry.objects.bulk_create([

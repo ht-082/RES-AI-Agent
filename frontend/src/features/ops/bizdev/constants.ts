@@ -44,6 +44,15 @@ export const CONTRACT_CATEGORIES: Array<[string, string]> = [
   ['om', 'O&M (관리운영위탁)'], ['supervision', '감리 · OE'], ['etc', '기타'],
 ]
 
+export const EVENT_STATUS_META: Record<string, { label: string; color: string }> = {
+  ongoing: { label: '진행중', color: 'var(--brand)' },
+  hold:    { label: '보류',   color: 'var(--amber)' },
+  done:    { label: '완료',   color: 'var(--green-accent)' },
+}
+export const EVENT_STATUSES: Array<[string, string]> = [
+  ['ongoing', '진행중'], ['hold', '보류'], ['done', '완료'],
+]
+
 export const EVENT_TYPES: Array<[string, string]> = [
   ['permit', '인허가'], ['complaint', '민원'], ['land', '토지'],
   ['contract', '계약'], ['finance', '금융'], ['etc', '기타'],

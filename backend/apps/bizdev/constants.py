@@ -60,6 +60,9 @@ EVENT_TYPE_CHOICES = [
     ('permit', '인허가'), ('complaint', '민원'), ('land', '토지'),
     ('contract', '계약'), ('finance', '금융'), ('etc', '기타'),
 ]
+EVENT_STATUS_CHOICES = [
+    ('ongoing', '진행중'), ('hold', '보류'), ('done', '완료'),
+]
 
 # 사업개요 항목 정의 — SiteFact 골격의 단일 소스.
 # (section, key, label) 순서대로 사업 등록 시 빈 항목이 자동 생성된다.

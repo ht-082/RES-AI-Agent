@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { apiSend } from '../api'
-import { CERTAINTY_META, EVENT_TYPES } from '../constants'
+import { CERTAINTY_META, EVENT_STATUSES, EVENT_STATUS_META, EVENT_TYPES, shortDate } from '../constants'
 import SectionModal from './SectionModal'
 import { lastEdited } from './SectionHead'
 import Lines from './Lines'
@@ -29,8 +29,8 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
     setAdding(true)
     try {
       await apiSend('POST', '/api/bizdev/events/', {
-        site: siteId, event_type: 'etc', summary: '', certainty: 'unconfirmed',
-        event_date: new Date().toISOString().slice(0, 10),
+        site: siteId, event_type: 'etc', status: 'ongoing', summary: '',
+        certainty: 'unconfirmed', event_date: new Date().toISOString().slice(0, 10),
       })
       onChanged()
     } catch (e) {
@@ -50,7 +50,7 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
     }
   }
 
-  const ongoing = events.filter(e => e.is_ongoing).length
+  const ongoing = events.filter(e => e.status === 'ongoing').length
 
   const header = (
       <div className="bz-sec-head">
@@ -72,36 +72,32 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
   )
 
   const table = (editable: boolean) => (
-      <table className="tbl bz-doc-tbl" style={{ marginTop: 10 }}>
+      <table className={`tbl bz-doc-tbl bz-event-tbl ${editable ? "wide" : ""}`} style={{ marginTop: 10 }}>
         <thead>
           <tr>
-            <th style={{ width: 130 }}>일자</th>
-            <th style={{ width: 100 }}>유형</th>
+            <th>등록 일자</th>
+            <th>유형</th>
+            <th>현황</th>
             <th>주요 내용</th>
-            <th style={{ width: 90 }}>확정도</th>
-            {canEdit && editable && <th style={{ width: 34 }} />}
+            <th>확정도</th>
+            {canEdit && editable && <th style={{ width: 32 }} />}
           </tr>
         </thead>
         <tbody>
           {events.length === 0 && (
-            <tr><td colSpan={canEdit && editable ? 5 : 4} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
+            <tr><td colSpan={canEdit && editable ? 6 : 5} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
               등록된 경과가 없습니다.
             </td></tr>
           )}
           {events.map(row => (
             <tr key={row.id}>
-              <td>
+              <td className="bz-nowrap">
                 {editable ? (
                   <input className="bz-cell-input" type="date" value={row.event_date || ''}
                          disabled={!canEdit}
                          onChange={e => patch(row, { event_date: e.target.value || null })} />
                 ) : (
-                  <span>{row.event_date || ''}</span>
-                )}
-                {row.is_ongoing && (
-                  <span className="bz-chip" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>
-                    진행 중
-                  </span>
+                  <span>{shortDate(row.event_date) || <span className="bz-muted">—</span>}</span>
                 )}
               </td>
               <td>
@@ -109,6 +105,22 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
                   ? <EditableSelect value={row.event_type} options={EVENT_TYPES} disabled={!canEdit}
                                     onSave={v => patch(row, { event_type: v })} />
                   : <span>{row.type_label}</span>}
+              </td>
+              <td>
+                {editable ? (
+                  <EditableSelect value={row.status} options={EVENT_STATUSES} disabled={!canEdit}
+                                  onSave={v => patch(row, { status: v })}
+                                  style={{
+                                    color: EVENT_STATUS_META[row.status]?.color, fontWeight: 700,
+                                    fontSize: 11, borderRadius: 6, textAlign: 'center',
+                                    background: `color-mix(in srgb, ${EVENT_STATUS_META[row.status]?.color} 12%, transparent)`,
+                                  }} />
+                ) : (
+                  <span className="bz-chip" style={{
+                    background: `color-mix(in srgb, ${EVENT_STATUS_META[row.status]?.color} 12%, transparent)`,
+                    color: EVENT_STATUS_META[row.status]?.color,
+                  }}>{row.status_label}</span>
+                )}
               </td>
               <td>
                 {editable
@@ -146,7 +158,7 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
       {table(false)}
       {editing && (
         <SectionModal title="진행경과 및 이슈"
-                      hint='일자를 비우면 "진행 중"으로 표시됩니다'
+                      hint='등록 일자와 현황(진행중·보류·완료)을 함께 관리합니다'
                       onClose={() => { setEditing(false); onChanged() }}>
           {canEdit && (
             <button className="btn-ghost" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}

@@ -178,10 +178,12 @@ class ContractSerializer(serializers.ModelSerializer):
 
 class SiteEventSerializer(serializers.ModelSerializer):
     type_label = serializers.CharField(source='get_event_type_display', read_only=True)
+    status_label = serializers.CharField(source='get_status_display', read_only=True)
     is_ongoing = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = SiteEvent
         fields = ['id', 'site', 'event_date', 'is_ongoing', 'event_type',
-                  'type_label', 'summary', 'certainty', 'created_at', 'updated_at']
+                  'type_label', 'status', 'status_label', 'summary', 'certainty',
+                  'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']

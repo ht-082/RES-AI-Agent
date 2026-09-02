@@ -55,6 +55,8 @@ export interface SiteEvent {
   is_ongoing: boolean
   event_type: string
   type_label: string
+  status: 'ongoing' | 'hold' | 'done'
+  status_label: string
   summary: string
   certainty: Certainty
   created_at: string
