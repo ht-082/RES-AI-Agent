@@ -2,6 +2,7 @@ import { apiSend } from '../api'
 import { CERTAINTY_META } from '../constants'
 import { CertaintyCell, EditableText } from './editors'
 import FactCell from './FactCell'
+import Lines from './Lines'
 import { parseShareholders } from './ShareholderBlock'
 import type { SiteFact } from '../types'
 
@@ -116,10 +117,6 @@ function FactValue({ fact }: { fact: SiteFact }) {
     case 'number':
       return <span>{value}{spec.unit ? ` ${spec.unit}` : ''}</span>
     default:
-      return (
-        <span>
-          {value.split('\n').map((line, i) => <span key={i} className="bz-line">{line}</span>)}
-        </span>
-      )
+      return <Lines text={value} />
   }
 }

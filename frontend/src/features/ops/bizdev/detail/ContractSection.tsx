@@ -95,13 +95,13 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
                 {editable
                   ? <EditableSelect value={row.category} options={CONTRACT_CATEGORIES} disabled={!canEdit}
                                     onSave={v => patch(row, { category: v })} />
-                  : <span style={{ fontWeight: 600 }}>{row.category_label}</span>}
+                  : <span style={{ fontWeight: 600 }} title={row.category_label}>{row.category_label}</span>}
               </td>
               <td>
                 {editable
                   ? <EditableText value={row.counterparty} placeholder="미정" disabled={!canEdit}
                                   onSave={v => patch(row, { counterparty: v })} />
-                  : <span>{row.counterparty || <span className="bz-muted">미정</span>}</span>}
+                  : <span title={row.counterparty}>{row.counterparty || <span className="bz-muted">미정</span>}</span>}
               </td>
               <td>
                 {editable

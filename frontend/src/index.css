@@ -943,3 +943,12 @@ select.bz-cell-input { cursor: pointer; }
 .bz-event-tbl th:nth-child(5) { width: 14%; }
 /* 좁은 레일 카드(계통·법령)는 안쪽 여백이 16px 이라 띠 여백도 맞춘다 */
 .card.block[style*="padding: 16px"] .bz-sec-head { margin: -16px -16px 12px; padding: 10px 16px; }
+
+/* 표 셀 — 열보다 긴 글자는 아래로 흘리지 않고 …으로 자른다.
+   저장된 줄바꿈은 살리되(각 줄이 .bz-line), 그 줄이 넘치면 줄마다 잘린다.
+   내용 전체는 셀에 마우스를 올리면 볼 수 있다. */
+.bz-doc-tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bz-doc-tbl td .bz-line { display: block; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+/* 편집 팝업의 입력칸은 원래대로 여러 줄을 쓴다 */
+.bz-doc-tbl td .bz-cell-input { white-space: pre-wrap; overflow: auto; text-overflow: clip; }
