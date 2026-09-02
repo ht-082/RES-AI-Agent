@@ -705,7 +705,7 @@ textarea.inp { resize: vertical; min-height: 84px; line-height: 1.55; }
 .bz-substages { margin: 0 0 0 32px; padding-left: 12px; border-left: 2px solid var(--line); }
 .bz-substages .bz-stage2 { background: var(--surface-2); }
 .bz-substages .bz-stage-name { font-weight: 600; }
-.bz-stage2 { display: grid; grid-template-columns: 22px 1fr 150px; gap: 10px;
+.bz-stage2 { display: grid; grid-template-columns: 22px 1fr 156px; gap: 10px;
   align-items: start; padding: 10px; border: 1px solid var(--line-soft);
   border-radius: 10px; background: var(--surface); margin-bottom: 6px; }
 .bz-stage-glyph2 { display: inline-flex; align-items: center; justify-content: center;
@@ -720,6 +720,8 @@ textarea.inp { resize: vertical; min-height: 84px; line-height: 1.55; }
 .bz-stage-tag { font-size: 10px; font-weight: 700; color: var(--ink-faint);
   background: var(--surface-2); border-radius: 4px; padding: 1px 5px; flex-shrink: 0; }
 .bz-stage-docs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; }
+.bz-stage-side .bz-doc-btn, .bz-stage-side .bz-doc-none { max-width: 100%; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
 .bz-doc-btn { font-size: 11px; display: inline-flex; align-items: center; gap: 4px;
   text-decoration: none; padding: 3px 7px; }
 .bz-doc-none { font-size: 11px; color: var(--ink-faint); background: var(--surface-2);

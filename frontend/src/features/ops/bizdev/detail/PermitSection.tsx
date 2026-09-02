@@ -128,26 +128,22 @@ export default function PermitSection({ siteId, stages, canEdit, onChanged, onEr
               : <Lines text={stage.remark} />}
           </div>
 
-          <div className="bz-stage-docs">
-            {current ? (
-              <a className="btn-ghost bz-doc-btn" target="_blank" rel="noreferrer"
-                 href={`/api/bizdev/documents/${current.id}/download/`}>
-                <Download size={12} /> {stage.doc_label || '문서'} v{current.version}
-              </a>
-            ) : <span className="bz-doc-none">미취득</span>}
-            {canEdit && editable && (
-              <button className="btn-ghost bz-doc-btn"
-                      onClick={() => { uploadTarget.current = stage.id; fileInput.current?.click() }}>
-                <Upload size={12} /> {current ? '새 버전' : '업로드'}
-              </button>
-            )}
-            {stage.documents.length > 0 && (
-              <button className="btn-ghost bz-doc-btn"
-                      onClick={() => setOpenHistory(h => (h === stage.id ? null : stage.id))}>
-                <History size={12} /> 이력({stage.documents.length})
-              </button>
-            )}
-          </div>
+          {(stage.documents.length > 0 || (canEdit && editable)) && (
+            <div className="bz-stage-docs">
+              {canEdit && editable && (
+                <button className="btn-ghost bz-doc-btn"
+                        onClick={() => { uploadTarget.current = stage.id; fileInput.current?.click() }}>
+                  <Upload size={12} /> {current ? '새 버전' : '업로드'}
+                </button>
+              )}
+              {stage.documents.length > 0 && (
+                <button className="btn-ghost bz-doc-btn"
+                        onClick={() => setOpenHistory(h => (h === stage.id ? null : stage.id))}>
+                  <History size={12} /> 이력({stage.documents.length})
+                </button>
+              )}
+            </div>
+          )}
 
           {openHistory === stage.id && (
             <div className="bz-doc-history">
@@ -193,6 +189,13 @@ export default function PermitSection({ siteId, stages, canEdit, onChanged, onEr
               background: `color-mix(in srgb, ${cert.color} 12%, transparent)`, color: cert.color,
             }}>{cert.label}</span>
           )}
+
+          {current ? (
+            <a className="btn-ghost bz-doc-btn" target="_blank" rel="noreferrer"
+               href={`/api/bizdev/documents/${current.id}/download/`}>
+              <Download size={12} /> {stage.doc_label || '문서'} v{current.version}
+            </a>
+          ) : <span className="bz-doc-none">미취득</span>}
 
           {editable ? (
             <input className="bz-cell-input bz-stage-date" type="date" title="처리기한"
