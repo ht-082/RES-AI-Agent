@@ -3,6 +3,7 @@ import { ArrowLeft, Trash2 } from 'lucide-react'
 import SiteListRail from './SiteListRail'
 import OverviewSection from './detail/OverviewSection'
 import FactSection from './detail/FactSection'
+import RegistryImport from './detail/RegistryImport'
 import PermitSection from './detail/PermitSection'
 import ContractSection from './detail/ContractSection'
 import EventSection from './detail/EventSection'
@@ -117,7 +118,10 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
                                  canEdit={canEdit} onChanged={reload} />
                 <div className="bz-stack">
                   <FactSection title={labelOf('spc')} facts={factsOf('spc')}
-                               canEdit={canEdit} onChanged={reload} />
+                               canEdit={canEdit} onChanged={reload}
+                               modalExtra={canEdit
+                                 ? <RegistryImport siteId={siteId} onDone={reload} />
+                                 : undefined} />
                   <FactSection title={labelOf('land')} facts={factsOf('land')}
                                canEdit={canEdit} onChanged={reload} />
                 </div>

@@ -25,7 +25,7 @@ class PermitStageSerializer(serializers.ModelSerializer):
         fields = ['id', 'site', 'stage_no', 'name', 'agency', 'category', 'tier',
                   'status', 'content', 'certainty', 'remark', 'progress_pct',
                   'received_date', 'deadline', 'detail', 'dday_label', 'doc_label',
-                  'documents']
+                  'documents', 'updated_at']
         read_only_fields = ['id', 'stage_no']  # stage_no 는 서버가 부여/재정렬
 
 
@@ -115,13 +115,14 @@ class SiteFactSerializer(serializers.ModelSerializer):
     class Meta:
         model = SiteFact
         fields = ['id', 'site', 'section', 'key', 'label', 'value',
-                  'certainty', 'source', 'note', 'sort_order', 'input_spec']
+                  'certainty', 'source', 'note', 'sort_order', 'input_spec',
+                  'updated_at']
         read_only_fields = ['id', 'site', 'section', 'key', 'label', 'sort_order']
 
     def get_input_spec(self, obj):
         spec = fact_spec(obj.section, obj.key) or {}
         out = {'input': spec.get('input', 'text')}
-        for k in ('options', 'unit', 'display'):
+        for k in ('options', 'unit', 'display', 'parent'):
             if spec.get(k):
                 out[k] = spec[k]
         return out
@@ -158,8 +159,8 @@ class ContractSerializer(serializers.ModelSerializer):
         model = Contract
         fields = ['id', 'site', 'category', 'category_label', 'counterparty',
                   'summary', 'certainty', 'status', 'status_label', 'note',
-                  'sort_order', 'created_at']
-        read_only_fields = ['id', 'created_at']
+                  'sort_order', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class SiteEventSerializer(serializers.ModelSerializer):
@@ -169,5 +170,5 @@ class SiteEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = SiteEvent
         fields = ['id', 'site', 'event_date', 'is_ongoing', 'event_type',
-                  'type_label', 'summary', 'certainty', 'created_at']
-        read_only_fields = ['id', 'created_at']
+                  'type_label', 'summary', 'certainty', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']

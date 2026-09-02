@@ -46,6 +46,7 @@ FACTS = {
                                  '사업자등록증', ''),
         ('spc', 'directors'): ('대표자 현대석', 'confirmed', '', '이사구성 추후 확인'),
         ('spc', 'capital'): ('미정', 'unconfirmed', '', '추후 확인'),
+        ('spc', 'established'): ('', 'unconfirmed', '', ''),
         ('spc', 'ownership'): (
             '한국투자증권(주) — 트러스톤 ESG 신재생에너지 일반사모투자신탁 제2호 신탁업자 | 100',
             'confirmed', '', ''),

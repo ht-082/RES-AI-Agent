@@ -30,7 +30,10 @@ export default function FactTable({ facts, editable, canEdit, onChanged }: {
       </thead>
       <tbody>
         {facts.map(f => (
-          <tr key={f.id}>
+          <tr key={f.id} className={
+            f.input_spec?.parent ? 'bz-fact-child'
+              : facts.some(x => x.input_spec?.parent === f.key) ? 'bz-fact-parent' : ''
+          }>
             <td className="bz-fact-label">{f.label}</td>
             <td>
               {editable

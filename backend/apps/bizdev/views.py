@@ -20,7 +20,7 @@ from rest_framework.views import APIView
 
 from apps.documents.views import resolve_media_path
 
-from . import snapshots
+from . import registry, snapshots
 from .constants import (
     FACT_DEFS, FACT_SECTIONS, STAGE_DEFS, STAGE_TO_LIFECYCLE, fact_spec,
 )
@@ -159,6 +159,62 @@ class SiteViewSet(viewsets.ModelViewSet):
         for entry in site.budget_entries.exclude(receipt_uri=''):
             _delete_stored(entry.receipt_uri)
         return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'], url_path='import-registry',
+            parser_classes=[MultiPartParser, FormParser])
+    def import_registry(self, request, pk=None):
+        """법인등기부등본 PDF 를 읽어 SPC 항목을 채운다.
+
+        인터넷등기소 PDF 는 텍스트라 OCR 없이 읽힌다. 스캔본이면 텍스트가
+        비어 나오므로 채우지 않고 그 사실을 알린다(잘못 채우는 것보다 낫다).
+        """
+        site = self.get_object()
+        check_site_editable(request.user, site)
+        uploaded = request.FILES.get('file')
+        if not uploaded:
+            return Response({'error': 'file 필드가 필요합니다.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            storage_uri, ext, _ = _save_upload(uploaded, 'registry')
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        if ext != 'pdf':
+            _delete_stored(storage_uri)
+            return Response({'error': '등기부등본은 PDF 로 올려 주세요.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            text = registry.extract_pdf_text(resolve_media_path(storage_uri))
+            parsed = registry.parse_registry(text)
+        except Exception as e:
+            logger.error(f'등기부등본 파싱 실패: {e}', exc_info=True)
+            parsed, text = {}, ''
+        finally:
+            _delete_stored(storage_uri)   # 원본은 보관하지 않는다(개인정보 포함)
+
+        if not parsed:
+            reason = ('PDF 에서 글자를 찾지 못했습니다(스캔본일 수 있습니다).'
+                      if len(text.strip()) < 50 else
+                      '등본 서식에서 항목을 찾지 못했습니다.')
+            return Response({'error': reason, 'filled': []},
+                            status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+        filled = []
+        with transaction.atomic():
+            for key, value in parsed.items():
+                fact = site.facts.filter(section='spc', key=key).first()
+                if not fact:
+                    continue
+                before = fact.value
+                if before.strip() == value.strip():
+                    continue
+                fact.value = value
+                fact.certainty = 'confirmed'
+                fact.source = '법인등기부등본'
+                fact.save(update_fields=['value', 'certainty', 'source', 'updated_at'])
+                filled.append({'label': fact.label, 'before': before, 'after': value})
+        return Response({'filled': filled, 'found': len(parsed)})
 
     # 메서드명을 detail 로 두면 DRF 가 dispatch 시 심는 self.detail(bool)과 충돌한다.
     @action(detail=True, methods=['get'], url_path='detail')

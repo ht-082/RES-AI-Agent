@@ -3,6 +3,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { apiSend } from '../api'
 import { CERTAINTY_META, EVENT_TYPES } from '../constants'
 import SectionModal from './SectionModal'
+import { lastEdited } from './SectionHead'
 import Lines from './Lines'
 import { CertaintyCell, EditableSelect, EditableText } from './editors'
 import type { SiteEvent } from '../types'
@@ -60,6 +61,7 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
               진행 중 {ongoing}
             </span>
           )}
+          <span className="bz-updated">{lastEdited(events.map(e => e.updated_at))}</span>
           {canEdit && (
             <button className="btn-ghost bz-edit-btn" onClick={() => setEditing(true)}>
               <Pencil size={13} /> 편집

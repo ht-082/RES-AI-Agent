@@ -3,6 +3,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { apiSend } from '../api'
 import { CERTAINTY_META, CONTRACT_CATEGORIES, CONTRACT_STATUS_META } from '../constants'
 import SectionModal from './SectionModal'
+import { lastEdited } from './SectionHead'
 import Lines from './Lines'
 import { CertaintyCell, EditableSelect, EditableText } from './editors'
 import type { Contract } from '../types'
@@ -61,6 +62,7 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
           <span className="bz-chip" style={{ background: 'var(--mint-soft)', color: 'var(--green-600)' }}>
             체결 {signed} / {contracts.length}
           </span>
+          <span className="bz-updated">{lastEdited(contracts.map(c => c.updated_at))}</span>
           {canEdit && (
             <button className="btn-ghost bz-edit-btn" onClick={() => setEditing(true)}>
               <Pencil size={13} /> 편집

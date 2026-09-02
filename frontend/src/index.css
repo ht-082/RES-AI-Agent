@@ -778,8 +778,8 @@ select.bz-cell-input { cursor: pointer; }
 
 /* 나란히 놓인 카드끼리 표 열 너비를 맞춘다 */
 .bz-fact-tbl { table-layout: fixed; }
-.bz-fact-tbl th:nth-child(1), .bz-fact-tbl td:nth-child(1) { width: 38%; }
-.bz-fact-tbl th:nth-child(3), .bz-fact-tbl td:nth-child(3) { width: 86px; }
+.bz-fact-tbl th:nth-child(1), .bz-fact-tbl td:nth-child(1) { width: 104px; }
+.bz-fact-tbl th:nth-child(3), .bz-fact-tbl td:nth-child(3) { width: 80px; }
 .bz-fact-label { font-weight: 600; color: var(--ink-soft); }
 .bz-line { display: block; }
 
@@ -834,3 +834,21 @@ select.bz-cell-input { cursor: pointer; }
 .bz-org-drop { flex-shrink: 0; }
 .bz-org.v .bz-org-drop { width: 0; height: 16px; border-left: 1px solid var(--line); }
 .bz-org.h .bz-org-drop { height: 0; width: 22px; border-top: 1px solid var(--line); }
+
+/* 상위 항목에 딸린 하위 항목(별칭 ← 사업명, 연계거리 ← 연계점) */
+.bz-fact-child .bz-fact-label { padding-left: 12px; position: relative;
+  font-weight: 500; color: var(--ink-faint); }
+.bz-fact-child .bz-fact-label::before { content: ''; position: absolute;
+  left: 3px; top: 0; bottom: 50%; width: 6px;
+  border-left: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  border-bottom-left-radius: 3px; }
+.bz-fact-parent td { border-bottom: none; }
+
+/* 섹션 최종 편집일 */
+.bz-updated { font-size: 10.5px; color: var(--ink-faint); white-space: nowrap; }
+/* 등기부등본 자동 채움 */
+.bz-registry { border: 1px dashed var(--line); border-radius: 10px;
+  padding: 10px 12px; background: var(--surface-2); margin-bottom: 12px; }
+.bz-registry-row { display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; padding: 2px 0; }
+.bz-registry-label { width: 92px; flex-shrink: 0; font-weight: 600; color: var(--ink-soft); }

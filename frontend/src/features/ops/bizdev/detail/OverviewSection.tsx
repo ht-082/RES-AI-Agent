@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
-import { Pencil } from 'lucide-react'
 import FactTable from './FactTable'
+import SectionHead, { lastEdited } from './SectionHead'
 import SectionModal from './SectionModal'
 import { ENERGY_META } from '../constants'
 import type { Site, SiteFact } from '../types'
@@ -40,25 +40,12 @@ export default function OverviewSection({ site, facts, canEdit, onChanged }: {
     return () => { map.remove(); mapRef.current = null }
   }, [site.id, site.lat, site.lng, site.energy_type])
 
-  const unconfirmed = facts.filter(f => f.certainty === 'unconfirmed').length
+  const updatedAt = lastEdited(facts.map(f => f.updated_at))
 
   return (
     <div className="card block">
-      <div className="bz-sec-head">
-        <h3>사업 개요</h3>
-        <div className="bz-sec-actions">
-          {unconfirmed > 0 && (
-            <span className="bz-chip" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>
-              미확정 {unconfirmed}
-            </span>
-          )}
-          {canEdit && (
-            <button className="btn-ghost bz-edit-btn" onClick={() => setEditing(true)}>
-              <Pencil size={13} /> 편집
-            </button>
-          )}
-        </div>
-      </div>
+      <SectionHead title="사업 개요" updatedAt={updatedAt} canEdit={canEdit}
+                   onEdit={() => setEditing(true)} />
       <div ref={boxRef} style={{ height: 190, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)' }}>
         {(site.lat == null || site.lng == null) && (
           <p className="note" style={{ padding: 20 }}>위경도 미입력 — 지도 표시 불가</p>

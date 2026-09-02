@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 import { apiSend, apiUpload } from '../api'
 import { CertaintyCell, EditableSelect, EditableText } from './editors'
 import SectionModal from './SectionModal'
+import { lastEdited } from './SectionHead'
 import Lines from './Lines'
 import { CERTAINTY_META, STATUS_META } from '../constants'
 import type { PermitStage } from '../types'
@@ -143,6 +144,7 @@ export default function PermitSection({ stages, canEdit, onChanged, onError }: {
           <span className="bz-chip" style={{ background: 'var(--mint-soft)', color: 'var(--green-600)' }}>
             완료 {doneCount} / {target.length}
           </span>
+          <span className="bz-updated">{lastEdited(stages.map(s => s.updated_at))}</span>
           {canEdit && (
             <button className="btn-ghost bz-edit-btn" onClick={() => setEditing(true)}>
               <Pencil size={13} /> 편집

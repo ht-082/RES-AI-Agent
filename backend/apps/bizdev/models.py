@@ -90,6 +90,7 @@ class PermitStage(models.Model):
                                   help_text='deadline 없을 때 표시 문구(종결/예정/순번 등)')
     doc_label = models.CharField(max_length=30, default='문서')
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'bizdev_permit_stages'
@@ -242,6 +243,7 @@ class Contract(models.Model):
     note = models.CharField(max_length=200, blank=True, default='')
     sort_order = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'bizdev_contracts'
@@ -268,6 +270,7 @@ class SiteEvent(models.Model):
     certainty = models.CharField(max_length=12, choices=CERTAINTY_CHOICES,
                                  default='confirmed')
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'bizdev_site_events'

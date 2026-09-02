@@ -14,6 +14,7 @@ export interface FactInputSpec {
   options?: string[]
   unit?: string
   display?: string
+  parent?: string
 }
 
 export interface SiteFact {
@@ -28,6 +29,7 @@ export interface SiteFact {
   note: string
   sort_order: number
   input_spec: FactInputSpec
+  updated_at: string
 }
 
 export interface Contract {
@@ -43,6 +45,7 @@ export interface Contract {
   note: string
   sort_order: number
   created_at: string
+  updated_at: string
 }
 
 export interface SiteEvent {
@@ -55,6 +58,7 @@ export interface SiteEvent {
   summary: string
   certainty: Certainty
   created_at: string
+  updated_at: string
 }
 
 export interface FactSection {
@@ -127,6 +131,7 @@ export interface PermitStage {
   dday_label: string
   doc_label: string
   documents: PermitDocument[]
+  updated_at: string
 }
 
 export interface BudgetEntry {
