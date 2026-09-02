@@ -72,15 +72,15 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
       </div>
   )
   const table = (editable: boolean) => (
-      <table className="tbl bz-doc-tbl" style={{ marginTop: 10 }}>
+      <table className="tbl bz-doc-tbl bz-contract-tbl" style={{ marginTop: 10 }}>
         <thead>
           <tr>
-            <th style={{ width: 170 }}>구분</th>
-            <th style={{ width: 130 }}>상대방</th>
+            <th>구분</th>
+            <th>상대방</th>
             <th>주요 내용</th>
-            <th style={{ width: 90 }}>확정도</th>
-            <th style={{ width: 96 }}>체결</th>
-            {canEdit && editable && <th style={{ width: 34 }} />}
+            <th>확정도</th>
+            <th>체결</th>
+            {canEdit && editable && <th className="bz-col-act" />}
           </tr>
         </thead>
         <tbody>

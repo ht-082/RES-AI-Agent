@@ -126,10 +126,16 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
                                canEdit={canEdit} onChanged={reload} />
                 </div>
               </div>
+              {/* 좌: 예산 승인·집행 · 우: 계약 정보.
+                  높이가 크게 달라 억지로 맞추면 빈 공간이 생기므로 각자 높이대로 둔다. */}
+              <div className="grid-2" style={{ alignItems: 'start' }}>
+                <BudgetCard siteId={siteId} entries={data.budget_entries}
+                            summary={data.budget_summary} canEdit={canEdit} onChanged={reload} />
+                <ContractSection siteId={siteId} contracts={data.contracts}
+                                 canEdit={canEdit} onChanged={reload} onError={setError} />
+              </div>
               <PermitSection stages={data.stages} canEdit={canEdit}
                              onChanged={reload} onError={setError} />
-              <ContractSection siteId={siteId} contracts={data.contracts}
-                               canEdit={canEdit} onChanged={reload} onError={setError} />
               <EventSection siteId={siteId} events={data.events}
                             canEdit={canEdit} onChanged={reload} onError={setError} />
               <FactSection title={labelOf('econ')} facts={factsOf('econ')}
@@ -137,9 +143,6 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
               <FactSection title={labelOf('pf')} facts={factsOf('pf')}
                            canEdit={canEdit} onChanged={reload} />
 
-              {/* 양식에 없는 유지 기능 */}
-              <BudgetCard siteId={siteId} entries={data.budget_entries}
-                          summary={data.budget_summary} canEdit={canEdit} onChanged={reload} />
               <div className="grid-2 lean">
                 <GridCard sido={data.site.sido || data.site.location} />
                 <OrdinanceCard sido={data.site.sido || data.site.location} />

@@ -858,3 +858,11 @@ select.bz-cell-input { cursor: pointer; }
 .bz-overview-map { flex: 1 1 auto; min-height: 150px; border-radius: 10px;
   overflow: hidden; background: var(--surface-2); }
 .bz-overview > .bz-fact-tbl { flex: 0 0 auto; }
+
+/* 계약 표 — 반폭에서도 다섯 열이 들어가도록 비율 고정 */
+.bz-contract-tbl th:nth-child(1), .bz-contract-tbl td:nth-child(1) { width: 27%; }
+.bz-contract-tbl th:nth-child(2), .bz-contract-tbl td:nth-child(2) { width: 20%; }
+.bz-contract-tbl th:nth-child(4), .bz-contract-tbl td:nth-child(4) { width: 15%; }
+.bz-contract-tbl th:nth-child(5), .bz-contract-tbl td:nth-child(5) { width: 15%; }
+.bz-contract-tbl .bz-col-act { width: 30px; }
+.bz-contract-tbl .bz-cell-input { min-width: 0; }
