@@ -1,21 +1,26 @@
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import type { SiteFact } from '../types'
 
-// 지분구조를 도넛 + 범례로 그린다.
-// 저장 형식은 "주주명 | 지분%" 줄 목록(텍스트)이라 md 내보내기에 영향이 없다.
-const COLORS = ['var(--brand)', 'var(--green-accent)', 'var(--mint)',
-                'var(--amber)', '#5b8cb8', '#8a6ea8']
+// 지분구조도 — 주주 박스에서 선이 내려와 SPC 박스로 모이는 조직도 형태.
+// 지분율은 박스가 아니라 연결선 옆에 붙인다.
+// 배치: 주주가 3명 이하면 위→아래(세로 흐름), 4명 이상이면 왼쪽→오른쪽(가로 흐름).
+//       이름이 길어 가로로 늘어놓으면 박스가 좁아지기 때문이다.
+const VERTICAL_MAX = 3
 
 export function parseShareholders(value: string) {
-  return (value || '').split('\n').map(x => x.trim()).filter(Boolean).map(line => {
+  const NL = String.fromCharCode(10)
+  return (value || '').split(NL).map(x => x.trim()).filter(Boolean).map(line => {
     const [name, pct] = line.split('|').map(s => s.trim())
-    return { name: name || '(미상)', pct: parseFloat(pct) || 0 }
+    return { name: name || '(미상)', pct: pct || '' }
   })
 }
 
-export default function ShareholderBlock({ fact }: { fact: SiteFact }) {
+export default function ShareholderBlock({ fact, targetName }: {
+  fact: SiteFact
+  targetName?: string
+}) {
   const rows = parseShareholders(fact.value)
-  const total = rows.reduce((a, r) => a + r.pct, 0)
+  const total = rows.reduce((a, r) => a + (parseFloat(r.pct) || 0), 0)
+  const target = targetName?.trim() || 'SPC'
 
   if (rows.length === 0) {
     return (
@@ -26,47 +31,42 @@ export default function ShareholderBlock({ fact }: { fact: SiteFact }) {
     )
   }
 
-  // 합이 100%가 아니면 도넛이 실제 비율을 왜곡하므로 남는 몫을 '미지정'으로 채운다
-  const data = total < 100
-    ? [...rows, { name: '미지정', pct: Math.round((100 - total) * 10) / 10 }]
-    : rows
+  const horizontal = rows.length > VERTICAL_MAX
+  // 모이는 선은 첫 박스 중심에서 마지막 박스 중심까지만 그린다.
+  // 박스 높이가 제각각이라 %로 계산할 수 없어, 주주 영역 안에 절대 배치하고
+  // 양끝을 노드 절반만큼(=100%/2n) 안쪽으로 들여 정확히 중심에 맞춘다.
+  const inset = `calc(100% / ${rows.length * 2})`
+  const busStyle = horizontal
+    ? { top: inset, bottom: inset, right: 0 }
+    : { left: inset, right: inset, bottom: 0 }
 
   return (
     <div style={{ marginTop: 14 }}>
       <div className="bz-block-title">
         지분구조
-        {Math.abs(total - 100) > 0.01 && (
+        {Math.abs(total - 100) > 0.01 && rows.some(r => r.pct) && (
           <span className="bz-chip" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>
             합계 {total}%
           </span>
         )}
       </div>
-      <div className="bz-share">
-        <div style={{ width: 116, height: 116, flexShrink: 0 }}>
-          <ResponsiveContainer>
-            <PieChart>
-              <Pie data={data} dataKey="pct" nameKey="name"
-                   innerRadius={30} outerRadius={54} paddingAngle={1} stroke="none">
-                {data.map((d, i) => (
-                  <Cell key={d.name}
-                        fill={d.name === '미지정' ? 'var(--line)' : COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v, n) => [`${v}%`, String(n)]} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="bz-share-legend">
-          {data.map((d, i) => (
-            <div key={d.name} className="bz-share-row">
-              <span className="bz-share-dot" style={{
-                background: d.name === '미지정' ? 'var(--line)' : COLORS[i % COLORS.length],
-              }} />
-              <span className="bz-share-name" title={d.name}>{d.name}</span>
-              <span className="bz-share-pct">{d.pct}%</span>
+
+      <div className={`bz-org ${horizontal ? 'h' : 'v'}`}>
+        <div className="bz-org-holders">
+          {rows.map((r, i) => (
+            <div key={`${r.name}-${i}`} className="bz-org-node">
+              <div className="bz-org-box" title={r.name}>{r.name}</div>
+              <div className="bz-org-stub">
+                {r.pct && <span className="bz-org-pct">{r.pct}%</span>}
+              </div>
             </div>
           ))}
+          {rows.length > 1 && <div className="bz-org-bus" style={busStyle} />}
         </div>
+
+        <div className="bz-org-drop" />
+
+        <div className="bz-org-box bz-org-target" title={target}>{target}</div>
       </div>
     </div>
   )

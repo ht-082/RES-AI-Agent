@@ -45,7 +45,10 @@ export default function FactSection({ title, facts, canEdit, onChanged }: {
       </div>
 
       <FactTable facts={tableRows} canEdit={canEdit} onChanged={onChanged} />
-      {shareRows.map(f => <ShareholderBlock key={f.id} fact={f} />)}
+      {shareRows.map(f => (
+        <ShareholderBlock key={f.id} fact={f}
+                          targetName={facts.find(x => x.key === 'corp_name')?.value} />
+      ))}
 
       {editing && (
         <SectionModal title={title} onClose={() => { setEditing(false); onChanged() }}>

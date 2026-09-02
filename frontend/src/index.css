@@ -796,11 +796,41 @@ select.bz-cell-input { cursor: pointer; }
 .bz-block-title { display: flex; align-items: center; gap: 6px;
   font-size: 12.5px; font-weight: 700; margin-bottom: 8px; }
 
-/* 지분구조 도식 */
-.bz-share { display: flex; align-items: center; gap: 14px; }
-.bz-share-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-.bz-share-row { display: flex; align-items: center; gap: 6px; font-size: 11.5px; }
-.bz-share-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
-.bz-share-name { flex: 1; min-width: 0; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap; color: var(--ink-soft); }
-.bz-share-pct { font-weight: 700; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+/* 지분구조도 — 주주 박스 → 연결선 → SPC 박스 */
+.bz-org { display: flex; align-items: center; }
+.bz-org.v { flex-direction: column; }
+.bz-org.h { flex-direction: row; }
+
+.bz-org-holders { display: flex; position: relative; }
+.bz-org.v .bz-org-holders { flex-direction: row; width: 100%; }
+.bz-org.h .bz-org-holders { flex-direction: column; }
+.bz-org-node { flex: 1; display: flex; min-width: 0; }
+.bz-org.v .bz-org-node { flex-direction: column; align-items: center; }
+.bz-org.h .bz-org-node { flex-direction: row; align-items: center; }
+
+.bz-org-box { border: 1px solid var(--green-600); background: var(--mint-soft);
+  border-radius: 8px; padding: 7px 9px; font-size: 11.5px; line-height: 1.35;
+  color: var(--ink); text-align: center; width: 100%; max-width: 100%;
+  overflow-wrap: anywhere; }
+.bz-org.h .bz-org-box { text-align: left; }
+.bz-org-target { background: var(--surface); border-color: var(--brand);
+  border-width: 1.5px; font-weight: 700; }
+.bz-org.v .bz-org-target { max-width: 62%; }
+.bz-org.h .bz-org-target { max-width: 190px; }
+
+/* 박스에서 뻗어 나오는 짧은 선 + 지분율 라벨 */
+.bz-org-stub { position: relative; flex-shrink: 0; }
+.bz-org.v .bz-org-stub { width: 0; height: 16px; border-left: 1px solid var(--line); }
+.bz-org.h .bz-org-stub { height: 0; width: 22px; border-top: 1px solid var(--line); }
+.bz-org-pct { position: absolute; font-size: 10px; color: var(--ink-faint);
+  white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bz-org.v .bz-org-pct { left: 4px; top: 1px; }
+.bz-org.h .bz-org-pct { left: 2px; top: -13px; }
+
+/* 여러 주주를 하나로 모으는 선 + SPC 로 내려가는 선 */
+.bz-org-bus { position: absolute; }
+.bz-org.v .bz-org-bus { height: 0; border-top: 1px solid var(--line); }
+.bz-org.h .bz-org-bus { width: 0; border-left: 1px solid var(--line); }
+.bz-org-drop { flex-shrink: 0; }
+.bz-org.v .bz-org-drop { width: 0; height: 16px; border-left: 1px solid var(--line); }
+.bz-org.h .bz-org-drop { height: 0; width: 22px; border-top: 1px solid var(--line); }
