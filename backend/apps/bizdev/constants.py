@@ -2,6 +2,7 @@
 사업개발(bizdev) 공용 상수 — Re-project-mng ver2.0 이관.
 
 STAGE_DEFS: 인허가 항목(법정절차 7 + 개별법 협의 3)의 유일한 정의처.
+          tier(major/minor)와 줄 순서가 곧 상·하위 소속이다.
 FACT_DEFS: 사업개요 양식(docs 사업개요_양식_v3.md) 항목의 유일한 정의처.
 원본(Re-project-mng)에서는 js/api.js 와 supabase/05_migration_v2.sql 에 이중
 하드코딩되어 있던 것을 여기로 단일화했다. 사이트 생성(뷰)·시드(command)가 모두
@@ -9,28 +10,40 @@ FACT_DEFS: 사업개요 양식(docs 사업개요_양식_v3.md) 항목의 유일�
 """
 
 STAGE_DEFS = [
-    # 3-1. 전기사업법·국토계획법 절차
-    {'stage_no': 1, 'name': '발전사업허가', 'category': 'statutory', 'agency': '전기위원회',
+    # 상위(major) 절차와 그에 딸린 하위(minor) 협의를 줄 순서로 표현한다.
+    # 화면은 major 를 만나면 새 묶음을 열고 뒤따르는 minor 를 그 아래로 들여쓴다
+    # (원본 Re-project-mng renderStages 와 같은 방식).
+    {'stage_no': 1, 'name': '발전사업허가', 'category': 'statutory', 'tier': 'major',
+     'agency': '전기위원회',
      'content_hint': '허가번호 / 용량 / 허가일자 / 허가조건', 'doc_label': '허가증'},
-    {'stage_no': 2, 'name': '송전용전기설비이용계약', 'category': 'statutory', 'agency': '한국전력공사',
+    {'stage_no': 2, 'name': '송전용전기설비이용계약', 'category': 'statutory', 'tier': 'major',
+     'agency': '한국전력공사',
      'content_hint': '계약전력 / 이용개시일', 'doc_label': '이용계약서'},
-    {'stage_no': 3, 'name': '개발행위허가', 'category': 'statutory', 'agency': '지자체',
+    {'stage_no': 3, 'name': '개발행위허가', 'category': 'statutory', 'tier': 'major',
+     'agency': '지자체',
      'content_hint': '면적 / 필지수', 'doc_label': '허가서'},
-    {'stage_no': 4, 'name': '공사계획인가', 'category': 'statutory', 'agency': '전기안전공사',
-     'content_hint': '', 'doc_label': '인가서'},
-    {'stage_no': 5, 'name': '사용전검사', 'category': 'statutory', 'agency': '전기안전공사',
-     'content_hint': '', 'doc_label': '검사증'},
-    {'stage_no': 6, 'name': '사업개시신고', 'category': 'statutory', 'agency': '지자체',
-     'content_hint': '', 'doc_label': '신고증'},
-    {'stage_no': 7, 'name': '개발행위준공', 'category': 'statutory', 'agency': '지자체',
-     'content_hint': '', 'doc_label': '준공증'},
-    # 3-2. 개별법 협의
-    {'stage_no': 8, 'name': '환경영향평가', 'category': 'individual', 'agency': '유역환경청',
+    # 개별법 협의 — 개발행위허가에 딸린 절차
+    {'stage_no': 4, 'name': '환경영향평가', 'category': 'individual', 'tier': 'minor',
+     'agency': '유역환경청',
      'content_hint': '소규모 / 일반', 'doc_label': '협의문'},
-    {'stage_no': 9, 'name': '재해영향평가', 'category': 'individual', 'agency': '광역지자체',
+    {'stage_no': 5, 'name': '재해영향평가', 'category': 'individual', 'tier': 'minor',
+     'agency': '광역지자체',
      'content_hint': '', 'doc_label': '협의문'},
-    {'stage_no': 10, 'name': '기타 개별법 협의', 'category': 'individual', 'agency': '',
+    {'stage_no': 6, 'name': '기타 개별법 협의', 'category': 'individual', 'tier': 'minor',
+     'agency': '',
      'content_hint': '', 'doc_label': '협의문'},
+    {'stage_no': 7, 'name': '공사계획인가', 'category': 'statutory', 'tier': 'major',
+     'agency': '전기안전공사',
+     'content_hint': '', 'doc_label': '인가서'},
+    {'stage_no': 8, 'name': '사용전검사', 'category': 'statutory', 'tier': 'major',
+     'agency': '전기안전공사',
+     'content_hint': '', 'doc_label': '검사증'},
+    {'stage_no': 9, 'name': '사업개시신고', 'category': 'statutory', 'tier': 'major',
+     'agency': '지자체',
+     'content_hint': '', 'doc_label': '신고증'},
+    {'stage_no': 10, 'name': '개발행위준공', 'category': 'statutory', 'tier': 'major',
+     'agency': '지자체',
+     'content_hint': '', 'doc_label': '준공증'},
 ]
 
 # 인허가 현황 — 문서는 완료/미완료/미대상 3상태지만, 실무상 '미완료'를

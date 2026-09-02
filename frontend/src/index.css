@@ -699,12 +699,12 @@ textarea.inp { resize: vertical; min-height: 84px; line-height: 1.55; }
 
 /* 인허가 항목 카드 — 원본 '인허가 상세 진척도' 배치 */
 .bz-stage-list { margin-top: 12px; }
-.bz-stage-add { display: flex; justify-content: flex-end; margin-top: 4px; }
-/* 개별법 협의 — 개발행위허가에 딸린 하위 절차 */
-.bz-substages { margin: 0 0 6px 32px; padding-left: 12px; border-left: 2px solid var(--line); }
+.bz-stage-add { display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px; }
+.bz-stage-group { margin-bottom: 8px; }
+/* 하위(minor) 항목 — 바로 위 상위 항목에 딸린 절차 */
+.bz-substages { margin: 0 0 0 32px; padding-left: 12px; border-left: 2px solid var(--line); }
 .bz-substages .bz-stage2 { background: var(--surface-2); }
 .bz-substages .bz-stage-name { font-weight: 600; }
-.bz-substages > .bz-edit-btn { margin: 2px 0 4px; }
 .bz-stage2 { display: grid; grid-template-columns: 22px 1fr 150px; gap: 10px;
   align-items: start; padding: 10px; border: 1px solid var(--line-soft);
   border-radius: 10px; background: var(--surface); margin-bottom: 6px; }

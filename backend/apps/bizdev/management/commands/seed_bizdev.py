@@ -104,7 +104,7 @@ class Command(BaseCommand):
             defaults = {
                 'stage_no': d['stage_no'], 'category': d['category'],
                 'agency': d['agency'], 'doc_label': d['doc_label'],
-                'tier': 'major' if d['category'] == 'statutory' else 'minor',
+                'tier': d['tier'],
             }
             stage, created = PermitStage.objects.get_or_create(
                 site=site, name=d['name'], defaults=defaults)

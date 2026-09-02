@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Download, History, Plus, Trash2, Upload } from 'lucide-react'
 import { apiSend, apiUpload } from '../api'
 import { CERTAINTY_META, ddayLabel, STATUS_META } from '../constants'
@@ -15,7 +15,7 @@ const STATE_OPTIONS: Array<[string, string]> = [
 // 원본(project.page.js ST)의 상태 글리프
 const GLYPH: Record<string, string> = { done: '✓', active: '◐', idle: '·', na: '—' }
 // 인허가 현황 — 원본 '인허가 상세 진척도' 카드 배치에 사업개요 양식의
-// 내용·확정도·특이사항을 얹었다. 개별법 협의는 개발행위허가의 하위로 들여쓴다.
+// 내용·확정도·특이사항을 얹었다. 상·하위 묶음은 원본과 같이 tier + 줄 순서로 정한다.
 export default function PermitSection({ siteId, stages, canEdit, onChanged, onError }: {
   siteId: string
   stages: PermitStage[]
@@ -55,28 +55,27 @@ export default function PermitSection({ siteId, stages, canEdit, onChanged, onEr
     } catch (e) { fail(e, '최신 지정 실패') }
   }
 
-  // 순서 이동 — 서버가 1..n 으로 다시 매기므로 사업 전체 순서를 보낸다
-  const move = async (group: PermitStage[], idx: number, dir: -1 | 1) => {
-    const to = idx + dir
-    if (to < 0 || to >= group.length) return
+  // 순서 이동 — 전체 목록에서 바로 위·아래 항목과 자리를 바꾼다.
+  // 상위 항목을 지나치면 소속 묶음이 바뀌므로 이동만으로 계층을 조정할 수 있다.
+  const move = async (stage: PermitStage, dir: -1 | 1) => {
     const ids = [...stages].sort((a, b) => a.stage_no - b.stage_no).map(s => s.id)
-    const from = ids.indexOf(group[idx].id)
-    const dest = ids.indexOf(group[to].id)
-    ids[from] = group[to].id
-    ids[dest] = group[idx].id
+    const from = ids.indexOf(stage.id)
+    const to = from + dir
+    if (to < 0 || to >= ids.length) return
+    ;[ids[from], ids[to]] = [ids[to], ids[from]]
     try {
       await apiSend('POST', '/api/bizdev/stages/reorder/', { site: siteId, ordered_ids: ids })
       onChanged()
     } catch (e) { fail(e, '순서 변경 실패') }
   }
 
-  const addStage = async (category: 'statutory' | 'individual') => {
+  const addStage = async (tier: 'major' | 'minor') => {
     setBusy(true)
     try {
       await apiSend('POST', '/api/bizdev/stages/', {
-        site: siteId, name: '새 항목', category, agency: '', status: 'idle',
+        site: siteId, name: '새 항목', tier, agency: '', status: 'idle',
         certainty: 'unconfirmed', doc_label: '문서',
-        tier: category === 'statutory' ? 'major' : 'minor',
+        category: tier === 'major' ? 'statutory' : 'individual',
       })
       onChanged()
     } catch (e) { fail(e, '항목 추가 실패') } finally { setBusy(false) }
@@ -91,7 +90,7 @@ export default function PermitSection({ siteId, stages, canEdit, onChanged, onEr
   }
 
   // 항목 한 장 — 원본 stageRow 배치(글리프 | 본문 | 우측 상태)
-  const stageRow = (stage: PermitStage, group: PermitStage[], idx: number, editable: boolean) => {
+  const stageRow = (stage: PermitStage, editable: boolean) => {
     const meta = STATUS_META[stage.status]
     const cert = CERTAINTY_META[stage.certainty]
     const current = stage.documents.find(d => d.is_current)
@@ -202,11 +201,20 @@ export default function PermitSection({ siteId, stages, canEdit, onChanged, onEr
           ) : dday ? <span className="bz-stage-dday">{dday}</span> : null}
 
           {canEdit && editable && (
+            <EditableSelect value={stage.tier} disabled={!canEdit}
+                            options={[['major', '상위'], ['minor', '하위']]}
+                            onSave={v => patch(stage, {
+                              tier: v, category: v === 'major' ? 'statutory' : 'individual',
+                            })}
+                            style={{ fontSize: 11, width: 68, textAlign: 'center' }} />
+          )}
+
+          {canEdit && editable && (
             <span className="bz-stage-admin">
               <button className="btn-ghost" title="위로"
-                      onClick={() => move(group, idx, -1)}><ArrowUp size={12} /></button>
+                      onClick={() => move(stage, -1)}><ArrowUp size={12} /></button>
               <button className="btn-ghost" title="아래로"
-                      onClick={() => move(group, idx, 1)}><ArrowDown size={12} /></button>
+                      onClick={() => move(stage, 1)}><ArrowDown size={12} /></button>
               <button className="btn-ghost" title="삭제"
                       onClick={() => removeStage(stage)}><Trash2 size={12} /></button>
             </span>
@@ -216,45 +224,46 @@ export default function PermitSection({ siteId, stages, canEdit, onChanged, onEr
     )
   }
 
-  const statutory = [...stages].filter(s => s.category === 'statutory')
-    .sort((a, b) => a.stage_no - b.stage_no)
-  const individual = [...stages].filter(s => s.category === 'individual')
-    .sort((a, b) => a.stage_no - b.stage_no)
-  // 개별법 협의는 개발행위허가에 딸린 절차라 그 아래로 들여쓴다.
-  // 개발행위허가 항목이 없으면(직접 만든 사업지) 목록 끝에 붙인다.
-  const anchor = statutory.findIndex(s => s.name.includes('개발행위허가'))
+  // 묶기 — 원본 renderStages 와 같다. 줄 순서대로 읽다가 상위(major)를 만나면
+  // 새 묶음을 열고, 뒤따르는 하위(minor)를 그 묶음에 담는다. 부모를 가리키는
+  // 필드가 따로 없고 줄 순서가 곧 소속이라, ▲▼ 이동만으로 계층이 바뀐다.
+  const ordered = [...stages].sort((a, b) => a.stage_no - b.stage_no)
+  const groups: Array<{ head: PermitStage | null; items: PermitStage[] }> = []
+  ordered.forEach(st => {
+    const cur = groups[groups.length - 1]
+    if (st.tier === 'major' || !cur) {
+      groups.push(st.tier === 'major' ? { head: st, items: [] } : { head: null, items: [st] })
+    } else {
+      cur.items.push(st)
+    }
+  })
 
   const target = stages.filter(s => s.status !== 'na')
   const doneCount = target.filter(s => s.status === 'done').length
 
-  const addBtn = (label: string, category: 'statutory' | 'individual') => (
+  const addBtn = (label: string, tier: 'major' | 'minor') => (
     <button className="btn-ghost bz-edit-btn" disabled={busy}
-            onClick={() => addStage(category)}><Plus size={13} /> {label}</button>
-  )
-
-  const substages = (editable: boolean) => (
-    (individual.length > 0 || (canEdit && editable)) && (
-      <div className="bz-substages">
-        {individual.map((s, i) => stageRow(s, individual, i, editable))}
-        {canEdit && editable && addBtn('하위 협의 추가', 'individual')}
-      </div>
-    )
+            onClick={() => addStage(tier)}><Plus size={13} /> {label}</button>
   )
 
   const body = (editable: boolean) => (
     <div className="bz-stage-list">
-      {statutory.length === 0 && individual.length === 0 && (
-        <p className="note">항목이 없습니다.</p>
-      )}
-      {statutory.map((s, i) => (
-        <Fragment key={s.id}>
-          {stageRow(s, statutory, i, editable)}
-          {i === anchor && substages(editable)}
-        </Fragment>
+      {ordered.length === 0 && <p className="note">항목이 없습니다.</p>}
+      {groups.map((g, gi) => (
+        <div className="bz-stage-group" key={g.head?.id || g.items[0]?.id || gi}>
+          {g.head && stageRow(g.head, editable)}
+          {g.items.length > 0 && (
+            <div className="bz-substages">
+              {g.items.map(st => stageRow(st, editable))}
+            </div>
+          )}
+        </div>
       ))}
-      {anchor < 0 && substages(editable)}
       {canEdit && editable && (
-        <div className="bz-stage-add">{addBtn('항목 추가', 'statutory')}</div>
+        <div className="bz-stage-add">
+          {addBtn('상위 항목 추가', 'major')}
+          {addBtn('하위 항목 추가', 'minor')}
+        </div>
       )}
     </div>
   )

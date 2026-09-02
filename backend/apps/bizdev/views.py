@@ -122,7 +122,7 @@ class SiteViewSet(viewsets.ModelViewSet):
                     site=site, stage_no=d['stage_no'], name=d['name'],
                     agency=d['agency'], category=d['category'],
                     doc_label=d['doc_label'], status='idle', progress_pct=0,
-                    tier='major' if d['category'] == 'statutory' else 'minor',
+                    tier=d['tier'],
                 ) for d in STAGE_DEFS
             ])
             # 사업개요 항목 골격 — 빈칸으로 만들어 두고 담당자가 채운다
