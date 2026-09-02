@@ -7,6 +7,7 @@ import FactSection from './detail/FactSection'
 import ContractSection from './detail/ContractSection'
 import EventSection from './detail/EventSection'
 import GridCard from './detail/GridCard'
+import SectionHead from './detail/SectionHead'
 import { apiGet } from './api'
 import { formatKRW } from './constants'
 import AliasBadge from './detail/AliasBadge'
@@ -100,7 +101,7 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
               <OverviewCard site={data.site} budget={data.budget_summary} />
 
               <div className="card block">
-                <h3>월별 발전량 (추정)</h3>
+                <SectionHead title="월별 발전량 (추정)" />
                 <div className="h-sub" style={{ marginBottom: 12 }}>
                   연간 예상 발전량 {annual}GWh 를 계절 패턴으로 배분한 추정치 — 실측 계측 연동은 후속
                 </div>

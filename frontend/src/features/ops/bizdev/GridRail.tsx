@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import SectionHead from './detail/SectionHead'
 import { apiGet } from './api'
 import { sidoOf } from './constants'
 import type { GridRegion, Site } from './types'
@@ -35,7 +36,7 @@ export default function GridRail({ sites }: { sites: Site[] }) {
 
   return (
     <div className="card block" style={{ padding: 16 }}>
-      <h3 style={{ fontSize: 13.5 }}>계통 접속 가능용량</h3>
+      <SectionHead title="계통 접속 가능용량" />
       <div className="h-sub" style={{ marginBottom: 10 }}>시도별 · KEPCO 분산전원 연계정보</div>
       {rows.length === 0 && <p className="note">데이터 없음</p>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>

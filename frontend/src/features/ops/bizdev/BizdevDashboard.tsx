@@ -6,6 +6,7 @@ import GridRail from './GridRail'
 import LawRail from './LawRail'
 import PipelineTable from './PipelineTable'
 import SiteFormModal from './SiteFormModal'
+import SectionHead from './detail/SectionHead'
 import { apiGet } from './api'
 import type { AppUser, Law, Site } from './types'
 
@@ -101,7 +102,7 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
       {/* 지도 + 우측 레일 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(260px, 1fr)', gap: 16, marginBottom: 22 }}>
         <div className="card block" style={{ display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 440 }}>
-          <h3>포트폴리오 지도</h3>
+          <SectionHead title="포트폴리오 지도" />
           <div className="h-sub" style={{ marginBottom: 10 }}>마커 클릭 → 요약 · 상세 이동 (태양광 주황 / 풍력 청록)</div>
           <SiteMap sites={filtered} onPick={setDrawerSite} />
           {drawerSite && (
@@ -117,7 +118,7 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
 
       {/* 사업 List */}
       <div className="card block">
-        <h3>사업 List</h3>
+        <SectionHead title="사업 List" />
         <div className="h-sub" style={{ marginBottom: 12 }}>
           행 클릭 → 개발 사업은 인허가·예산 상세로, <b>운영</b> 배지 사업은 발전 실적 상세로 이동
         </div>

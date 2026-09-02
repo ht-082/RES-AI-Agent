@@ -14,8 +14,8 @@ export function lastEdited(stamps: Array<string | undefined | null>): string {
 export default function SectionHead({ title, updatedAt, canEdit, onEdit, extra }: {
   title: string
   updatedAt?: string
-  canEdit: boolean
-  onEdit: () => void
+  canEdit?: boolean          // 편집이 없는 카드(계통·조례)는 넘기지 않는다
+  onEdit?: () => void
   extra?: React.ReactNode
 }) {
   return (
@@ -24,7 +24,7 @@ export default function SectionHead({ title, updatedAt, canEdit, onEdit, extra }
       <div className="bz-sec-actions">
         {extra}
         {updatedAt && <span className="bz-updated">{updatedAt}</span>}
-        {canEdit && (
+        {canEdit && onEdit && (
           <button className="btn-ghost bz-edit-btn" onClick={onEdit}>
             <Pencil size={13} /> 편집
           </button>

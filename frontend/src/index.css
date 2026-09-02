@@ -773,7 +773,15 @@ select.bz-cell-input { cursor: pointer; }
 .bz-alias-badge:hover .bz-alias-pop { display: block; }
 
 /* 섹션 헤더 + 편집 버튼 */
-.bz-sec-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+/* 카드 머리 — 카드 폭 전체를 쓰는 연한 브랜드 톤 띠.
+   .block 의 패딩(22px)을 음수 여백으로 상쇄해 모서리까지 채운다. */
+.bz-sec-head { display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; margin: -22px -22px 16px; padding: 12px 22px;
+  background: color-mix(in srgb, var(--mint-soft) 55%, var(--surface));
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--radius) var(--radius) 0 0; }
+.bz-sec-head h3 { font-size: 15.5px; font-weight: 700; color: var(--brand);
+  margin-bottom: 0; letter-spacing: -0.01em; }
 .bz-sec-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .bz-edit-btn { font-size: 12px; display: flex; align-items: center; gap: 4px; padding: 3px 9px; }
 
@@ -933,3 +941,5 @@ select.bz-cell-input { cursor: pointer; }
 .bz-event-tbl th:nth-child(2) { width: 12%; }
 .bz-event-tbl th:nth-child(3) { width: 14%; }
 .bz-event-tbl th:nth-child(5) { width: 14%; }
+/* 좁은 레일 카드(계통·법령)는 안쪽 여백이 16px 이라 띠 여백도 맞춘다 */
+.card.block[style*="padding: 16px"] .bz-sec-head { margin: -16px -16px 12px; padding: 10px 16px; }

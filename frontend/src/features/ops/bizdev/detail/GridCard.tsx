@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import SectionHead from './SectionHead'
 import { apiGet } from '../api'
 import type { GridSubstation } from '../types'
 
@@ -22,7 +23,7 @@ export default function GridCard({ sido }: { sido: string }) {
 
   return (
     <div className="card block">
-      <h3>계통 상황</h3>
+      <SectionHead title="계통 상황" />
       <div className="h-sub" style={{ marginBottom: 12 }}>
         인근 변전소 접속 여유 (KEPCO 분산전원 연계정보 · 여유 적은 순)
       </div>

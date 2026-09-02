@@ -1,4 +1,5 @@
 import { ExternalLink } from 'lucide-react'
+import SectionHead from './detail/SectionHead'
 import type { Law } from './types'
 
 const CAT_COLOR: Record<string, string> = {
@@ -12,7 +13,7 @@ const CAT_COLOR: Record<string, string> = {
 export default function LawRail({ laws }: { laws: Law[] }) {
   return (
     <div className="card block" style={{ padding: 16 }}>
-      <h3 style={{ fontSize: 13.5 }}>영향 법령 동향</h3>
+      <SectionHead title="영향 법령 동향" />
       <div className="h-sub" style={{ marginBottom: 10 }}>법제처 국가법령정보 · 최근 순</div>
       {laws.length === 0 && <p className="note">데이터 없음</p>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

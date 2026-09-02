@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ExternalLink } from 'lucide-react'
+import SectionHead from './SectionHead'
 import { apiGet } from '../api'
 import type { Law } from '../types'
 
@@ -19,7 +20,7 @@ export default function OrdinanceCard({ sido }: { sido: string }) {
 
   return (
     <div className="card block">
-      <h3>지자체 조례 모니터링</h3>
+      <SectionHead title="지자체 조례 모니터링" />
       <div className="h-sub" style={{ marginBottom: 12 }}>재생에너지 관련 조례 (법제처 국가법령정보)</div>
       {loaded && rows.length === 0 && <p className="note">관련 조례가 없습니다.</p>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
