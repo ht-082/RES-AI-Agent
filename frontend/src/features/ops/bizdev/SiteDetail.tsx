@@ -126,20 +126,24 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
                                canEdit={canEdit} onChanged={reload} />
                 </div>
               </div>
-              {/* 좌: 예산 승인·집행 · 우: 계약 정보 — 아래 끝을 맞춘다 */}
+              {/* 좌: 예산 승인·집행 → 경제성 · 우: 계약 정보 → 진행경과 */}
               <div className="grid-2 bz-even-row">
-                <BudgetCard siteId={siteId} entries={data.budget_entries}
-                            approvals={data.budget_approvals} summary={data.budget_summary}
-                            canEdit={canEdit} onChanged={reload} />
-                <ContractSection siteId={siteId} contracts={data.contracts}
-                                 canEdit={canEdit} onChanged={reload} onError={setError} />
+                <div className="bz-stack">
+                  <BudgetCard siteId={siteId} entries={data.budget_entries}
+                              approvals={data.budget_approvals} summary={data.budget_summary}
+                              canEdit={canEdit} onChanged={reload} />
+                  <FactSection title={labelOf('econ')} facts={factsOf('econ')}
+                               canEdit={canEdit} onChanged={reload} />
+                </div>
+                <div className="bz-stack">
+                  <ContractSection siteId={siteId} contracts={data.contracts}
+                                   canEdit={canEdit} onChanged={reload} onError={setError} />
+                  <EventSection siteId={siteId} events={data.events}
+                                canEdit={canEdit} onChanged={reload} onError={setError} />
+                </div>
               </div>
               <PermitSection stages={data.stages} canEdit={canEdit}
                              onChanged={reload} onError={setError} />
-              <EventSection siteId={siteId} events={data.events}
-                            canEdit={canEdit} onChanged={reload} onError={setError} />
-              <FactSection title={labelOf('econ')} facts={factsOf('econ')}
-                           canEdit={canEdit} onChanged={reload} />
               <FactSection title={labelOf('pf')} facts={factsOf('pf')}
                            canEdit={canEdit} onChanged={reload} />
 
