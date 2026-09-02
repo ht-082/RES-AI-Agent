@@ -1,7 +1,7 @@
 """
 사업개발(bizdev) 공용 상수 — Re-project-mng ver2.0 이관.
 
-STAGE_DEFS: 인허가 항목(법정절차 7 + 개별법 협의 3)의 유일한 정의처.
+STAGE_DEFS: 인허가 항목(법정절차 7 + 개별법 협의 7)의 유일한 정의처.
           tier(major/minor)와 줄 순서가 곧 상·하위 소속이다.
 FACT_DEFS: 사업개요 양식(docs 사업개요_양식_v3.md) 항목의 유일한 정의처.
 원본(Re-project-mng)에서는 js/api.js 와 supabase/05_migration_v2.sql 에 이중
@@ -22,26 +22,38 @@ STAGE_DEFS = [
     {'stage_no': 3, 'name': '개발행위허가', 'category': 'statutory', 'tier': 'major',
      'agency': '지자체',
      'content_hint': '면적 / 필지수', 'doc_label': '허가서'},
-    # 개별법 협의 — 개발행위허가에 딸린 절차
+    # 개별법 협의 — 개발행위허가에 딸린 절차(원본 STAGE_DEFS 4~10번과 같은 구성)
     {'stage_no': 4, 'name': '환경영향평가', 'category': 'individual', 'tier': 'minor',
      'agency': '유역환경청',
      'content_hint': '소규모 / 일반', 'doc_label': '협의문'},
     {'stage_no': 5, 'name': '재해영향평가', 'category': 'individual', 'tier': 'minor',
      'agency': '광역지자체',
      'content_hint': '', 'doc_label': '협의문'},
-    {'stage_no': 6, 'name': '기타 개별법 협의', 'category': 'individual', 'tier': 'minor',
-     'agency': '',
-     'content_hint': '', 'doc_label': '협의문'},
-    {'stage_no': 7, 'name': '공사계획인가', 'category': 'statutory', 'tier': 'major',
+    {'stage_no': 6, 'name': '농지 타용도 일시사용허가', 'category': 'individual', 'tier': 'minor',
+     'agency': '지자체',
+     'content_hint': '', 'doc_label': '허가서'},
+    {'stage_no': 7, 'name': '농지생산기반시설 사용허가', 'category': 'individual', 'tier': 'minor',
+     'agency': '한국농어촌공사',
+     'content_hint': '', 'doc_label': '승인서'},
+    {'stage_no': 8, 'name': '경관심의', 'category': 'individual', 'tier': 'minor',
+     'agency': '지자체',
+     'content_hint': '', 'doc_label': '심의결과'},
+    {'stage_no': 9, 'name': '교통계획', 'category': 'individual', 'tier': 'minor',
+     'agency': '지자체',
+     'content_hint': '', 'doc_label': '심의결과'},
+    {'stage_no': 10, 'name': '문화재지표조사', 'category': 'individual', 'tier': 'minor',
+     'agency': '문화재청',
+     'content_hint': '', 'doc_label': '조사보고서'},
+    {'stage_no': 11, 'name': '공사계획인가', 'category': 'statutory', 'tier': 'major',
      'agency': '전기안전공사',
      'content_hint': '', 'doc_label': '인가서'},
-    {'stage_no': 8, 'name': '사용전검사', 'category': 'statutory', 'tier': 'major',
+    {'stage_no': 12, 'name': '사용전검사', 'category': 'statutory', 'tier': 'major',
      'agency': '전기안전공사',
      'content_hint': '', 'doc_label': '검사증'},
-    {'stage_no': 9, 'name': '사업개시신고', 'category': 'statutory', 'tier': 'major',
+    {'stage_no': 13, 'name': '사업개시신고', 'category': 'statutory', 'tier': 'major',
      'agency': '지자체',
      'content_hint': '', 'doc_label': '신고증'},
-    {'stage_no': 10, 'name': '개발행위준공', 'category': 'statutory', 'tier': 'major',
+    {'stage_no': 14, 'name': '개발행위준공', 'category': 'statutory', 'tier': 'major',
      'agency': '지자체',
      'content_hint': '', 'doc_label': '준공증'},
 ]
