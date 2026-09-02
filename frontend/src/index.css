@@ -952,3 +952,18 @@ select.bz-cell-input { cursor: pointer; }
   overflow: hidden; text-overflow: ellipsis; }
 /* 편집 팝업의 입력칸은 원래대로 여러 줄을 쓴다 */
 .bz-doc-tbl td .bz-cell-input { white-space: pre-wrap; overflow: auto; text-overflow: clip; }
+
+/* 인허가 진척 개요 — 대시보드 사업 List 의 7단계 표시를 상세에도 */
+.bz-strip { margin-bottom: 6px; }
+.bz-strip-head { display: flex; justify-content: space-between; align-items: baseline;
+  gap: 8px; margin-bottom: 8px; }
+.bz-strip-title { font-size: 12.5px; font-weight: 700; }
+.bz-strip-note { font-size: 10.5px; color: var(--ink-faint); }
+.bz-strip-track { display: flex; }
+.bz-strip-step { flex: 1; min-width: 0; display: flex; flex-direction: column;
+  align-items: center; gap: 5px; position: relative; }
+.bz-strip-line { position: absolute; top: 6px; right: 50%; width: 100%;
+  height: 1px; background: var(--line); }
+.bz-strip-step .bz-dot { position: relative; z-index: 1; }
+.bz-strip-label { font-size: 10px; color: var(--ink-soft); text-align: center;
+  white-space: normal; line-height: 1.25; }

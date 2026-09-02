@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 import { apiSend, apiUpload } from '../api'
 import { CertaintyCell, EditableSelect, EditableText } from './editors'
 import SectionModal from './SectionModal'
+import PipelineStrip from './PipelineStrip'
 import { lastEdited } from './SectionHead'
 import Lines from './Lines'
 import { CERTAINTY_META, STATUS_META } from '../constants'
@@ -154,6 +155,7 @@ export default function PermitSection({ stages, canEdit, onChanged, onError }: {
       </div>
       <input ref={fileInput} type="file" style={{ display: 'none' }}
              onChange={e => upload(e.target.files?.[0])} />
+      <PipelineStrip stages={stages} />
       {table('3-1. 전기사업법 · 국토계획법 절차', statutory, false)}
       {table('3-2. 개별법 협의', individual, false)}
 

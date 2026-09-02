@@ -81,13 +81,13 @@ export const ISSUE_TYPE_LABEL = { complaint: '민원성', grid: '계통', etc: '
 
 // ── 파이프라인 7컬럼 (원본 index.page.js:219-236 이식) ──────────────
 export const PIPE_COLS = [
-  { label: '발전사업\n허가', kw: ['발전사업허가'] },
+  { label: '발전사업허가', kw: ['발전사업허가'] },
   { label: '이용계약', kw: ['이용계약'] },
-  { label: '환경성\n검토', kw: ['환경영향', '재해영향'] },
-  { label: '본단지\n개발허가', kw: ['개발행위'] },
-  { label: '선로\n개발허가', kw: ['도로점용'] },
-  { label: '공사계획\n인가', kw: ['공사계획'] },
-  { label: '착공', kw: [] as string[] },
+  { label: '개발행위허가', kw: ['개발행위허가'] },
+  { label: '환경성 검토', kw: ['환경영향', '재해영향'] },
+  { label: '공사계획인가', kw: ['공사계획'] },
+  { label: '사용전검사', kw: ['사용전검사'] },
+  { label: '사업개시 · 준공', kw: ['사업개시신고', '개발행위준공'] },
 ]
 
 export function colStatus(stages: StageSummary[], col: (typeof PIPE_COLS)[number]): StageStatus {

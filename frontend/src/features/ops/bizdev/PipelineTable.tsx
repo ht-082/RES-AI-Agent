@@ -20,7 +20,7 @@ export default function PipelineTable({ sites, onSelectSite }: {
           <tr>
             <th style={{ width: 220 }}>사업지</th>
             {PIPE_COLS.map(c => (
-              <th key={c.label} style={{ textAlign: 'center', whiteSpace: 'pre-line', lineHeight: 1.25, fontSize: 10.5 }}>
+              <th key={c.label} style={{ textAlign: 'center', whiteSpace: 'normal', lineHeight: 1.25, fontSize: 10.5 }}>
                 {c.label}
               </th>
             ))}
@@ -54,7 +54,7 @@ export default function PipelineTable({ sites, onSelectSite }: {
                 </td>
                 {cols.map((s, i) => (
                   <td key={i} style={{ textAlign: 'center' }}
-                      title={`${PIPE_COLS[i].label.replace(/\n/g, '')}: ${STATUS_META[s].label}`}>
+                      title={`${PIPE_COLS[i].label}: ${STATUS_META[s].label}`}>
                     <span className={`bz-dot ${i === curIdx ? 'cur' : ''}`}
                           style={{ background: STATUS_META[s].color }} />
                   </td>
