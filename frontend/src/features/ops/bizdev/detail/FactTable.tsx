@@ -2,6 +2,7 @@ import { apiSend } from '../api'
 import { CERTAINTY_META } from '../constants'
 import { CertaintyCell } from './editors'
 import FactCell from './FactCell'
+import { parseShareholders } from './ShareholderBlock'
 import type { SiteFact } from '../types'
 
 // 사업개요 항목 표.
@@ -63,6 +64,17 @@ function FactValue({ fact }: { fact: SiteFact }) {
   const spec = fact.input_spec || { input: 'text' }
   const value = (fact.value || '').trim()
   if (!value) return <span className="bz-muted">미정</span>
+
+  // 사업 개요의 지분구조는 SPC 값을 비추는 읽기 전용이다
+  if (spec.input === 'derived' && spec.display === 'shareholders') {
+    return (
+      <span>
+        {parseShareholders(value).map(r => (
+          <span key={r.name} className="bz-line">{r.name}{r.pct ? ` · ${r.pct}%` : ''}</span>
+        ))}
+      </span>
+    )
+  }
 
   switch (spec.input) {
     case 'aliases':

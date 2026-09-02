@@ -35,9 +35,6 @@ FACTS = {
         ('basic', 'grid_point'): ('은하', 'confirmed', '발전사업허가증', ''),
         ('basic', 'grid_distance'): ('20 · 지중 · 154kV', 'unconfirmed', '', ''),
         ('basic', 'total_capex'): ('', 'unconfirmed', '', ''),
-        ('basic', 'ownership'): (
-            '한국투자증권(주) — 트러스톤 ESG 신재생에너지 일반사모투자신탁 제2호 신탁업자 | 100',
-            'confirmed', '', ''),
         ('basic', 'profitability'): ('', 'unconfirmed', '', 'E.IRR은 펀드 기준'),
         ('basic', 'period'): ('2031-12-31', 'confirmed', '', '이후 20년 (부지 임대차와 동일)'),
 
@@ -48,6 +45,9 @@ FACTS = {
                                  '사업자등록증', ''),
         ('spc', 'directors'): ('대표자 현대석', 'confirmed', '', '이사구성 추후 확인'),
         ('spc', 'capital'): ('미정', 'unconfirmed', '', '추후 확인'),
+        ('spc', 'ownership'): (
+            '한국투자증권(주) — 트러스톤 ESG 신재생에너지 일반사모투자신탁 제2호 신탁업자 | 100',
+            'confirmed', '', ''),
 
         ('land', 'area'): ('238,638평', 'confirmed', '발전사업허가 신청도서', ''),
         ('land', 'land_type'): ('염해간척지 · 임대', 'confirmed', '임대차계약서', ''),

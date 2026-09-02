@@ -13,6 +13,7 @@ export interface FactInputSpec {
        | 'grid_distance' | 'aliases' | 'shareholders' | 'derived'
   options?: string[]
   unit?: string
+  display?: string
 }
 
 export interface SiteFact {

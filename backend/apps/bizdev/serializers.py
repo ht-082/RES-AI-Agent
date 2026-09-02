@@ -121,7 +121,7 @@ class SiteFactSerializer(serializers.ModelSerializer):
     def get_input_spec(self, obj):
         spec = fact_spec(obj.section, obj.key) or {}
         out = {'input': spec.get('input', 'text')}
-        for k in ('options', 'unit'):
+        for k in ('options', 'unit', 'display'):
             if spec.get(k):
                 out[k] = spec[k]
         return out

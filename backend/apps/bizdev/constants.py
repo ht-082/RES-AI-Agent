@@ -103,7 +103,8 @@ FACT_DEFS = [
      'input': 'grid_distance'},
     {'section': 'basic', 'key': 'total_capex', 'label': '총사업비',
      'input': 'derived', 'source': ('econ', 'total_capex'), 'unit': '억원'},
-    {'section': 'basic', 'key': 'ownership', 'label': '지분구조', 'input': 'shareholders'},
+    {'section': 'basic', 'key': 'ownership', 'label': '지분구조',
+     'input': 'derived', 'source': ('spc', 'ownership'), 'display': 'shareholders'},
     {'section': 'basic', 'key': 'profitability', 'label': '경제성',
      'input': 'derived', 'source': ('econ', 'e_irr'), 'also': ('econ', 'p_irr_pretax')},
     {'section': 'basic', 'key': 'period', 'label': '운영개시일',
@@ -115,6 +116,7 @@ FACT_DEFS = [
     {'section': 'spc', 'key': 'head_office', 'label': '본점'},
     {'section': 'spc', 'key': 'directors', 'label': '이사진'},
     {'section': 'spc', 'key': 'capital', 'label': '자본금'},
+    {'section': 'spc', 'key': 'ownership', 'label': '지분구조', 'input': 'shareholders'},
 
     {'section': 'land', 'key': 'area', 'label': '부지 면적'},
     {'section': 'land', 'key': 'land_type', 'label': '부지 유형'},

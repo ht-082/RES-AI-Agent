@@ -203,38 +203,58 @@ function AliasCell({ fact, canEdit, onSave }: CellProps) {
 }
 
 // ── 지분구조: 주주명 | 지분% 행 (합계 100% 검증) ────────────────────
+// 빈 행은 저장하지 않으므로(저장 형식이 텍스트라 빈 줄이 쌓인다) 화면 상태로만
+// 들고 있다가, 이름이나 지분을 채우는 순간 저장한다.
 function ShareholderCell({ fact, canEdit, onSave }: CellProps) {
-  const rows = (fact.value || '').split('\n').map(x => x.trim()).filter(Boolean)
+  const NL = String.fromCharCode(10)
+  const parse = (v: string) => (v || '').split(NL).map(x => x.trim()).filter(Boolean)
     .map(line => {
       const [name, pct] = line.split('|').map(s => s.trim())
       return { name: name || '', pct: pct || '' }
     })
+
+  const [rows, setRows] = useState(() => parse(fact.value))
+  const saved = useRef(fact.value)
+
+  // 서버 값이 바뀌면 따라간다(내가 저장해 돌아온 값이면 그대로)
+  useEffect(() => {
+    if (fact.value !== saved.current) {
+      saved.current = fact.value
+      setRows(parse(fact.value))
+    }
+  }, [fact.value])
+
   const total = rows.reduce((a, r) => a + (parseFloat(r.pct) || 0), 0)
 
-  const write = (next: Array<{ name: string; pct: string }>) =>
-    onSave(next.filter(r => r.name || r.pct).map(r => `${r.name} | ${r.pct}`).join('\n'))
+  const commit = (next: Array<{ name: string; pct: string }>) => {
+    setRows(next)
+    const text = next.filter(r => r.name || r.pct)
+      .map(r => `${r.name} | ${r.pct}`).join(NL)
+    saved.current = text
+    void onSave(text)
+  }
 
   return (
     <div>
       {rows.map((r, i) => (
         <div key={i} className="bz-inline" style={{ marginBottom: 2 }}>
           <EditableText value={r.name} placeholder="주주명" disabled={!canEdit}
-                        onSave={v => write(rows.map((x, j) => j === i ? { ...x, name: v } : x))} />
+                        onSave={v => commit(rows.map((x, j) => j === i ? { ...x, name: v } : x))} />
           <div style={{ width: 58, flexShrink: 0 }}>
             <EditableText value={r.pct} placeholder="%" disabled={!canEdit}
-                          onSave={v => write(rows.map((x, j) => j === i ? { ...x, pct: v } : x))} />
+                          onSave={v => commit(rows.map((x, j) => j === i ? { ...x, pct: v } : x))} />
           </div>
           <span className="bz-unit">%</span>
           {canEdit && (
             <button className="btn-ghost" style={{ padding: 2 }} aria-label="주주 삭제"
-                    onClick={() => write(rows.filter((_, j) => j !== i))}><X size={11} /></button>
+                    onClick={() => commit(rows.filter((_, j) => j !== i))}><X size={11} /></button>
           )}
         </div>
       ))}
       <div className="bz-inline" style={{ justifyContent: 'space-between' }}>
         {canEdit && (
           <button className="btn-ghost" style={{ fontSize: 11, padding: '2px 6px' }}
-                  onClick={() => write([...rows, { name: '', pct: '' }])}>+ 주주 추가</button>
+                  onClick={() => setRows([...rows, { name: '', pct: '' }])}>+ 주주 추가</button>
         )}
         {rows.length > 0 && (
           <span className="bz-hint" style={{ color: Math.abs(total - 100) < 0.01 ? 'var(--ink-faint)' : 'var(--amber)' }}>
