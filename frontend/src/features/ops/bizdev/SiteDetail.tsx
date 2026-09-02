@@ -126,9 +126,8 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
                                canEdit={canEdit} onChanged={reload} />
                 </div>
               </div>
-              {/* 좌: 예산 승인·집행 · 우: 계약 정보.
-                  높이가 크게 달라 억지로 맞추면 빈 공간이 생기므로 각자 높이대로 둔다. */}
-              <div className="grid-2" style={{ alignItems: 'start' }}>
+              {/* 좌: 예산 승인·집행 · 우: 계약 정보 — 아래 끝을 맞춘다 */}
+              <div className="grid-2 bz-even-row">
                 <BudgetCard siteId={siteId} entries={data.budget_entries}
                             approvals={data.budget_approvals} summary={data.budget_summary}
                             canEdit={canEdit} onChanged={reload} />

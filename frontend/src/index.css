@@ -910,3 +910,7 @@ select.bz-cell-input { cursor: pointer; }
 .bz-contract-tbl th:nth-child(4), .bz-contract-tbl td:nth-child(4) { width: 12%; }
 .bz-contract-tbl th:nth-child(5), .bz-contract-tbl td:nth-child(5) { width: 15%; }
 .bz-num { font-variant-numeric: tabular-nums; font-weight: 600; }
+/* 나란한 카드의 높이를 맞출 때, 남는 높이는 표 아래 여백으로 흡수시킨다
+   (표 자체는 늘어나지 않으므로 카드를 세로 flex 로 두고 표 영역이 남는 높이를 갖는다) */
+.bz-even-row > .card { display: flex; flex-direction: column; }
+.bz-even-row > .card > table:last-of-type { flex: 1 1 auto; }
