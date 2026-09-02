@@ -125,7 +125,7 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
                 <EventSection siteId={siteId} events={data.events}
                               canEdit={canEdit} onChanged={reload} onError={setError} />
               </div>
-              <PermitSection stages={data.stages} canEdit={canEdit}
+              <PermitSection siteId={siteId} stages={data.stages} canEdit={canEdit}
                              onChanged={reload} onError={setError} />
               <FactSection title={labelOf('pf')} facts={factsOf('pf')}
                            canEdit={canEdit} onChanged={reload} />

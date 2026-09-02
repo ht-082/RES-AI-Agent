@@ -697,15 +697,41 @@ textarea.inp { resize: vertical; min-height: 84px; line-height: 1.55; }
 .bz-site-card:hover { background: var(--surface-2); }
 .bz-site-card.sel { border: 2px solid var(--brand); background: var(--mint-soft); }
 
-/* 인허가 단계 행 (major 헤드 + minor 들여쓰기) */
-.bz-stage { padding: 9px 10px; border-top: 1px solid var(--line-soft); }
-.bz-stage.major { background: var(--surface-2); border-radius: 8px; border-top: none; margin-top: 6px; }
-.bz-stage.minor { margin-left: 18px; border-left: 2px solid var(--line); }
-.bz-stage-glyph { display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; border: 1.5px solid; border-radius: 50%;
-  font-size: 12px; font-weight: 700; flex-shrink: 0; }
-.bz-doc-history { margin: 8px 0 2px 32px; padding: 8px 10px; background: var(--surface-2);
+/* 인허가 항목 카드 — 원본 '인허가 상세 진척도' 배치 */
+.bz-stage-group { margin-top: 14px; }
+.bz-stage-group-head { display: flex; align-items: center; justify-content: space-between; }
+.bz-stage2 { display: grid; grid-template-columns: 22px 1fr 150px; gap: 10px;
+  align-items: start; padding: 10px; border: 1px solid var(--line-soft);
+  border-radius: 10px; background: var(--surface); margin-bottom: 6px; }
+.bz-stage-glyph2 { display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; color: #fff;
+  font-size: 12px; font-weight: 700; line-height: 1; margin-top: 1px; }
+.bz-stage-body { min-width: 0; }
+.bz-stage-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.bz-stage-name { font-size: 13px; font-weight: 700; }
+.bz-stage-agency { font-size: 11px; color: var(--ink-faint); }
+.bz-stage-content { font-size: 12px; margin-top: 3px; }
+.bz-stage-bar { height: 6px; max-width: 280px; margin: 7px 0; }
+.bz-stage-remark { font-size: 11.5px; color: var(--ink-2); display: flex; gap: 6px; align-items: baseline; }
+.bz-stage-tag { font-size: 10px; font-weight: 700; color: var(--ink-faint);
+  background: var(--surface-2); border-radius: 4px; padding: 1px 5px; flex-shrink: 0; }
+.bz-stage-docs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; }
+.bz-doc-btn { font-size: 11px; display: inline-flex; align-items: center; gap: 4px;
+  text-decoration: none; padding: 3px 7px; }
+.bz-doc-none { font-size: 11px; color: var(--ink-faint); background: var(--surface-2);
+  border: 1px solid var(--line-soft); border-radius: 6px; padding: 3px 7px; }
+.bz-stage-side { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.bz-stage-dday { font-size: 11px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.bz-stage-date { width: 122px; font-size: 11px; }
+.bz-stage-admin { display: flex; gap: 2px; }
+.bz-stage-admin .btn-ghost { padding: 2px; }
+.bz-doc-history { margin: 8px 0 2px; padding: 8px 10px; background: var(--surface-2);
   border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
+.bz-doc-row { display: flex; align-items: center; gap: 8px; font-size: 11px; min-width: 0; }
+.bz-doc-ver { font-weight: 700; color: var(--brand); font-variant-numeric: tabular-nums; }
+.bz-doc-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bz-doc-link { background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--brand); font-size: 11px; font-weight: 600; text-decoration: none; }
 
 /* 이슈 타임라인 */
 .bz-timeline { display: flex; flex-direction: column; gap: 12px; position: relative; padding-left: 4px; }
