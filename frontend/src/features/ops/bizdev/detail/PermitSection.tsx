@@ -14,9 +14,6 @@ const STATE_OPTIONS: Array<[string, string]> = [
 ]
 // 원본(project.page.js ST)의 상태 글리프
 const GLYPH: Record<string, string> = { done: '✓', active: '◐', idle: '·', na: '—' }
-// 원본의 단계별 진척 바 — 4단계 상태에서 파생시킨다(별도 값을 두지 않는다)
-const BAR: Record<string, number> = { done: 100, active: 50, idle: 0, na: 0 }
-
 // 인허가 현황 — 원본 '인허가 상세 진척도' 카드 배치에 사업개요 양식의
 // 내용·확정도·특이사항을 얹었다. 개별법 협의는 개발행위허가의 하위로 들여쓴다.
 export default function PermitSection({ siteId, stages, canEdit, onChanged, onError }: {
@@ -123,11 +120,6 @@ export default function PermitSection({ siteId, stages, canEdit, onChanged, onEr
                             placeholder="내용 (허가번호 · 용량 · 일자 등)"
                             onSave={v => patch(stage, { content: v })} />
             : <div className="bz-stage-content"><Lines text={stage.content} /></div>}
-
-          <div className="bz-bar bz-stage-bar">
-            <div className="bz-bar-fill"
-                 style={{ width: `${BAR[stage.status]}%`, background: meta.color }} />
-          </div>
 
           <div className="bz-stage-remark">
             <span className="bz-stage-tag">특이사항</span>
