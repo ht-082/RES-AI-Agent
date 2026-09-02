@@ -718,7 +718,8 @@ textarea.inp { resize: vertical; min-height: 84px; line-height: 1.55; }
 
 /* 사업개요 양식 표 — 셀 안에서 바로 편집 */
 .bz-doc-tbl { table-layout: fixed; width: 100%; }
-.bz-doc-tbl th { font-size: 11px; }
+.bz-doc-tbl th { font-size: 11px; padding-left: 6px; padding-right: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bz-doc-tbl td { vertical-align: top; padding: 6px 8px; }
 .bz-cell-input { width: 100%; border: 1px solid transparent; border-radius: 6px;
   padding: 4px 6px; font-size: 12px; font-family: inherit; color: var(--ink);
@@ -859,11 +860,6 @@ select.bz-cell-input { cursor: pointer; }
   overflow: hidden; background: var(--surface-2); }
 .bz-overview > .bz-fact-tbl { flex: 0 0 auto; }
 
-/* 계약 표 — 반폭에서도 다섯 열이 들어가도록 비율 고정 */
-.bz-contract-tbl th:nth-child(1), .bz-contract-tbl td:nth-child(1) { width: 27%; }
-.bz-contract-tbl th:nth-child(2), .bz-contract-tbl td:nth-child(2) { width: 20%; }
-.bz-contract-tbl th:nth-child(4), .bz-contract-tbl td:nth-child(4) { width: 15%; }
-.bz-contract-tbl th:nth-child(5), .bz-contract-tbl td:nth-child(5) { width: 15%; }
 .bz-contract-tbl .bz-col-act { width: 30px; }
 .bz-contract-tbl .bz-cell-input { min-width: 0; }
 
@@ -893,16 +889,24 @@ select.bz-cell-input { cursor: pointer; }
 .bz-minitab.on { color: var(--brand); border-color: var(--brand); }
 /* 증빙 열 — 좁아서 글자가 세로로 쪼개지던 것 방지 */
 .bz-col-doc { width: 46px; white-space: nowrap; }
-/* 예산 목록 — 반폭 카드에서도 모든 열이 자리를 갖도록 비율로 */
-.bz-budget-tbl th, .bz-budget-tbl td { white-space: nowrap; }
-.bz-budget-tbl td:last-child, .bz-budget-tbl th:last-child { white-space: normal; }
-.bz-budget-tbl.approval th:nth-child(1) { width: 15%; }
-.bz-budget-tbl.approval th:nth-child(2) { width: 24%; }
-.bz-budget-tbl.approval th:nth-child(3) { width: 24%; }
-.bz-budget-tbl.entry th:nth-child(1) { width: 14%; }
-.bz-budget-tbl.entry th:nth-child(2) { width: 19%; }
-.bz-budget-tbl.entry th:nth-child(3) { width: 22%; }
-.bz-budget-tbl.entry th:nth-child(4) { width: 18%; }
-.bz-budget-tbl.entry th:nth-child(6) { width: 11%; }
-.bz-budget-tbl td { overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+/* 예산 목록 — 실측 글자 폭 기준 배분(12px 기준, 셀 여백 16px 포함).
+   적요는 긴 글이 들어가므로 남는 폭을 전부 준다.
+     용도 32px · 금액 42px · 날짜 69px · 상대방 미정 · 적요 132px+ */
+.bz-budget-tbl td { font-size: 12px; }
+.bz-budget-tbl .bz-nowrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bz-budget-tbl.approval th:nth-child(1) { width: 13%; }   /* 용도   */
+.bz-budget-tbl.approval th:nth-child(2) { width: 17%; }   /* 승인액 */
+.bz-budget-tbl.approval th:nth-child(3) { width: 22%; }   /* 승인일 */
+.bz-budget-tbl.entry th:nth-child(1) { width: 12%; }      /* 용도   */
+.bz-budget-tbl.entry th:nth-child(2) { width: 15%; }      /* 금액   */
+.bz-budget-tbl.entry th:nth-child(3) { width: 22%; }      /* 집행일 */
+.bz-budget-tbl.entry th:nth-child(4) { width: 15%; }      /* 상대방 */
+.bz-budget-tbl.entry th:nth-child(6) { width: 9%; }       /* 증빙   */
+
+/* 계약 표 — 주요 내용에 긴 글이 들어가므로 남는 폭을 몰아 준다.
+   실측: 구분 최장 115px(2줄 허용) · 상대방 67px · 주요내용 199px+ */
+.bz-contract-tbl th:nth-child(1), .bz-contract-tbl td:nth-child(1) { width: 21%; }
+.bz-contract-tbl th:nth-child(2), .bz-contract-tbl td:nth-child(2) { width: 17%; }
+.bz-contract-tbl th:nth-child(4), .bz-contract-tbl td:nth-child(4) { width: 12%; }
+.bz-contract-tbl th:nth-child(5), .bz-contract-tbl td:nth-child(5) { width: 15%; }
 .bz-num { font-variant-numeric: tabular-nums; font-weight: 600; }

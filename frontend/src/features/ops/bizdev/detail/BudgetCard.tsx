@@ -126,9 +126,9 @@ export default function BudgetCard({ siteId, entries, approvals, summary, canEdi
                       {cat?.label}
                     </span>
                   </td>
-                  <td className="bz-num">{formatKRW(a.amount_krw)}</td>
-                  <td style={{ fontSize: 12 }}>{a.approved_date || <span className="bz-muted">—</span>}</td>
-                  <td style={{ fontSize: 12 }}>{a.memo || <span className="bz-muted">—</span>}</td>
+                  <td className="bz-num bz-nowrap">{formatKRW(a.amount_krw)}</td>
+                  <td className="bz-nowrap">{a.approved_date || <span className="bz-muted">—</span>}</td>
+                  <td>{a.memo || <span className="bz-muted">—</span>}</td>
                 </tr>
               )
             })}
@@ -159,10 +159,10 @@ export default function BudgetCard({ siteId, entries, approvals, summary, canEdi
                       {cat?.label}
                     </span>
                   </td>
-                  <td className="bz-num">{formatKRW(e.amount_krw)}</td>
-                  <td style={{ fontSize: 12 }}>{e.exec_date}</td>
-                  <td style={{ fontSize: 12 }}>{e.payee || <span className="bz-muted">—</span>}</td>
-                  <td style={{ fontSize: 12 }}>{e.memo || <span className="bz-muted">—</span>}</td>
+                  <td className="bz-num bz-nowrap">{formatKRW(e.amount_krw)}</td>
+                  <td className="bz-nowrap">{e.exec_date}</td>
+                  <td className="bz-nowrap">{e.payee || <span className="bz-muted">—</span>}</td>
+                  <td>{e.memo || <span className="bz-muted">—</span>}</td>
                   <td>
                     {e.has_receipt ? (
                       <a href={`/api/bizdev/budget-entries/${e.id}/receipt/`} target="_blank"
