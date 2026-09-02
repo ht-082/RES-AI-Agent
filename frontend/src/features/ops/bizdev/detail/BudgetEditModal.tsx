@@ -61,6 +61,7 @@ export default function BudgetEditModal({ siteId, entries, approvals, canEdit, o
       form.append('category', 'land')
       form.append('amount_krw', '1')
       form.append('exec_date', new Date().toISOString().slice(0, 10))
+      form.append('payee', '')
       form.append('memo', '')
       if (receipt) form.append('receipt', receipt)
       await apiUpload('/api/bizdev/budget-entries/', form)
@@ -160,16 +161,17 @@ export default function BudgetEditModal({ siteId, entries, approvals, canEdit, o
         <thead>
           <tr>
             <th style={{ width: 96 }}>용도</th>
-            <th style={{ width: 130 }}>집행액(원)</th>
-            <th style={{ width: 130 }}>집행일</th>
+            <th style={{ width: 120 }}>집행액(원)</th>
+            <th style={{ width: 124 }}>집행일</th>
+            <th style={{ width: 120 }}>상대방</th>
             <th>적요</th>
-            <th style={{ width: 40 }}>증빙</th>
+            <th className="bz-col-doc">증빙</th>
             {canEdit && <th style={{ width: 34 }} />}
           </tr>
         </thead>
         <tbody>
           {entries.length === 0 && (
-            <tr><td colSpan={canEdit ? 6 : 5} className="bz-empty">집행 내역이 없습니다.</td></tr>
+            <tr><td colSpan={canEdit ? 7 : 6} className="bz-empty">집행 내역이 없습니다.</td></tr>
           )}
           {entries.map(row => {
             const cap = approvedOf(row.category)
@@ -192,6 +194,10 @@ export default function BudgetEditModal({ siteId, entries, approvals, canEdit, o
                   <input className="bz-cell-input" type="date" value={row.exec_date || ''}
                          disabled={!canEdit}
                          onChange={e => patchEntry(row, { exec_date: e.target.value })} />
+                </td>
+                <td>
+                  <EditableText value={row.payee} placeholder="수취처" disabled={!canEdit}
+                                onSave={v => patchEntry(row, { payee: v })} />
                 </td>
                 <td>
                   <EditableText value={row.memo} placeholder="—" disabled={!canEdit}

@@ -53,7 +53,7 @@ class BudgetEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = BudgetEntry
         fields = ['id', 'site', 'category', 'category_label', 'amount_krw',
-                  'exec_date', 'memo', 'receipt_name', 'has_receipt',
+                  'exec_date', 'payee', 'memo', 'receipt_name', 'has_receipt',
                   'created_by', 'created_at', 'updated_at']
         read_only_fields = ['id', 'receipt_name', 'created_by', 'created_at',
                             'updated_at']

@@ -883,3 +883,26 @@ select.bz-cell-input { cursor: pointer; }
 .bz-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; }
 .bz-legend-item { display: flex; align-items: center; gap: 5px;
   font-size: 11px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+/* 카드 안 작은 탭 (승인 예산 / 집행 실적) */
+.bz-minitabs { display: flex; gap: 4px; margin: 16px 0 2px;
+  border-bottom: 1px solid var(--line); }
+.bz-minitab { background: none; border: none; cursor: pointer;
+  padding: 6px 10px; font-size: 12px; font-weight: 600; color: var(--ink-faint);
+  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.bz-minitab:hover { color: var(--ink-soft); }
+.bz-minitab.on { color: var(--brand); border-color: var(--brand); }
+/* 증빙 열 — 좁아서 글자가 세로로 쪼개지던 것 방지 */
+.bz-col-doc { width: 46px; white-space: nowrap; }
+/* 예산 목록 — 반폭 카드에서도 모든 열이 자리를 갖도록 비율로 */
+.bz-budget-tbl th, .bz-budget-tbl td { white-space: nowrap; }
+.bz-budget-tbl td:last-child, .bz-budget-tbl th:last-child { white-space: normal; }
+.bz-budget-tbl.approval th:nth-child(1) { width: 15%; }
+.bz-budget-tbl.approval th:nth-child(2) { width: 24%; }
+.bz-budget-tbl.approval th:nth-child(3) { width: 24%; }
+.bz-budget-tbl.entry th:nth-child(1) { width: 14%; }
+.bz-budget-tbl.entry th:nth-child(2) { width: 19%; }
+.bz-budget-tbl.entry th:nth-child(3) { width: 22%; }
+.bz-budget-tbl.entry th:nth-child(4) { width: 18%; }
+.bz-budget-tbl.entry th:nth-child(6) { width: 11%; }
+.bz-budget-tbl td { overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.bz-num { font-variant-numeric: tabular-nums; font-weight: 600; }

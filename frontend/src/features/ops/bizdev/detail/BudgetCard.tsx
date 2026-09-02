@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Paperclip } from 'lucide-react'
 import BudgetEditModal from './BudgetEditModal'
 import SectionHead, { lastEdited } from './SectionHead'
-import { BUDGET_CATS, formatKRW, formatWonExact } from '../constants'
+import { BUDGET_CATS, formatKRW } from '../constants'
 import type { BudgetApproval, BudgetEntry, BudgetSummary } from '../types'
 
 // 예산 승인 · 집행 — 보기 전용(그래프 2개 + 집행 목록).
@@ -17,6 +17,7 @@ export default function BudgetCard({ siteId, entries, approvals, summary, canEdi
   onChanged: () => void
 }) {
   const [editing, setEditing] = useState(false)
+  const [tab, setTab] = useState<'approval' | 'entry'>('entry')
   const approved = summary.approved || 0
   const executed = summary.total || 0
   const over = approved > 0 && executed > approved
@@ -90,48 +91,92 @@ export default function BudgetCard({ siteId, entries, approvals, summary, canEdi
         )}
       </div>
 
-      {/* 집행 내역 목록 */}
-      <table className="tbl bz-doc-tbl" style={{ marginTop: 14 }}>
-        <thead>
-          <tr>
-            <th style={{ width: 62 }}>용도</th>
-            <th style={{ width: 116 }}>금액</th>
-            <th style={{ width: 92 }}>집행일</th>
-            <th>적요</th>
-            <th style={{ width: 34 }}>증빙</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.length === 0 && (
-            <tr><td colSpan={5} className="bz-empty">집행 내역이 없습니다.</td></tr>
-          )}
-          {entries.map(e => {
-            const cat = BUDGET_CATS.find(c => c.key === e.category)
-            return (
-              <tr key={e.id}>
-                <td>
-                  <span className="bz-chip" style={{ background: `${cat?.color}1c`, color: cat?.color }}>
-                    {cat?.label}
-                  </span>
-                </td>
-                <td style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                  {formatWonExact(e.amount_krw)}
-                </td>
-                <td style={{ fontSize: 12 }}>{e.exec_date}</td>
-                <td style={{ fontSize: 12 }}>{e.memo || <span className="bz-muted">—</span>}</td>
-                <td>
-                  {e.has_receipt ? (
-                    <a href={`/api/bizdev/budget-entries/${e.id}/receipt/`} target="_blank"
-                       rel="noreferrer" title={e.receipt_name} style={{ color: 'var(--green-accent)' }}>
-                      <Paperclip size={13} />
-                    </a>
-                  ) : <span className="bz-muted">—</span>}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+      {/* 내역 — 승인 예산 / 집행 실적 전환 */}
+      <div className="bz-minitabs">
+        <button className={`bz-minitab ${tab === 'approval' ? 'on' : ''}`}
+                onClick={() => setTab('approval')}>
+          승인 예산 <span className="bz-muted">{approvals.length}</span>
+        </button>
+        <button className={`bz-minitab ${tab === 'entry' ? 'on' : ''}`}
+                onClick={() => setTab('entry')}>
+          집행 실적 <span className="bz-muted">{entries.length}</span>
+        </button>
+      </div>
+
+      {tab === 'approval' ? (
+        <table className="tbl bz-doc-tbl bz-budget-tbl approval">
+          <thead>
+            <tr>
+              <th>용도</th>
+              <th>승인액</th>
+              <th>승인일</th>
+              <th>적요</th>
+            </tr>
+          </thead>
+          <tbody>
+            {approvals.length === 0 && (
+              <tr><td colSpan={4} className="bz-empty">승인 내역이 없습니다.</td></tr>
+            )}
+            {approvals.map(a => {
+              const cat = BUDGET_CATS.find(c => c.key === a.category)
+              return (
+                <tr key={a.id}>
+                  <td>
+                    <span className="bz-chip" style={{ background: `${cat?.color}1c`, color: cat?.color }}>
+                      {cat?.label}
+                    </span>
+                  </td>
+                  <td className="bz-num">{formatKRW(a.amount_krw)}</td>
+                  <td style={{ fontSize: 12 }}>{a.approved_date || <span className="bz-muted">—</span>}</td>
+                  <td style={{ fontSize: 12 }}>{a.memo || <span className="bz-muted">—</span>}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      ) : (
+        <table className="tbl bz-doc-tbl bz-budget-tbl entry">
+          <thead>
+            <tr>
+              <th>용도</th>
+              <th>금액</th>
+              <th>집행일</th>
+              <th>상대방</th>
+              <th>적요</th>
+              <th>증빙</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.length === 0 && (
+              <tr><td colSpan={6} className="bz-empty">집행 내역이 없습니다.</td></tr>
+            )}
+            {entries.map(e => {
+              const cat = BUDGET_CATS.find(c => c.key === e.category)
+              return (
+                <tr key={e.id}>
+                  <td>
+                    <span className="bz-chip" style={{ background: `${cat?.color}1c`, color: cat?.color }}>
+                      {cat?.label}
+                    </span>
+                  </td>
+                  <td className="bz-num">{formatKRW(e.amount_krw)}</td>
+                  <td style={{ fontSize: 12 }}>{e.exec_date}</td>
+                  <td style={{ fontSize: 12 }}>{e.payee || <span className="bz-muted">—</span>}</td>
+                  <td style={{ fontSize: 12 }}>{e.memo || <span className="bz-muted">—</span>}</td>
+                  <td>
+                    {e.has_receipt ? (
+                      <a href={`/api/bizdev/budget-entries/${e.id}/receipt/`} target="_blank"
+                         rel="noreferrer" title={e.receipt_name} style={{ color: 'var(--green-accent)' }}>
+                        <Paperclip size={13} />
+                      </a>
+                    ) : <span className="bz-muted">—</span>}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      )}
 
       {editing && (
         <BudgetEditModal siteId={siteId} entries={entries} approvals={approvals}

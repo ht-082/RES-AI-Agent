@@ -155,6 +155,7 @@ export interface BudgetEntry {
   category_label: string
   amount_krw: number
   exec_date: string
+  payee: string
   memo: string
   receipt_name: string
   has_receipt: boolean

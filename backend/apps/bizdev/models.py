@@ -185,6 +185,8 @@ class BudgetEntry(models.Model):
     category = models.CharField(max_length=10, choices=BUDGET_CATEGORY_CHOICES)
     amount_krw = models.BigIntegerField()
     exec_date = models.DateField()
+    payee = models.CharField(max_length=100, blank=True, default='',
+                             help_text='지급 상대방(수취처)')
     memo = models.TextField(blank=True, default='')
     receipt_uri = models.CharField(max_length=1000, blank=True, default='')
     receipt_name = models.CharField(max_length=300, blank=True, default='')
