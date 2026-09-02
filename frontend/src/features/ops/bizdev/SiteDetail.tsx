@@ -111,21 +111,19 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
                                canEdit={canEdit} onChanged={reload} />
                 </div>
               </div>
-              {/* 좌: 예산 승인·집행 → 경제성 · 우: 계약 정보 → 진행경과 */}
+              {/* 2×2 격자 — 나란히 놓인 짝끼리 높이가 같아야 하므로
+                  열마다 쌓지 않고 한 격자에 네 카드를 넣는다(격자 행이 짝을 맞춘다).
+                    예산 승인·집행 ↔ 계약 정보 / 경제성 ↔ 진행경과 및 이슈 */}
               <div className="grid-2 bz-even-row">
-                <div className="bz-stack">
-                  <BudgetCard siteId={siteId} entries={data.budget_entries}
-                              approvals={data.budget_approvals} summary={data.budget_summary}
-                              canEdit={canEdit} onChanged={reload} />
-                  <FactSection title={labelOf('econ')} facts={factsOf('econ')}
-                               canEdit={canEdit} onChanged={reload} />
-                </div>
-                <div className="bz-stack">
-                  <ContractSection siteId={siteId} contracts={data.contracts}
-                                   canEdit={canEdit} onChanged={reload} onError={setError} />
-                  <EventSection siteId={siteId} events={data.events}
-                                canEdit={canEdit} onChanged={reload} onError={setError} />
-                </div>
+                <BudgetCard siteId={siteId} entries={data.budget_entries}
+                            approvals={data.budget_approvals} summary={data.budget_summary}
+                            canEdit={canEdit} onChanged={reload} />
+                <ContractSection siteId={siteId} contracts={data.contracts}
+                                 canEdit={canEdit} onChanged={reload} onError={setError} />
+                <FactSection title={labelOf('econ')} facts={factsOf('econ')}
+                             canEdit={canEdit} onChanged={reload} />
+                <EventSection siteId={siteId} events={data.events}
+                              canEdit={canEdit} onChanged={reload} onError={setError} />
               </div>
               <PermitSection stages={data.stages} canEdit={canEdit}
                              onChanged={reload} onError={setError} />
