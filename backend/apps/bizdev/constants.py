@@ -65,10 +65,10 @@ EVENT_TYPE_CHOICES = [
 # (section, key, label) 순서대로 사업 등록 시 빈 항목이 자동 생성된다.
 FACT_SECTIONS = [
     ('basic', '사업 개요'),
-    ('spc', '2. SPC 정보'),
-    ('land', '4. 부지 정보'),
-    ('econ', '7. 경제성 및 총사업비'),
-    ('pf', '8. 금융(PF)'),
+    ('spc', 'SPC 정보'),
+    ('land', '부지 정보'),
+    ('econ', '경제성 및 총사업비'),
+    ('pf', '금융(PF)'),
 ]
 
 # 사업 단계 — 파이프라인 집계 기준
@@ -109,6 +109,8 @@ FACT_DEFS = [
      'input': 'derived', 'source': ('econ', 'e_irr'), 'also': ('econ', 'p_irr_pretax')},
     {'section': 'basic', 'key': 'period', 'label': '운영개시일',
      'input': 'date', 'bound': 'cod'},
+    {'section': 'basic', 'key': 'manager', 'label': '담당자',
+     'input': 'text', 'bound': 'pm_name'},
 
     {'section': 'spc', 'key': 'corp_name', 'label': '회사명'},
     {'section': 'spc', 'key': 'corp_reg_no', 'label': '법인등록번호'},

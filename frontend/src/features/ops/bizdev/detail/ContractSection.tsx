@@ -56,7 +56,7 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
 
   const header = (
       <div className="bz-sec-head">
-        <h3>5. 계약 정보</h3>
+        <h3>계약 정보</h3>
         <div className="bz-sec-actions">
           <span className="bz-chip" style={{ background: 'var(--mint-soft)', color: 'var(--green-600)' }}>
             체결 {signed} / {contracts.length}
@@ -153,7 +153,7 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
       {header}
       {table(false)}
       {editing && (
-        <SectionModal title="5. 계약 정보" hint="행을 추가·삭제하고 각 칸을 고칠 수 있습니다"
+        <SectionModal title="계약 정보" hint="행을 추가·삭제하고 각 칸을 고칠 수 있습니다"
                       onClose={() => { setEditing(false); onChanged() }}>
           {canEdit && (
             <button className="btn-ghost" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}

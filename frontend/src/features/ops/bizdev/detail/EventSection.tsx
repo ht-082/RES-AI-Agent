@@ -53,7 +53,7 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
 
   const header = (
       <div className="bz-sec-head">
-        <h3>6. 진행경과 및 이슈</h3>
+        <h3>진행경과 및 이슈</h3>
         <div className="bz-sec-actions">
           {ongoing > 0 && (
             <span className="bz-chip" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>
@@ -143,7 +143,7 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
       {header}
       {table(false)}
       {editing && (
-        <SectionModal title="6. 진행경과 및 이슈"
+        <SectionModal title="진행경과 및 이슈"
                       hint='일자를 비우면 "진행 중"으로 표시됩니다'
                       onClose={() => { setEditing(false); onChanged() }}>
           {canEdit && (

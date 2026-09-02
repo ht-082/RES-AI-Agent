@@ -17,7 +17,7 @@ NL = chr(10)   # 여러 줄 값 구성용
 SITES = [
     ('hongseong-solar', '홍성1 태양광', 99, '충남 홍성군 갈산면 기산리 780 일원', '홍성군',
      '기타', 'active', '계통 보강 대기', 'md', '', 1860000000,
-     36.68, 126.55, 'solar', 'dev', '충남 홍성군 갈산면 기산리 780', None, '2031.12.31'),
+     36.68, 126.55, 'solar', 'dev', '충남 홍성군 갈산면 기산리 780', None, '2031-12-31'),
 ]
 
 # 사업개요 항목 — {slug: {(section, key): (value, certainty, source, note)}}
@@ -37,6 +37,7 @@ FACTS = {
         ('basic', 'total_capex'): ('', 'unconfirmed', '', ''),
         ('basic', 'profitability'): ('', 'unconfirmed', '', 'E.IRR은 펀드 기준'),
         ('basic', 'period'): ('2031-12-31', 'confirmed', '', '이후 20년 (부지 임대차와 동일)'),
+        ('basic', 'manager'): ('정혁태', 'confirmed', '', ''),
 
         ('spc', 'corp_name'): ('주식회사 홍성빛나래솔라', 'confirmed', '발전사업허가증', ''),
         ('spc', 'corp_reg_no'): ('161411-0006603', 'confirmed', '사업자등록증', ''),

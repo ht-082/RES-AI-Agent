@@ -138,7 +138,7 @@ export default function PermitSection({ stages, canEdit, onChanged, onError }: {
   return (
     <div className="card block">
       <div className="bz-sec-head">
-        <h3>3. 인허가 현황</h3>
+        <h3>인허가 현황</h3>
         <div className="bz-sec-actions">
           <span className="bz-chip" style={{ background: 'var(--mint-soft)', color: 'var(--green-600)' }}>
             완료 {doneCount} / {target.length}
@@ -156,7 +156,7 @@ export default function PermitSection({ stages, canEdit, onChanged, onError }: {
       {table('3-2. 개별법 협의', individual, false)}
 
       {editing && (
-        <SectionModal title="3. 인허가 현황"
+        <SectionModal title="인허가 현황"
                       hint="현황·내용·확정도·특이사항을 고치고 문서를 올릴 수 있습니다"
                       onClose={() => { setEditing(false); onChanged() }}>
           {table('3-1. 전기사업법 · 국토계획법 절차', statutory, true)}

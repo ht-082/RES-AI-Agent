@@ -59,10 +59,6 @@ export default function OverviewSection({ site, facts, canEdit, onChanged }: {
           )}
         </div>
       </div>
-      <div className="h-sub" style={{ marginBottom: 10 }}>
-        {site.pm_name ? `담당 ${site.pm_name}` : '담당 미지정'} · 인허가 진척 {site.overall_pct}%
-      </div>
-
       <div ref={boxRef} style={{ height: 190, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)' }}>
         {(site.lat == null || site.lng == null) && (
           <p className="note" style={{ padding: 20 }}>위경도 미입력 — 지도 표시 불가</p>
