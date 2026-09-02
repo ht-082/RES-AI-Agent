@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Download, History, Plus, Trash2, Upload } from 'lucide-react'
 import { apiSend, apiUpload } from '../api'
 import { CERTAINTY_META, ddayLabel, STATUS_META } from '../constants'
@@ -18,7 +18,7 @@ const GLYPH: Record<string, string> = { done: '✓', active: '◐', idle: '·', 
 const BAR: Record<string, number> = { done: 100, active: 50, idle: 0, na: 0 }
 
 // 인허가 현황 — 원본 '인허가 상세 진척도' 카드 배치에 사업개요 양식의
-// 내용·확정도·특이사항을 얹었다. 3-1 법정절차 / 3-2 개별법 협의로 묶는다.
+// 내용·확정도·특이사항을 얹었다. 개별법 협의는 개발행위허가의 하위로 들여쓴다.
 export default function PermitSection({ siteId, stages, canEdit, onChanged, onError }: {
   siteId: string
   stages: PermitStage[]
@@ -224,32 +224,47 @@ export default function PermitSection({ siteId, stages, canEdit, onChanged, onEr
     )
   }
 
-  const group = (title: string, list: PermitStage[],
-                 category: 'statutory' | 'individual', editable: boolean) => (
-    <div className="bz-stage-group">
-      <div className="bz-block-title bz-stage-group-head">
-        <span>{title}</span>
-        {canEdit && editable && (
-          <button className="btn-ghost bz-edit-btn" disabled={busy}
-                  onClick={() => addStage(category)}><Plus size={13} /> 항목 추가</button>
-        )}
-      </div>
-      {list.length === 0
-        ? <p className="note">항목이 없습니다.</p>
-        : list.map((s, i) => stageRow(s, list, i, editable))}
-    </div>
-  )
+  const statutory = [...stages].filter(s => s.category === 'statutory')
+    .sort((a, b) => a.stage_no - b.stage_no)
+  const individual = [...stages].filter(s => s.category === 'individual')
+    .sort((a, b) => a.stage_no - b.stage_no)
+  // 개별법 협의는 개발행위허가에 딸린 절차라 그 아래로 들여쓴다.
+  // 개발행위허가 항목이 없으면(직접 만든 사업지) 목록 끝에 붙인다.
+  const anchor = statutory.findIndex(s => s.name.includes('개발행위허가'))
 
-  const statutory = stages.filter(s => s.category === 'statutory')
-  const individual = stages.filter(s => s.category === 'individual')
   const target = stages.filter(s => s.status !== 'na')
   const doneCount = target.filter(s => s.status === 'done').length
 
+  const addBtn = (label: string, category: 'statutory' | 'individual') => (
+    <button className="btn-ghost bz-edit-btn" disabled={busy}
+            onClick={() => addStage(category)}><Plus size={13} /> {label}</button>
+  )
+
+  const substages = (editable: boolean) => (
+    (individual.length > 0 || (canEdit && editable)) && (
+      <div className="bz-substages">
+        {individual.map((s, i) => stageRow(s, individual, i, editable))}
+        {canEdit && editable && addBtn('하위 협의 추가', 'individual')}
+      </div>
+    )
+  )
+
   const body = (editable: boolean) => (
-    <>
-      {group('3-1. 전기사업법 · 국토계획법 절차', statutory, 'statutory', editable)}
-      {group('3-2. 개별법 협의', individual, 'individual', editable)}
-    </>
+    <div className="bz-stage-list">
+      {statutory.length === 0 && individual.length === 0 && (
+        <p className="note">항목이 없습니다.</p>
+      )}
+      {statutory.map((s, i) => (
+        <Fragment key={s.id}>
+          {stageRow(s, statutory, i, editable)}
+          {i === anchor && substages(editable)}
+        </Fragment>
+      ))}
+      {anchor < 0 && substages(editable)}
+      {canEdit && editable && (
+        <div className="bz-stage-add">{addBtn('항목 추가', 'statutory')}</div>
+      )}
+    </div>
   )
 
   return (
