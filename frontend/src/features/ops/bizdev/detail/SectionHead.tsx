@@ -26,7 +26,7 @@ export default function SectionHead({ title, updatedAt, canEdit, onEdit, extra }
         {updatedAt && <span className="bz-updated">{updatedAt}</span>}
         {canEdit && onEdit && (
           <button className="btn-ghost bz-edit-btn" onClick={onEdit}>
-            <Pencil size={13} /> 편집
+            <Pencil size={13} /> 상세내용 확인 및 편집
           </button>
         )}
       </div>

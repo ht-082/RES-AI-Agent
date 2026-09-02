@@ -65,7 +65,7 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
           <span className="bz-updated">{lastEdited(contracts.map(c => c.updated_at))}</span>
           {canEdit && (
             <button className="btn-ghost bz-edit-btn" onClick={() => setEditing(true)}>
-              <Pencil size={13} /> 편집
+              <Pencil size={13} /> 상세내용 확인 및 편집
             </button>
           )}
         </div>

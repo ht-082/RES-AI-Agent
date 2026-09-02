@@ -147,7 +147,7 @@ export default function PermitSection({ stages, canEdit, onChanged, onError }: {
           <span className="bz-updated">{lastEdited(stages.map(s => s.updated_at))}</span>
           {canEdit && (
             <button className="btn-ghost bz-edit-btn" onClick={() => setEditing(true)}>
-              <Pencil size={13} /> 편집
+              <Pencil size={13} /> 상세내용 확인 및 편집
             </button>
           )}
         </div>
