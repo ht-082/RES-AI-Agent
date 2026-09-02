@@ -64,8 +64,6 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
   const isAdmin = user?.role === 'admin'
   const factsOf = (section: string) => (data?.facts || []).filter(f => f.section === section)
   const labelOf = (key: string) => data?.sections.find(s => s.key === key)?.label || key
-  const confirmed = (data?.facts || []).filter(f => f.certainty === 'confirmed').length
-  const unconfirmed = (data?.facts || []).filter(f => f.certainty === 'unconfirmed').length
 
   return (
     <section className="pane" style={{ flex: 1, overflowY: 'auto' }}>
@@ -79,19 +77,6 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
             <AliasBadge facts={data?.facts} />{' '}
             <span style={{ fontSize: 13, color: 'var(--ink-faint)', fontWeight: 500 }}>개발 사업 상세</span>
           </h2>
-          {data && (
-            <p style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span className="bz-chip" style={{ background: 'var(--mint-soft)', color: 'var(--green-600)' }}>
-                확정 {confirmed}
-              </span>
-              <span className="bz-chip" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>
-                미확정 {unconfirmed}
-              </span>
-              <span style={{ color: 'var(--ink-faint)' }}>
-                인허가 진척 {data.site.overall_pct}% · 담당 {data.site.pm_name || '-'}
-              </span>
-            </p>
-          )}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {isAdmin && data && (
