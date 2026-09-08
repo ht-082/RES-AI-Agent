@@ -71,6 +71,39 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
         </div>
       </div>
   )
+  // 보기 화면 — 표 대신 목록 카드. 상대방을 앞세우고 분류는 배지로,
+  // 체결 여부는 왼쪽 색 띠로 드러낸다(17종 분류가 열 너비를 잡아먹지 않는다).
+  const list = (
+    <div className="bz-clist">
+      {contracts.length === 0 && <p className="note">등록된 계약이 없습니다.</p>}
+      {contracts.map(row => {
+        const st = CONTRACT_STATUS_META[row.status]
+        return (
+          <div key={row.id} className="bz-citem" style={{ borderLeftColor: st?.color }}>
+            <div className="bz-citem-head">
+              <span className="bz-citem-party">{row.counterparty || '상대방 미정'}</span>
+              <span className="bz-citem-cat">{row.category_label}</span>
+              <span className="bz-chip" style={{
+                background: `color-mix(in srgb, ${st?.color} 12%, transparent)`, color: st?.color,
+              }}>{row.status_label}</span>
+              {row.certainty !== 'confirmed' && (
+                <span className="bz-citem-cert" style={{ color: CERTAINTY_META[row.certainty].color }}>
+                  {CERTAINTY_META[row.certainty].label}
+                </span>
+              )}
+            </div>
+            {row.summary && (
+              <div className="bz-citem-text"><Lines text={row.summary} /></div>
+            )}
+            {row.note && (
+              <div className="bz-citem-text bz-muted"><Lines text={row.note} /></div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+
   const table = (editable: boolean) => (
       <table className="tbl bz-doc-tbl bz-contract-tbl" style={{ marginTop: 10 }}>
         <thead>
@@ -153,7 +186,7 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
   return (
     <div className="card block">
       {header}
-      {table(false)}
+      {list}
       {editing && (
         <SectionModal title="계약 정보" hint="행을 추가·삭제하고 각 칸을 고칠 수 있습니다"
                       onClose={() => { setEditing(false); onChanged() }}>

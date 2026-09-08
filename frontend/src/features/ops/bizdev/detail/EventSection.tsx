@@ -71,6 +71,39 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
       </div>
   )
 
+  // 보기 화면 — 표 대신 날짜 축 타임라인.
+  // 시간 순 데이터라 격자보다 축이 읽기 쉽다(원본 이슈 카드도 타임라인이었다).
+  const timeline = (
+    <div className="bz-timeline" style={{ marginTop: 10 }}>
+      {events.length === 0 && <p className="note">등록된 경과가 없습니다.</p>}
+      {events.map(row => {
+        const st = EVENT_STATUS_META[row.status]
+        return (
+          <div key={row.id} className="bz-tl-item">
+            <span className="bz-tl-dot" style={{ background: st?.color }} />
+            <div className="bz-tl-body">
+              <div className="bz-tl-head">
+                <span className="bz-tl-date">
+                  {shortDate(row.event_date) || '진행 중'}
+                </span>
+                <span className="bz-tl-type">{row.type_label}</span>
+                <span className="bz-chip" style={{
+                  background: `color-mix(in srgb, ${st?.color} 12%, transparent)`, color: st?.color,
+                }}>{row.status_label}</span>
+                {row.certainty !== 'confirmed' && (
+                  <span className="bz-tl-cert" style={{ color: CERTAINTY_META[row.certainty].color }}>
+                    {CERTAINTY_META[row.certainty].label}
+                  </span>
+                )}
+              </div>
+              <div className="bz-tl-text"><Lines text={row.summary} /></div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+
   const table = (editable: boolean) => (
       <table className={`tbl bz-doc-tbl bz-event-tbl ${editable ? "wide" : ""}`} style={{ marginTop: 10 }}>
         <thead>
@@ -155,7 +188,7 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
   return (
     <div className="card block">
       {header}
-      {table(false)}
+      {timeline}
       {editing && (
         <SectionModal title="진행경과 및 이슈"
                       hint='등록 일자와 현황(진행중·보류·완료)을 함께 관리합니다'

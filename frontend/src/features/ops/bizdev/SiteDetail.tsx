@@ -5,6 +5,7 @@ import OverviewSection from './detail/OverviewSection'
 import FactSection from './detail/FactSection'
 import RegistryImport from './detail/RegistryImport'
 import PermitSection from './detail/PermitSection'
+import EconSection from './detail/EconSection'
 import ContractSection from './detail/ContractSection'
 import EventSection from './detail/EventSection'
 import BudgetCard from './detail/BudgetCard'
@@ -120,8 +121,8 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
                             canEdit={canEdit} onChanged={reload} />
                 <ContractSection siteId={siteId} contracts={data.contracts}
                                  canEdit={canEdit} onChanged={reload} onError={setError} />
-                <FactSection title={labelOf('econ')} facts={factsOf('econ')}
-                             canEdit={canEdit} onChanged={reload} showNote />
+                <EconSection title={labelOf('econ')} facts={factsOf('econ')}
+                             canEdit={canEdit} onChanged={reload} />
                 <EventSection siteId={siteId} events={data.events}
                               canEdit={canEdit} onChanged={reload} onError={setError} />
               </div>
