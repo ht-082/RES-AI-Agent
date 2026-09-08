@@ -110,7 +110,8 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
                         onDetail={s => { setDrawerSite(null); onSelectSite(s.id) }} />
           )}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* 지도와 아래 끝을 맞춘다 — 두 카드가 남는 높이를 나눠 갖는다(bz-stack) */}
+        <div className="bz-stack" style={{ gap: 16 }}>
           <GridRail sites={sites} />
           <LawRail laws={laws} />
         </div>
