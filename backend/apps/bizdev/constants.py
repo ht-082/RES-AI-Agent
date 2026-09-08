@@ -91,6 +91,9 @@ EVENT_STATUS_CHOICES = [
 
 # 사업개요 항목 정의 — SiteFact 골격의 단일 소스.
 # (section, key, label) 순서대로 사업 등록 시 빈 항목이 자동 생성된다.
+# 매출 가격 체계 — 경제성 가정사항
+PRICE_TYPE_OPTIONS = ['SMP + REC', 'PPA', '기타']
+
 FACT_SECTIONS = [
     ('basic', '사업 개요'),
     ('spc', 'SPC 정보'),
@@ -161,12 +164,37 @@ FACT_DEFS = [
     {'section': 'land', 'key': 'rent', 'label': '임대료'},
     {'section': 'land', 'key': 'etc', 'label': '기타'},
 
-    {'section': 'econ', 'key': 'total_capex', 'label': '총사업비 (억원)', 'input': 'number'},
-    {'section': 'econ', 'key': 'epc_cost', 'label': 'EPC 공사비 (억원)', 'input': 'number'},
-    {'section': 'econ', 'key': 'equity_debt', 'label': 'Equity / Debt 비율'},
+    # 가정사항 — 금융모델(Time Line & Assumption)에서 옮겨 온 전제값.
+    # 공사기간·운영종료일·차입금 비율은 이 값들로 화면에서 계산해 보여 준다.
+    {'section': 'econ', 'key': 'constr_start', 'label': '착공일', 'input': 'date'},
+    {'section': 'econ', 'key': 'constr_end', 'label': '준공일', 'input': 'date'},
+    {'section': 'econ', 'key': 'ops_years', 'label': '운영기간 (년)', 'input': 'number'},
+    {'section': 'econ', 'key': 'equity_ratio', 'label': '자본금 비율 (%)', 'input': 'number'},
+    {'section': 'econ', 'key': 'gen_hours', 'label': '발전시간 (h)', 'input': 'number'},
+    {'section': 'econ', 'key': 'price_type', 'label': '가격 체계',
+     'input': 'select', 'options': PRICE_TYPE_OPTIONS},
+    {'section': 'econ', 'key': 'smp_price', 'label': 'SMP (원/kWh)', 'input': 'number'},
+    {'section': 'econ', 'key': 'rec_price', 'label': 'REC (원/REC)', 'input': 'number'},
+    {'section': 'econ', 'key': 'rec_weight', 'label': 'REC 가중치', 'input': 'number'},
+    {'section': 'econ', 'key': 'ppa_price', 'label': 'PPA 단가 (원/kWh)', 'input': 'number'},
+
+    # 사업비 — 금융모델 [총투자비] 표. 합계 두 줄은 구성 항목에서 자동으로 더한다.
+    {'section': 'econ', 'key': 'survey_design', 'label': '조사설계비 (억원)',
+     'input': 'number'},
+    {'section': 'econ', 'key': 'land_cost', 'label': '토지비 (공사중) (억원)',
+     'input': 'number'},
+    {'section': 'econ', 'key': 'epc_cost', 'label': '공사비 (억원)', 'input': 'number'},
+    {'section': 'econ', 'key': 'other_cost', 'label': '기타비용 (억원)', 'input': 'number'},
+    {'section': 'econ', 'key': 'finance_cost', 'label': '금융비용 (억원)', 'input': 'number'},
+    {'section': 'econ', 'key': 'total_capex', 'label': '총사업비 (억원)',
+     'input': 'computed'},
+    {'section': 'econ', 'key': 'overfunding', 'label': 'Overfunding (억원)',
+     'input': 'number'},
+    {'section': 'econ', 'key': 'dsra', 'label': 'DSRA (억원)', 'input': 'number'},
+    {'section': 'econ', 'key': 'total_investment', 'label': '총투자비 (억원)',
+     'input': 'computed'},
     {'section': 'econ', 'key': 'es_investment', 'label': 'E&S 총 투자비 (억원)',
      'input': 'number'},
-    {'section': 'econ', 'key': 'gen_hours', 'label': '발전시간 (h)', 'input': 'number'},
     {'section': 'econ', 'key': 'annual_revenue', 'label': '연간 매출 (억원)', 'input': 'number'},
     {'section': 'econ', 'key': 'operating_profit', 'label': '영업이익 (억원)', 'input': 'number'},
     {'section': 'econ', 'key': 'net_profit', 'label': '당기순이익 (억원)', 'input': 'number'},
@@ -184,6 +212,11 @@ FACT_DEFS = [
 # 사업단계 → Site.lifecycle (상세 화면 분기·KPI 집계용)
 STAGE_TO_LIFECYCLE = {'검토': 'dev', '개발': 'dev', '운영': 'ops'}
 LIFECYCLE_TO_STAGE = {'dev': '개발', 'ops': '운영'}
+
+
+# 사업비 합계 — 구성 항목에서 자동으로 더한다(값을 두 곳에 두지 않는다)
+CAPEX_PARTS = ['survey_design', 'land_cost', 'epc_cost', 'other_cost', 'finance_cost']
+INVESTMENT_PARTS = ['total_capex', 'overfunding', 'dsra']
 
 
 def fact_spec(section, key):

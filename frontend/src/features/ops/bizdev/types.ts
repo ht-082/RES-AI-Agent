@@ -10,7 +10,7 @@ export interface StageSummary {
 
 export interface FactInputSpec {
   input: 'text' | 'select' | 'number' | 'date' | 'address' | 'substation'
-       | 'grid_distance' | 'aliases' | 'shareholders' | 'derived'
+       | 'grid_distance' | 'aliases' | 'shareholders' | 'derived' | 'computed'
   options?: string[]
   unit?: string
   display?: string

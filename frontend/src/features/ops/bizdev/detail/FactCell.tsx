@@ -15,6 +15,14 @@ export default function FactCell({ fact, canEdit, onSave }: {
   const spec = fact.input_spec || { input: 'text' }
 
   switch (spec.input) {
+    case 'computed':
+      return (
+        <div className="bz-derived">
+          {fact.value || '—'}
+          <span className="bz-derived-tag">구성 항목 합계</span>
+        </div>
+      )
+
     case 'derived':
       return (
         <div className="bz-derived">

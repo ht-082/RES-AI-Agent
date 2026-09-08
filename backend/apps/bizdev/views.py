@@ -22,7 +22,8 @@ from apps.documents.views import resolve_media_path
 
 from . import registry, snapshots
 from .constants import (
-    FACT_DEFS, FACT_SECTIONS, STAGE_DEFS, STAGE_TO_LIFECYCLE, fact_spec,
+    CAPEX_PARTS, FACT_DEFS, FACT_SECTIONS, INVESTMENT_PARTS, STAGE_DEFS,
+    STAGE_TO_LIFECYCLE, fact_spec,
 )
 from .models import (
     BudgetApproval, BudgetEntry, CommunityIssue, Contract, PermitDocument,
@@ -534,7 +535,44 @@ class SiteFactViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         fact = serializer.save()
+        sync_capex_totals(fact)
         sync_bound_field(fact)
+
+
+def _amount(facts, key):
+    """'1,291' · '미정' 같은 값에서 숫자만. 못 읽으면 None(합계에서 뺀다)."""
+    raw = (facts.get(key) or '').strip()
+    try:
+        return float(re.sub(r'[^0-9.\-]', '', raw))
+    except ValueError:
+        return None
+
+
+def sync_capex_totals(fact):
+    """사업비 구성 항목이 바뀌면 총사업비·총투자비를 다시 더한다.
+
+    금융모델 [총투자비] 표와 같은 계산이다.
+      총사업비 = 조사설계비 + 토지비 + 공사비 + 기타비용 + 금융비용
+      총투자비 = 총사업비 + Overfunding + DSRA
+    합계를 사람이 따로 입력하면 구성 항목과 어긋나므로 서버에서만 채운다.
+    """
+    if fact.section != 'econ' or fact.key not in CAPEX_PARTS + INVESTMENT_PARTS[1:]:
+        return
+    rows = {f.key: f for f in SiteFact.objects.filter(site=fact.site, section='econ')}
+    values = {k: f.value for k, f in rows.items()}
+
+    for key, parts in (('total_capex', CAPEX_PARTS), ('total_investment', INVESTMENT_PARTS)):
+        target = rows.get(key)
+        if not target:
+            continue
+        nums = [_amount(values, p) for p in parts]
+        got = [n for n in nums if n is not None]
+        total = f'{sum(got):,.10g}' if got else ''
+        if target.value != total:
+            target.value = total
+            target.save(update_fields=['value', 'updated_at'])
+            values[key] = total          # 총사업비 → 총투자비 로 이어서 반영
+            sync_bound_field(target)
 
 
 def sync_bound_field(fact):

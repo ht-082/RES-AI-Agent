@@ -122,6 +122,7 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
                 <ContractSection siteId={siteId} contracts={data.contracts}
                                  canEdit={canEdit} onChanged={reload} onError={setError} />
                 <EconSection title={labelOf('econ')} facts={factsOf('econ')}
+                             capacityMw={Number(data.site.capacity_mw) || undefined}
                              canEdit={canEdit} onChanged={reload} />
                 <EventSection siteId={siteId} events={data.events}
                               canEdit={canEdit} onChanged={reload} onError={setError} />
