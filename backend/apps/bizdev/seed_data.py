@@ -15,8 +15,10 @@ NL = chr(10)   # 여러 줄 값 구성용
 #  risk_level, target_ntp, approved_budget_krw, lat, lng, energy_type,
 #  lifecycle, address_detail, annual_gwh, cod)
 SITES = [
+    # 리스크 태그는 비워 둔다 — 담당자가 판단해 붙일 일이고, 문서(사업개요)에
+    # 그런 표기가 없다. 허가조건(계통 보강 후 접속)은 인허가 항목 본문에 있다.
     ('hongseong-solar', '홍성1 태양광', 99, '충남 홍성군 갈산면 기산리 780 일원', '홍성군',
-     '기타', 'active', '계통 보강 대기', 'md', '', 1860000000,
+     '기타', 'active', '', '', '', 1860000000,
      36.68, 126.55, 'solar', 'dev', '충남 홍성군 갈산면 기산리 780', None, '2031-12-31'),
 ]
 
