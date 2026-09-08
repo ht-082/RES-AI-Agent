@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { ENERGY_META } from './constants'
+import { ENERGY_META, siteCoords } from './constants'
 import type { Site } from './types'
 
 const TILES = {
@@ -24,10 +24,11 @@ const TILES = {
 
 type TileKey = keyof typeof TILES
 
-function pinHtml(site: Site): string {
+function pinHtml(site: Site, approx: boolean): string {
   const color = ENERGY_META[site.energy_type]?.color || '#f59e0b'
   const pulse = site.status === 'risk' ? '<span class="bz-pin-pulse"></span>' : ''
-  return `<div class="bz-pin" style="--pin-color:${color}">${pulse}<span class="bz-pin-head"></span></div>`
+  return `<div class="bz-pin${approx ? ' approx' : ''}" style="--pin-color:${color}">`
+    + `${pulse}<span class="bz-pin-head"></span></div>`
 }
 
 // 명령형 Leaflet 지도 — 원본 index.page.js 지도 로직 이식(타일 3종 · 핀 · 클릭 선택)
@@ -63,15 +64,19 @@ export default function SiteMap({ sites, onPick }: {
     markersRef.current = []
     const pts: L.LatLngExpression[] = []
     sites.forEach(site => {
-      if (site.lat == null || site.lng == null) return
-      const marker = L.marker([site.lat, site.lng], {
-        icon: L.divIcon({ className: 'bz-pin-wrap', html: pinHtml(site), iconSize: [26, 34], iconAnchor: [13, 30] }),
+      const at = siteCoords(site)
+      if (!at) return
+      const marker = L.marker([at.lat, at.lng], {
+        icon: L.divIcon({ className: 'bz-pin-wrap', html: pinHtml(site, at.approx),
+                          iconSize: [26, 34], iconAnchor: [13, 30] }),
       })
-        .bindTooltip(`${site.name} · ${Math.round(Number(site.capacity_mw))}MW`, { direction: 'top', offset: [0, -26] })
+        .bindTooltip(`${site.name} · ${Math.round(Number(site.capacity_mw))}MW`
+                     + (at.approx ? ' · 대략 위치(시·군 중심)' : ''),
+                     { direction: 'top', offset: [0, -26] })
         .on('click', () => onPick(site))
         .addTo(map)
       markersRef.current.push(marker)
-      pts.push([site.lat, site.lng])
+      pts.push([at.lat, at.lng])
     })
     if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [50, 50], maxZoom: 9 })
   }, [sites, onPick])

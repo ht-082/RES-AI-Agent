@@ -1077,3 +1077,8 @@ select.bz-cell-input { cursor: pointer; }
 /* 사업 List — 개발 중 / 운영 중 묶음 */
 .bz-list-group + .bz-list-group { margin-top: 18px; }
 .bz-list-count { font-size: 11px; font-weight: 600; color: var(--ink-faint); }
+
+/* 대략 위치 핀 — 정확 좌표를 얻기 전 시·군 중심에 세운 것 */
+.bz-pin.approx .bz-pin-head { background: color-mix(in srgb, var(--pin-color) 30%, #fff);
+  border: 2px dashed var(--pin-color); box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+.bz-pin.approx .bz-pin-head::after { background: var(--pin-color); }

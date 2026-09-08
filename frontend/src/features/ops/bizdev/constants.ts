@@ -129,6 +129,34 @@ export function sidoOf(s: Pick<Site, 'location' | 'sido'> & { address_detail?: s
   return SIGUN_SIDO[tok] || SIGUN_SIDO[s.sido] || null
 }
 
+// 시·군 / 시·도 중심의 대략 좌표.
+// 필지 좌표(지오코딩)를 얻기 전까지 지도에 자리라도 잡아 주기 위한 것이라,
+// 이 좌표로 세운 핀은 화면에서 '대략 위치'로 구분해 표시한다.
+const SIGUN_COORDS: Record<string, [number, number]> = {
+  당진시: [36.8894, 126.6457], 신안군: [34.8334, 126.3511],
+  태안군: [36.7456, 126.2979], 홍성군: [36.6014, 126.6608],
+}
+const SIDO_COORDS: Record<string, [number, number]> = {
+  서울: [37.5665, 126.9780], 부산: [35.1796, 129.0756], 대구: [35.8714, 128.6014],
+  인천: [37.4563, 126.7052], 광주: [35.1595, 126.8526], 대전: [36.3504, 127.3845],
+  울산: [35.5384, 129.3114], 세종: [36.4801, 127.2890], 경기: [37.2750, 127.0095],
+  강원: [37.8854, 127.7298], 충북: [36.6357, 127.4913], 충남: [36.6588, 126.6728],
+  전북: [35.8203, 127.1088], 전남: [34.8161, 126.4630], 경북: [36.5760, 128.5056],
+  경남: [35.2383, 128.6924], 제주: [33.4996, 126.5312],
+}
+
+/** 지도에 세울 좌표. 정확 좌표가 없으면 시·군/시·도 중심을 쓰고 approx 로 알린다. */
+export function siteCoords(site: Site): { lat: number; lng: number; approx: boolean } | null {
+  if (site.lat != null && site.lng != null) {
+    return { lat: site.lat, lng: site.lng, approx: false }
+  }
+  const bySigun = SIGUN_COORDS[site.sido]
+  if (bySigun) return { lat: bySigun[0], lng: bySigun[1], approx: true }
+  const sido = sidoOf(site)
+  const bySido = sido ? SIDO_COORDS[sido] : null
+  return bySido ? { lat: bySido[0], lng: bySido[1], approx: true } : null
+}
+
 // ── 포맷 (원본 js/format.js 이식) ──────────────────────────────────
 export function formatKRW(won: number): string {
   if (!won && won !== 0) return '-'
