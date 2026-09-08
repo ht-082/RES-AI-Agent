@@ -22,8 +22,8 @@ from apps.documents.views import resolve_media_path
 
 from . import registry, snapshots
 from .constants import (
-    CAPEX_PARTS, FACT_DEFS, FACT_SECTIONS, INVESTMENT_PARTS, STAGE_DEFS,
-    STAGE_TO_LIFECYCLE, fact_spec,
+    CAPEX_PARTS, FACT_DEFS, FACT_SECTIONS, INVESTMENT_PARTS, LIFECYCLE_TO_STAGE,
+    STAGE_DEFS, STAGE_TO_LIFECYCLE, fact_spec,
 )
 from .models import (
     BudgetApproval, BudgetEntry, CommunityIssue, Contract, PermitDocument,
@@ -117,6 +117,10 @@ class SiteViewSet(viewsets.ModelViewSet):
                 pm_name=getattr(user, 'name', '') or user.username,
                 slug=make_slug(serializer.validated_data.get('name', '')),
             )
+            sigun = sigun_of(site.location)
+            if sigun and not site.sido:
+                site.sido = sigun
+                site.save(update_fields=['sido'])
             # 인허가 골격(법정절차 7 + 개별법 3)
             PermitStage.objects.bulk_create([
                 PermitStage(
@@ -126,10 +130,13 @@ class SiteViewSet(viewsets.ModelViewSet):
                     tier=d['tier'],
                 ) for d in STAGE_DEFS
             ])
-            # 사업개요 항목 골격 — 빈칸으로 만들어 두고 담당자가 채운다
+            # 사업개요 항목 골격 — 등록 폼에서 받은 값은 미리 채워 둔다.
+            # 비워 두면 Site 컬럼에는 값이 있는데 사업 개요 표만 '미정'이 된다.
+            seeded = bound_fact_values(site)
             SiteFact.objects.bulk_create([
                 SiteFact(site=site, section=d['section'], key=d['key'],
-                         label=d['label'], sort_order=i)
+                         label=d['label'], sort_order=i,
+                         value=seeded.get((d['section'], d['key']), ''))
                 for i, d in enumerate(FACT_DEFS)
             ])
 
@@ -539,6 +546,39 @@ class SiteFactViewSet(viewsets.ModelViewSet):
         sync_bound_field(fact)
 
 
+def sigun_of(location):
+    """주소에서 계통·조례 조회 키(시·군·구)를 뽑는다. 없으면 None."""
+    m = re.search(r'(\S+[시군구])', location or '')
+    return m.group(1) if m else None
+
+
+def bound_fact_values(site):
+    """Site 컬럼 값을 사업개요 항목 형식으로. 등록 직후 골격을 채우는 데 쓴다.
+
+    sync_bound_field 의 반대 방향이다 — 등록 폼(이름·용량·위치·유형)과
+    사업 개요 표가 처음부터 같은 값을 보게 한다.
+    """
+    out = {}
+    for d in FACT_DEFS:
+        bound = d.get('bound')
+        if not bound:
+            continue
+        raw = getattr(site, bound, None)
+        if raw in (None, ''):
+            continue
+        if bound == 'capacity_mw':
+            value = f'{float(raw):g}'
+        elif bound == 'lifecycle':
+            value = LIFECYCLE_TO_STAGE.get(raw, '')
+        elif bound == 'cod':
+            value = raw.isoformat() if hasattr(raw, 'isoformat') else str(raw)
+        else:
+            value = str(raw)
+        if value:
+            out[(d['section'], d['key'])] = value
+    return out
+
+
 def _amount(facts, key):
     """'1,291' · '미정' 같은 값에서 숫자만. 못 읽으면 None(합계에서 뺀다)."""
     raw = (facts.get(key) or '').strip()
@@ -602,9 +642,9 @@ def sync_bound_field(fact):
     elif bound == 'location':
         site.location = value
         # 계통·조례 조회 키(시·군)를 주소에서 뽑아 둔다
-        m = re.search(r'(\S+[시군구])', value)
-        if m:
-            site.sido = m.group(1)
+        sigun = sigun_of(value)
+        if sigun:
+            site.sido = sigun
     elif bound == 'name':
         if value:
             site.name = value
