@@ -51,6 +51,7 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
   const [editing, setEditing] = useState(false)
   const by = (key: string) => facts.find(f => f.key === key)
   const txt = (key: string) => (by(key)?.value || '').trim()
+  const note = (key: string) => (by(key)?.note || '').trim()
 
   // ── 가정사항 — 공사기간·운영종료일·차입금 비율은 여기서 계산한다 ──
   const months = (from: string, to: string) => {
@@ -152,6 +153,7 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
             <th className="bz-num">MW당</th>
             <th className="bz-num">비율</th>
             <th className="bz-num">금액</th>
+            <th>비고</th>
           </tr>
         </thead>
         <tbody>
@@ -167,6 +169,7 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
                   {v !== null && capex && key !== 'total_investment' ? pct(v, capex) : ''}
                 </td>
                 <td className="bz-num">{v === null ? MUTED : fmt(v)}</td>
+                <td className="bz-note" title={note(key)}>{note(key)}</td>
               </tr>
             )
           })}
@@ -176,6 +179,7 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
               <td className="bz-num" />
               <td className="bz-num" />
               <td className="bz-num">{fmt(esInvest)}</td>
+              <td className="bz-note" title={note('es_investment')}>{note('es_investment')}</td>
             </tr>
           )}
         </tbody>
@@ -189,6 +193,7 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
             <th>구분</th>
             <th className="bz-num">금액</th>
             <th className="bz-num">매출 대비</th>
+            <th>비고</th>
           </tr>
         </thead>
         <tbody>
@@ -201,6 +206,7 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
                 <td className="bz-num">
                   {v !== null && revenue && key !== 'annual_revenue' ? pct(v, revenue) : ''}
                 </td>
+                <td className="bz-note" title={note(key)}>{note(key)}</td>
               </tr>
             )
           })}

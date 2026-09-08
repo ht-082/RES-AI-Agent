@@ -1033,11 +1033,18 @@ select.bz-cell-input { cursor: pointer; }
 .bz-econ-tbl td.bz-price-cell { white-space: normal; vertical-align: top; }
 .bz-price-box { display: block; min-height: 2.9em; line-height: 1.45; word-break: keep-all; }
 .bz-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.bz-cost-tbl th:nth-child(1) { width: 34%; }
-.bz-cost-tbl th:nth-child(2), .bz-cost-tbl th:nth-child(3) { width: 20%; }
+/* 숫자 열은 값이 들어갈 만큼만 고정폭으로 — 남는 폭은 비고가 가져간다.
+   비율로 주면 창이 좁을 때 '100.0%' 같은 값이 잘린다. */
+.bz-cost-tbl th:nth-child(1) { width: 28%; }
+.bz-cost-tbl th:nth-child(2) { width: 56px; }
+.bz-cost-tbl th:nth-child(3) { width: 64px; }
+.bz-cost-tbl th:nth-child(4) { width: 68px; }
 .bz-cost-sum th[scope="row"], .bz-cost-sum td { font-weight: 800; color: var(--ink);
   background: var(--surface-2); }
-.bz-profit-tbl th:nth-child(2), .bz-profit-tbl th:nth-child(3) { width: 28%; }
+.bz-profit-tbl th:nth-child(1) { width: 26%; }
+.bz-profit-tbl th:nth-child(2) { width: 68px; }
+.bz-profit-tbl th:nth-child(3) { width: 72px; }
+.bz-note { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 단위 주석 — 박스 없이 작게 */
 .bz-econ-unit { text-align: right; margin-top: 3px; font-size: 10.5px;
   color: var(--ink-faint); }
