@@ -15,47 +15,48 @@ STAGE_DEFS = [
     # (원본 Re-project-mng renderStages 와 같은 방식).
     {'stage_no': 1, 'name': '발전사업허가', 'category': 'statutory', 'tier': 'major',
      'agency': '전기위원회',
-     'content_hint': '허가번호 / 용량 / 허가일자 / 허가조건', 'doc_label': '허가증'},
+     'content_fields': ['허가번호', '용량', '허가일자', '허가조건'],
+     'doc_label': '허가증'},
     {'stage_no': 2, 'name': '송전용전기설비이용계약', 'category': 'statutory', 'tier': 'major',
      'agency': '한국전력공사',
-     'content_hint': '계약전력 / 이용개시일', 'doc_label': '이용계약서'},
+     'content_fields': ['계약전력', '이용개시일'], 'doc_label': '이용계약서'},
     {'stage_no': 3, 'name': '개발행위허가', 'category': 'statutory', 'tier': 'major',
      'agency': '지자체',
-     'content_hint': '면적 / 필지수', 'doc_label': '허가서'},
+     'content_fields': ['면적', '필지수'], 'doc_label': '허가서'},
     # 개별법 협의 — 개발행위허가에 딸린 절차(원본 STAGE_DEFS 4~10번과 같은 구성)
     {'stage_no': 4, 'name': '환경영향평가', 'category': 'individual', 'tier': 'minor',
      'agency': '유역환경청',
-     'content_hint': '소규모 / 일반', 'doc_label': '협의문'},
+     'content_fields': ['대상 유형'], 'doc_label': '협의문'},
     {'stage_no': 5, 'name': '재해영향평가', 'category': 'individual', 'tier': 'minor',
      'agency': '광역지자체',
-     'content_hint': '', 'doc_label': '협의문'},
+     'doc_label': '협의문'},
     {'stage_no': 6, 'name': '농지 타용도 일시사용허가', 'category': 'individual', 'tier': 'minor',
      'agency': '지자체',
-     'content_hint': '', 'doc_label': '허가서'},
+     'doc_label': '허가서'},
     {'stage_no': 7, 'name': '농지생산기반시설 사용허가', 'category': 'individual', 'tier': 'minor',
      'agency': '한국농어촌공사',
-     'content_hint': '', 'doc_label': '승인서'},
+     'doc_label': '승인서'},
     {'stage_no': 8, 'name': '경관심의', 'category': 'individual', 'tier': 'minor',
      'agency': '지자체',
-     'content_hint': '', 'doc_label': '심의결과'},
+     'doc_label': '심의결과'},
     {'stage_no': 9, 'name': '교통계획', 'category': 'individual', 'tier': 'minor',
      'agency': '지자체',
-     'content_hint': '', 'doc_label': '심의결과'},
+     'doc_label': '심의결과'},
     {'stage_no': 10, 'name': '문화재지표조사', 'category': 'individual', 'tier': 'minor',
      'agency': '문화재청',
-     'content_hint': '', 'doc_label': '조사보고서'},
+     'doc_label': '조사보고서'},
     {'stage_no': 11, 'name': '공사계획인가', 'category': 'statutory', 'tier': 'major',
      'agency': '전기안전공사',
-     'content_hint': '', 'doc_label': '인가서'},
+     'doc_label': '인가서'},
     {'stage_no': 12, 'name': '사용전검사', 'category': 'statutory', 'tier': 'major',
      'agency': '전기안전공사',
-     'content_hint': '', 'doc_label': '검사증'},
+     'doc_label': '검사증'},
     {'stage_no': 13, 'name': '사업개시신고', 'category': 'statutory', 'tier': 'major',
      'agency': '지자체',
-     'content_hint': '', 'doc_label': '신고증'},
+     'doc_label': '신고증'},
     {'stage_no': 14, 'name': '개발행위준공', 'category': 'statutory', 'tier': 'major',
      'agency': '지자체',
-     'content_hint': '', 'doc_label': '준공증'},
+     'doc_label': '준공증'},
 ]
 
 # 인허가 현황 — 문서는 완료/미완료/미대상 3상태지만, 실무상 '미완료'를
@@ -217,6 +218,12 @@ LIFECYCLE_TO_STAGE = {'dev': '개발', 'ops': '운영'}
 # 사업비 합계 — 구성 항목에서 자동으로 더한다(값을 두 곳에 두지 않는다)
 CAPEX_PARTS = ['survey_design', 'land_cost', 'epc_cost', 'other_cost', 'finance_cost']
 INVESTMENT_PARTS = ['total_capex', 'overfunding', 'dsra']
+
+
+def stage_spec(name):
+    for d in STAGE_DEFS:
+        if d['name'] == name:
+            return d
 
 
 def fact_spec(section, key):

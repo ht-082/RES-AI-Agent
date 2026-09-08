@@ -124,6 +124,7 @@ export interface PermitStage {
   category: 'statutory' | 'individual'
   status: StageStatus
   content: string
+  content_fields: string[]
   certainty: Certainty
   remark: string
   progress_pct: number

@@ -99,7 +99,7 @@ PERMITS = {
         '사용전검사': ('idle', '미정', 'unconfirmed', ''),
         '사업개시신고': ('idle', '미정', 'unconfirmed', ''),
         '개발행위준공': ('idle', '미정', 'unconfirmed', ''),
-        '환경영향평가': ('active', '소규모', 'unconfirmed', '대상 유형(소규모)은 확정'),
+        '환경영향평가': ('active', '대상 유형: 소규모', 'unconfirmed', '대상 유형(소규모)은 확정'),
         '재해영향평가': ('idle', '', 'unconfirmed', ''),
         '농지 타용도 일시사용허가': ('active', '', 'unconfirmed', '진행 중'),
     },

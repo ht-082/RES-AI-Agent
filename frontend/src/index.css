@@ -716,6 +716,13 @@ textarea.inp { resize: vertical; min-height: 84px; line-height: 1.55; }
 .bz-stage-name { font-size: 13px; font-weight: 700; }
 .bz-stage-agency { font-size: 11px; color: var(--ink-faint); }
 .bz-stage-content { font-size: 12px; margin-top: 3px; }
+/* 본문 — 채울 칸이 정해진 항목은 라벨:값으로 */
+.bz-stage-fields { margin: 4px 0 0; display: flex; flex-direction: column; gap: 2px; }
+.bz-sfield { display: grid; grid-template-columns: 68px 1fr; gap: 8px;
+  align-items: baseline; min-width: 0; }
+.bz-sfield dt { font-size: 11px; color: var(--ink-faint); margin: 0; }
+.bz-sfield dd { font-size: 12px; margin: 0; min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
 .bz-stage-remark { margin-top: 6px; font-size: 11.5px; color: var(--ink-2); display: flex; gap: 6px; align-items: baseline; }
 .bz-stage-tag { font-size: 10px; font-weight: 700; color: var(--ink-faint);
   background: var(--surface-2); border-radius: 4px; padding: 1px 5px; flex-shrink: 0; }

@@ -4,7 +4,7 @@ from .models import (
     BudgetApproval, BudgetEntry, CommunityIssue, Contract, PermitDocument,
     PermitStage, Site, SiteEvent, SiteFact,
 )
-from .constants import fact_spec
+from .constants import fact_spec, stage_spec
 from .permissions import can_edit_site
 
 
@@ -19,14 +19,19 @@ class PermitDocumentSerializer(serializers.ModelSerializer):
 
 class PermitStageSerializer(serializers.ModelSerializer):
     documents = PermitDocumentSerializer(many=True, read_only=True)
+    # 본문에 채울 칸 목록(허가번호·용량 등). 비어 있으면 자유 입력으로 그린다.
+    content_fields = serializers.SerializerMethodField()
 
     class Meta:
         model = PermitStage
         fields = ['id', 'site', 'stage_no', 'name', 'agency', 'category', 'tier',
-                  'status', 'content', 'certainty', 'remark', 'progress_pct',
-                  'received_date', 'deadline', 'detail', 'dday_label', 'doc_label',
-                  'documents', 'updated_at', 'is_custom']
+                  'status', 'content', 'content_fields', 'certainty', 'remark',
+                  'progress_pct', 'received_date', 'deadline', 'detail',
+                  'dday_label', 'doc_label', 'documents', 'updated_at', 'is_custom']
         read_only_fields = ['id', 'stage_no', 'is_custom']  # 서버가 부여/재정렬
+
+    def get_content_fields(self, obj):
+        return (stage_spec(obj.name) or {}).get('content_fields', [])
 
 
 class StageSummarySerializer(serializers.ModelSerializer):

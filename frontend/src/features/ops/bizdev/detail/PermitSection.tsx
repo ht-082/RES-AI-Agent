@@ -7,6 +7,7 @@ import SectionModal from './SectionModal'
 import SectionHead, { lastEdited } from './SectionHead'
 import PipelineStrip from './PipelineStrip'
 import Lines from './Lines'
+import StageContent from './StageContent'
 import type { PermitStage } from '../types'
 
 const STATE_OPTIONS: Array<[string, string]> = [
@@ -114,11 +115,8 @@ export default function PermitSection({ siteId, stages, canEdit, onChanged, onEr
               : stage.agency && <span className="bz-stage-agency">{stage.agency}</span>}
           </div>
 
-          {editable
-            ? <EditableText value={stage.content} multiline disabled={!canEdit}
-                            placeholder="내용 (허가번호 · 용량 · 일자 등)"
-                            onSave={v => patch(stage, { content: v })} />
-            : <div className="bz-stage-content"><Lines text={stage.content} /></div>}
+          <StageContent stage={stage} editable={editable} canEdit={canEdit}
+                        onSave={v => patch(stage, { content: v })} />
 
           <div className="bz-stage-remark">
             <span className="bz-stage-tag">특이사항</span>
