@@ -1019,8 +1019,8 @@ select.bz-cell-input { cursor: pointer; }
 
 /* 경제성 — 수익률 헤드라인 + 가정사항·사업비·손익 표 */
 .bz-irr-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-.bz-irr { background: var(--surface-2); border-radius: 8px; padding: 9px 10px; min-width: 0;
-  text-align: center; }
+.bz-irr { border: 1px solid var(--line); border-radius: 10px; padding: 10px 8px; min-width: 0;
+  text-align: center; background: color-mix(in srgb, var(--mint-soft) 45%, var(--surface)); }
 .bz-irr-label { display: block; font-size: 10.5px; color: var(--ink-faint); }
 .bz-irr-val { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums;
   line-height: 1.15; white-space: nowrap; color: var(--green-600); }
@@ -1028,14 +1028,19 @@ select.bz-cell-input { cursor: pointer; }
 .bz-econ-block-title { margin: 14px 0 6px; }
 .bz-econ-tbl th[scope="row"], .bz-cost-tbl th[scope="row"], .bz-profit-tbl th[scope="row"] {
   font-weight: 500; color: var(--ink-2); text-align: left; }
-.bz-econ-tbl th[scope="row"] { width: 38%; }
+.bz-econ-tbl th[scope="row"] { width: 30%; }
+/* 단가 — 체계가 바뀌어도 표 높이가 같도록 두 줄 자리를 미리 잡는다 */
+.bz-econ-tbl td.bz-price-cell { white-space: normal; vertical-align: top; }
+.bz-price-box { display: block; min-height: 2.9em; line-height: 1.45; word-break: keep-all; }
 .bz-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bz-cost-tbl th:nth-child(1) { width: 34%; }
 .bz-cost-tbl th:nth-child(2), .bz-cost-tbl th:nth-child(3) { width: 20%; }
 .bz-cost-sum th[scope="row"], .bz-cost-sum td { font-weight: 800; color: var(--ink);
   background: var(--surface-2); }
 .bz-profit-tbl th:nth-child(2), .bz-profit-tbl th:nth-child(3) { width: 28%; }
-.bz-econ-unit { text-align: right; margin-top: 3px; }
+/* 단위 주석 — 박스 없이 작게 */
+.bz-econ-unit { text-align: right; margin-top: 3px; font-size: 10.5px;
+  color: var(--ink-faint); }
 .bz-econ-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
   font-size: 11.5px; color: var(--ink-2); }
 

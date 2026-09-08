@@ -75,14 +75,18 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
   const genHours = num(by('gen_hours'))
   const priceType = txt('price_type')
 
-  const price: Array<[string, string]> =
-    priceType === 'PPA' ? [['PPA 단가', txt('ppa_price') && `${txt('ppa_price')} 원/kWh`]]
-    : priceType === 'SMP + REC' ? [
-        ['SMP', txt('smp_price') && `${txt('smp_price')} 원/kWh`],
-        ['REC', txt('rec_price') && `${txt('rec_price')} 원/REC`],
-        ['REC 가중치', txt('rec_weight')],
-      ]
-    : []
+  // 단가는 체계에 따라 항목 수가 다르다. 행을 늘리면 PPA 와 SMP+REC 의
+  // 표 높이가 달라지므로 한 줄로 합치고, 그 칸에 두 줄 자리를 미리 비워 둔다.
+  const priceDetail =
+    priceType === 'PPA'
+      ? [txt('ppa_price') && `${txt('ppa_price')} 원/kWh`].filter(Boolean).join(' · ')
+      : priceType === 'SMP + REC'
+        ? [
+            txt('smp_price') && `SMP ${txt('smp_price')} 원/kWh`,
+            txt('rec_price') && `REC ${txt('rec_price')} 원/REC`,
+            txt('rec_weight') && `가중치 ${txt('rec_weight')}`,
+          ].filter(Boolean).join(' · ')
+        : ''
 
   const assume: Array<[string, string]> = [
     ['공사기간', cStart && cEnd
@@ -92,7 +96,7 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
     ['자본금 : 차입금', equity === null ? '' : `${fmt(equity)} : ${fmt(100 - equity)}`],
     ['발전시간', genHours === null ? '' : `${fmt(genHours)} h`],
     ['가격 체계', priceType],
-    ...price,
+    ['단가', priceDetail],
   ]
 
   const capex = num(by('total_capex'))
@@ -130,7 +134,11 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
           {assume.map(([label, value]) => (
             <tr key={label}>
               <th scope="row">{label}</th>
-              <td title={value}>{value || MUTED}</td>
+              <td className={label === '단가' ? 'bz-price-cell' : undefined} title={value}>
+                {label === '단가'
+                  ? <span className="bz-price-box">{value || MUTED}</span>
+                  : (value || MUTED)}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -172,7 +180,7 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
           )}
         </tbody>
       </table>
-      <p className="note bz-econ-unit">단위: 억원{capacityMw ? ` · 설비용량 ${capacityMw}MW 기준` : ''}</p>
+      <p className="bz-econ-unit">단위: 억원{capacityMw ? ` · 설비용량 ${capacityMw}MW 기준` : ''}</p>
 
       <div className="bz-econ-block-title">손익</div>
       <table className="tbl bz-doc-tbl bz-profit-tbl">
