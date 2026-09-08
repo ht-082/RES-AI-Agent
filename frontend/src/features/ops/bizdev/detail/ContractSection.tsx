@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { apiSend } from '../api'
-import { CERTAINTY_META, CONTRACT_CATEGORIES, CONTRACT_STATUS_META } from '../constants'
+import { CONTRACT_CATEGORIES, CONTRACT_STATUS_META } from '../constants'
 import SectionModal from './SectionModal'
 import { lastEdited } from './SectionHead'
 import Lines from './Lines'
-import { CertaintyCell, EditableSelect, EditableText } from './editors'
+import { EditableSelect, EditableText } from './editors'
 import type { Contract } from '../types'
 
 const STATUS_OPTIONS: Array<[string, string]> = [
@@ -86,11 +86,6 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
               <span className="bz-chip" style={{
                 background: `color-mix(in srgb, ${st?.color} 12%, transparent)`, color: st?.color,
               }}>{row.status_label}</span>
-              {row.certainty !== 'confirmed' && (
-                <span className="bz-citem-cert" style={{ color: CERTAINTY_META[row.certainty].color }}>
-                  {CERTAINTY_META[row.certainty].label}
-                </span>
-              )}
             </div>
             {row.summary && (
               <div className="bz-citem-text"><Lines text={row.summary} /></div>
@@ -111,14 +106,13 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
             <th>구분</th>
             <th>상대방</th>
             <th>주요 내용</th>
-            <th>확정도</th>
             <th>체결</th>
             {canEdit && editable && <th className="bz-col-act" />}
           </tr>
         </thead>
         <tbody>
           {contracts.length === 0 && (
-            <tr><td colSpan={canEdit && editable ? 6 : 5} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
+            <tr><td colSpan={canEdit && editable ? 5 : 4} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
               등록된 계약이 없습니다.
             </td></tr>
           )}
@@ -141,17 +135,6 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
                   ? <EditableText value={row.summary} multiline placeholder="—" disabled={!canEdit}
                                   onSave={v => patch(row, { summary: v })} />
                   : <Lines text={row.summary} />}
-              </td>
-              <td>
-                {editable ? (
-                  <CertaintyCell value={row.certainty} disabled={!canEdit}
-                                 onSave={v => patch(row, { certainty: v as Contract['certainty'] })} />
-                ) : (
-                  <span className="bz-chip" style={{
-                    background: `color-mix(in srgb, ${CERTAINTY_META[row.certainty].color} 12%, transparent)`,
-                    color: CERTAINTY_META[row.certainty].color,
-                  }}>{CERTAINTY_META[row.certainty].label}</span>
-                )}
               </td>
               <td>
                 {editable ? (

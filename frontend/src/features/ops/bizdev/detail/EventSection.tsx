@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { apiSend } from '../api'
-import { CERTAINTY_META, EVENT_STATUSES, EVENT_STATUS_META, EVENT_TYPES, shortDate } from '../constants'
+import { EVENT_STATUSES, EVENT_STATUS_META, EVENT_TYPES, shortDate } from '../constants'
 import SectionModal from './SectionModal'
 import { lastEdited } from './SectionHead'
 import Lines from './Lines'
-import { CertaintyCell, EditableSelect, EditableText } from './editors'
+import { EditableSelect, EditableText } from './editors'
 import type { SiteEvent } from '../types'
 
 // 진행경과 및 이슈 — 양식 §6.
@@ -90,11 +90,6 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
                 <span className="bz-chip" style={{
                   background: `color-mix(in srgb, ${st?.color} 12%, transparent)`, color: st?.color,
                 }}>{row.status_label}</span>
-                {row.certainty !== 'confirmed' && (
-                  <span className="bz-tl-cert" style={{ color: CERTAINTY_META[row.certainty].color }}>
-                    {CERTAINTY_META[row.certainty].label}
-                  </span>
-                )}
               </div>
               <div className="bz-tl-text"><Lines text={row.summary} /></div>
             </div>
@@ -112,13 +107,12 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
             <th>유형</th>
             <th>현황</th>
             <th>주요 내용</th>
-            <th>확정도</th>
             {canEdit && editable && <th style={{ width: 32 }} />}
           </tr>
         </thead>
         <tbody>
           {events.length === 0 && (
-            <tr><td colSpan={canEdit && editable ? 6 : 5} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
+            <tr><td colSpan={canEdit && editable ? 5 : 4} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
               등록된 경과가 없습니다.
             </td></tr>
           )}
@@ -160,17 +154,6 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
                   ? <EditableText value={row.summary} multiline disabled={!canEdit}
                                   onSave={v => patch(row, { summary: v })} />
                   : <Lines text={row.summary} />}
-              </td>
-              <td>
-                {editable ? (
-                  <CertaintyCell value={row.certainty} disabled={!canEdit}
-                                 onSave={v => patch(row, { certainty: v })} />
-                ) : (
-                  <span className="bz-chip" style={{
-                    background: `color-mix(in srgb, ${CERTAINTY_META[row.certainty].color} 12%, transparent)`,
-                    color: CERTAINTY_META[row.certainty].color,
-                  }}>{CERTAINTY_META[row.certainty].label}</span>
-                )}
               </td>
               {canEdit && editable && (
                 <td>
