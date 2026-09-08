@@ -120,9 +120,25 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
       <div className="card block">
         <SectionHead title="사업 List" />
         <div className="h-sub" style={{ marginBottom: 12 }}>
-          행 클릭 → 개발 사업은 인허가·예산 상세로, <b>운영</b> 배지 사업은 발전 실적 상세로 이동
+          행 클릭 → 개발 사업은 인허가·예산 상세로, 운영 사업은 발전 실적 상세로 이동
         </div>
-        <PipelineTable sites={filtered} onSelectSite={onSelectSite} />
+        {/* 개발 중과 운영 중은 봐야 할 것이 다르다(인허가 진척 ↔ 발전 실적).
+            한 표에 섞으면 진척률 칸이 운영 사업에서 늘 100%로 남아 눈만 어지럽다. */}
+        {([['dev', '개발 중'], ['ops', '운영 중']] as const).map(([life, label]) => {
+          const rows = filtered.filter(s => s.lifecycle === life)
+          const mw = rows.reduce((a, s) => a + Number(s.capacity_mw || 0), 0)
+          return (
+            <div key={life} className="bz-list-group">
+              <div className="bz-block-title">
+                {label}
+                <span className="bz-list-count">{rows.length}개소 · {Math.round(mw)}MW</span>
+              </div>
+              {rows.length === 0
+                ? <p className="note">해당 사업이 없습니다.</p>
+                : <PipelineTable sites={rows} onSelectSite={onSelectSite} />}
+            </div>
+          )
+        })}
       </div>
 
       {showForm && <SiteFormModal onClose={() => setShowForm(false)} onSaved={onSitesChanged} />}
