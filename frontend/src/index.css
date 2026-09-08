@@ -812,7 +812,7 @@ select.bz-cell-input { cursor: pointer; }
   background: color-mix(in srgb, var(--mint-soft) 55%, var(--surface));
   border-bottom: 1px solid var(--line);
   border-radius: var(--radius) var(--radius) 0 0; }
-.bz-sec-head h3 { font-size: 15.5px; font-weight: 700; color: var(--brand);
+.bz-sec-head h3 { font-size: 17px; font-weight: 800; color: var(--brand);
   margin-bottom: 0; letter-spacing: -0.01em; }
 .bz-sec-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .bz-edit-btn { font-size: 12px; display: flex; align-items: center; gap: 4px; padding: 3px 9px; }
@@ -833,9 +833,14 @@ select.bz-cell-input { cursor: pointer; }
 .bz-stack { display: flex; flex-direction: column; gap: 20px; }
 .bz-stack > .card { flex: 1 1 auto; }
 
-/* 카드 안 소제목 */
-.bz-block-title { display: flex; align-items: center; gap: 6px;
-  font-size: 12.5px; font-weight: 700; margin-bottom: 8px; }
+/* 카드 안 소제목 — 본문과 구분되도록 크게·굵게, 왼쪽에 강조 막대 */
+.bz-block-title, .bz-econ-block-title, .bz-strip-title {
+  font-size: 13.5px; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
+.bz-block-title::before, .bz-econ-block-title::before, .bz-strip-title::before {
+  content: ''; display: inline-block; width: 3px; height: 13px; border-radius: 2px;
+  background: var(--brand); margin-right: 7px; vertical-align: -2px; }
+.bz-block-title { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.bz-block-title::before { margin-right: 0; }
 
 /* 지분구조도 — 주주 박스 → 연결선 → SPC 박스 */
 .bz-org { display: flex; align-items: center; }
@@ -986,7 +991,7 @@ select.bz-cell-input { cursor: pointer; }
 .bz-strip { margin-bottom: 6px; }
 .bz-strip-head { display: flex; justify-content: space-between; align-items: baseline;
   gap: 8px; margin-bottom: 8px; }
-.bz-strip-title { font-size: 12.5px; font-weight: 700; }
+
 .bz-strip-note { font-size: 10.5px; color: var(--ink-faint); }
 .bz-strip-track { display: flex; }
 .bz-strip-step { flex: 1; min-width: 0; display: flex; flex-direction: column;
@@ -1020,7 +1025,7 @@ select.bz-cell-input { cursor: pointer; }
 .bz-irr-val { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums;
   line-height: 1.15; white-space: nowrap; color: var(--green-600); }
 .bz-irr-unit { font-size: 12px; font-weight: 700; margin-left: 1px; }
-.bz-econ-block-title { font-size: 11px; font-weight: 700; color: var(--ink-faint); margin: 13px 0 5px; }
+.bz-econ-block-title { margin: 14px 0 6px; }
 .bz-econ-tbl th[scope="row"], .bz-cost-tbl th[scope="row"], .bz-profit-tbl th[scope="row"] {
   font-weight: 500; color: var(--ink-2); text-align: left; }
 .bz-econ-tbl th[scope="row"] { width: 38%; }
