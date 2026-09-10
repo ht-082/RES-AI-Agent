@@ -167,7 +167,7 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
   return (
     <div className="card block">
       {header}
-      {list}
+      <div className="bz-scroll bz-scroll-pair">{list}</div>
       {editing && (
         <SectionModal title="계약 정보" hint="체결된 계약만 담습니다 · 행을 추가·삭제하고 각 칸을 고칠 수 있습니다"
                       onClose={() => { setEditing(false); onChanged() }}>

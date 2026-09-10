@@ -1092,3 +1092,22 @@ select.bz-cell-input { cursor: pointer; }
 .bz-pin.approx .bz-pin-head { background: color-mix(in srgb, var(--pin-color) 30%, #fff);
   border: 2px dashed var(--pin-color); box-shadow: 0 1px 4px rgba(0,0,0,.25); }
 .bz-pin.approx .bz-pin-head::after { background: var(--pin-color); }
+
+/* 박스 안 스크롤 — 머리(제목·편집 버튼)는 고정하고 본문만 넘긴다.
+   내용이 캡보다 짧으면 박스도 그만큼만 차지한다(빈 자리가 생기지 않는다).
+   짝으로 놓인 박스는 같은 캡을 써서 아래 끝이 계속 맞는다.
+   아래·위 그림자는 스크롤이 있을 때만 보인다(background-attachment local 기법). */
+.bz-scroll { overflow-y: auto; overflow-x: hidden; min-height: 0; flex: 1 1 auto;
+  scrollbar-gutter: stable;
+  background:
+    linear-gradient(var(--surface) 40%, transparent) top / 100% 16px no-repeat local,
+    linear-gradient(transparent, var(--surface) 60%) bottom / 100% 16px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, rgba(16,32,26,.10), transparent) top / 100% 7px no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, rgba(16,32,26,.10), transparent) bottom / 100% 7px no-repeat scroll; }
+.bz-scroll-permit { max-height: 880px; }   /* 인허가 — 상위 항목 8~9개 */
+.bz-scroll-pair   { max-height: 480px; }   /* 계약·예산 / 경제성·진행경과 */
+.bz-scroll-rail   { max-height: 300px; }   /* 계통·조례 */
+.bz-scroll::-webkit-scrollbar { width: 9px; }
+.bz-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px;
+  border: 2px solid var(--surface); }
+.bz-scroll::-webkit-scrollbar-thumb:hover { background: var(--line-strong, #c3cec8); }

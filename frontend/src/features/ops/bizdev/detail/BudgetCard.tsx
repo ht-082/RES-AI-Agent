@@ -34,6 +34,7 @@ export default function BudgetCard({ siteId, entries, approvals, summary, canEdi
     <div className="card block">
       <SectionHead title="예산 승인 · 집행" updatedAt={updatedAt} canEdit={canEdit}
                    onEdit={() => setEditing(true)} />
+      <div className="bz-scroll bz-scroll-pair">
       <div className="h-sub">
         집행 {formatKRW(executed)} / 승인 {formatKRW(approved)} · 집행률 {summary.exec_pct}%
       </div>
@@ -177,6 +178,7 @@ export default function BudgetCard({ siteId, entries, approvals, summary, canEdi
           </tbody>
         </table>
       )}
+      </div>
 
       {editing && (
         <BudgetEditModal siteId={siteId} entries={entries} approvals={approvals}

@@ -111,6 +111,8 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
       <SectionHead title={title} updatedAt={lastEdited(facts.map(f => f.updated_at))}
                    canEdit={canEdit} onEdit={() => setEditing(true)} />
 
+      <div className="bz-scroll bz-scroll-pair">
+
       {/* 수익률 — 이 박스에서 가장 먼저 보아야 할 값 */}
       <div className="bz-irr-row">
         {IRR_ROWS.map(([label, key]) => {
@@ -214,6 +216,7 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
       </table>
 
       {etc?.value && <div className="bz-econ-meta"><Lines text={etc.value} /></div>}
+      </div>
 
       {editing && (
         <SectionModal title={title}

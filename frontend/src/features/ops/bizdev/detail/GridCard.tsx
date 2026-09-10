@@ -28,6 +28,7 @@ export default function GridCard({ sido }: { sido: string }) {
         인근 변전소 접속 여유 (KEPCO 분산전원 연계정보 · 여유 적은 순)
       </div>
       {loaded && subs.length === 0 && <p className="note">계통 데이터가 없습니다.</p>}
+      <div className="bz-scroll bz-scroll-rail">
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
         {subs.map(s => (
           <div key={s.name} style={{
@@ -49,6 +50,7 @@ export default function GridCard({ sido }: { sido: string }) {
             </div>
           </div>
         ))}
+      </div>
       </div>
     </div>
   )

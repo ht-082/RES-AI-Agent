@@ -282,7 +282,7 @@ export default function PermitSection({ siteId, stages, canEdit, onChanged, onEr
       <input ref={fileInput} type="file" style={{ display: 'none' }}
              onChange={e => upload(e.target.files?.[0])} />
       <PipelineStrip stages={stages} />
-      {body(false)}
+      <div className="bz-scroll bz-scroll-permit">{body(false)}</div>
 
       {editing && (
         <SectionModal title="인허가 현황"

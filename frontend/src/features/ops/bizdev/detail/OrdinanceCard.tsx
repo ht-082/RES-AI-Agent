@@ -22,6 +22,7 @@ export default function OrdinanceCard({ sido }: { sido: string }) {
     <div className="card block">
       <SectionHead title="지자체 조례 모니터링" />
       <div className="h-sub" style={{ marginBottom: 12 }}>재생에너지 관련 조례 (법제처 국가법령정보)</div>
+      <div className="bz-scroll bz-scroll-rail">
       {loaded && rows.length === 0 && <p className="note">관련 조례가 없습니다.</p>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {rows.map(l => (
@@ -35,6 +36,7 @@ export default function OrdinanceCard({ sido }: { sido: string }) {
             </div>
           </a>
         ))}
+      </div>
       </div>
     </div>
   )

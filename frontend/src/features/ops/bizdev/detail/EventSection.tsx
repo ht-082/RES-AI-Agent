@@ -171,7 +171,7 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
   return (
     <div className="card block">
       {header}
-      {timeline}
+      <div className="bz-scroll bz-scroll-pair">{timeline}</div>
       {editing && (
         <SectionModal title="진행경과 및 이슈"
                       hint='등록 일자와 현황(진행중·보류·완료)을 함께 관리합니다'
