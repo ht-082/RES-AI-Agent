@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import (
+    DefectItem, OpsDaily, OpsPlanItem, SiteDocument,
     BudgetApproval, BudgetEntry, CommunityIssue, Contract, PermitDocument,
     PermitStage, Site, SiteEvent, SiteFact,
 )
@@ -179,3 +180,46 @@ class SiteEventSerializer(serializers.ModelSerializer):
                   'type_label', 'status', 'status_label', 'summary', 'certainty',
                   'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class OpsDailySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OpsDaily
+        fields = ['id', 'site', 'date', 'generation_mwh', 'pr_pct', 'revenue_krw',
+                  'note', 'updated_at']
+        read_only_fields = ['id', 'updated_at']
+
+
+class OpsPlanItemSerializer(serializers.ModelSerializer):
+    status_label = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = OpsPlanItem
+        fields = ['id', 'site', 'month', 'title', 'cycle', 'owner', 'status',
+                  'status_label', 'done_date', 'note', 'updated_at']
+        read_only_fields = ['id', 'status_label', 'updated_at']
+
+
+class DefectItemSerializer(serializers.ModelSerializer):
+    status_label = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = DefectItem
+        fields = ['id', 'site', 'found_date', 'part', 'summary', 'status',
+                  'status_label', 'fixed_date', 'counterparty', 'note', 'updated_at']
+        read_only_fields = ['id', 'status_label', 'updated_at']
+
+
+class SiteDocumentSerializer(serializers.ModelSerializer):
+    category_label = serializers.CharField(source='get_category_display', read_only=True)
+    has_file = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SiteDocument
+        fields = ['id', 'site', 'category', 'category_label', 'title', 'doc_date',
+                  'file_name', 'file_size', 'has_file', 'note', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'category_label', 'file_name', 'file_size',
+                            'has_file', 'created_at', 'updated_at']
+
+    def get_has_file(self, obj):
+        return bool(obj.storage_uri)

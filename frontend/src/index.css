@@ -1136,3 +1136,34 @@ select.bz-cell-input { cursor: pointer; }
 
 /* 목차에서 건너뛴 박스가 화면 맨 위에 딱 붙지 않도록 */
 .card.block { scroll-margin-top: 16px; }
+
+/* 운영 상세 — 문서의 큰 묶음 제목(1. 운영 현황 / 2. SPC 현황 / 3. 문서 보관함) */
+.bz-part-title { font-size: 15px; font-weight: 800; color: var(--brand);
+  margin: 10px 0 -4px; letter-spacing: -0.01em; }
+.bz-part-title::before { content: ''; display: inline-block; width: 4px; height: 15px;
+  border-radius: 2px; background: var(--brand); margin-right: 8px; vertical-align: -2px; }
+
+/* 발전 · 재무 실적 타일 */
+.bz-perf-block + .bz-perf-block { margin-top: 12px; }
+.bz-perf-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bz-perf-tile { background: var(--surface-2); border-radius: 9px; padding: 9px 11px;
+  min-width: 0; }
+.bz-perf-label { display: block; font-size: 10.5px; color: var(--ink-faint);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bz-perf-val { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums;
+  white-space: nowrap; }
+
+/* 운영관리 계획 · 하자 보수 · 문서 보관함 표 열 너비 */
+.bz-plan-tbl th:nth-child(1) { width: 76px; }
+.bz-plan-tbl th:nth-child(3), .bz-plan-tbl th:nth-child(4) { width: 15%; }
+.bz-plan-tbl th:nth-child(5) { width: 74px; }
+.bz-plan-tbl th:nth-child(6) { width: 88px; }
+.bz-defect-tbl th:nth-child(1) { width: 78px; }
+.bz-defect-tbl th:nth-child(2) { width: 18%; }
+.bz-defect-tbl th:nth-child(4) { width: 70px; }
+.bz-defect-tbl th:nth-child(5) { width: 78px; }
+.bz-defect-tbl th:nth-child(6) { width: 15%; }
+.bz-vault-group + .bz-vault-group { margin-top: 14px; }
+.bz-vault-hint { font-size: 11.5px; padding: 8px 12px; }
+.bz-vault-tbl th:nth-child(2) { width: 110px; }
+.bz-vault-tbl th:nth-child(3) { width: 160px; }

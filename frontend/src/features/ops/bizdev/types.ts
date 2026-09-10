@@ -184,6 +184,60 @@ export interface CommunityIssue {
   created_at: string
 }
 
+export interface OpsDaily {
+  id: string
+  site: string
+  date: string
+  generation_mwh: string | null
+  pr_pct: string | null
+  revenue_krw: number | null
+  note: string
+  updated_at: string
+}
+
+export interface OpsPlanItem {
+  id: string
+  site: string
+  month: string
+  title: string
+  cycle: string
+  owner: string
+  status: 'planned' | 'doing' | 'done' | 'skip'
+  status_label: string
+  done_date: string | null
+  note: string
+  updated_at: string
+}
+
+export interface DefectItem {
+  id: string
+  site: string
+  found_date: string | null
+  part: string
+  summary: string
+  status: 'open' | 'doing' | 'done' | 'hold'
+  status_label: string
+  fixed_date: string | null
+  counterparty: string
+  note: string
+  updated_at: string
+}
+
+export interface SiteDoc {
+  id: string
+  site: string
+  category: 'ops' | 'corp' | 'permit' | 'fin'
+  category_label: string
+  title: string
+  doc_date: string | null
+  file_name: string
+  file_size: number | null
+  has_file: boolean
+  note: string
+  created_at: string
+  updated_at: string
+}
+
 export interface SiteDetailPayload {
   site: Site
   sections: FactSection[]
@@ -195,6 +249,10 @@ export interface SiteDetailPayload {
   budget_approvals: BudgetApproval[]
   budget_summary: BudgetSummary
   issues: CommunityIssue[]
+  ops_daily: OpsDaily[]
+  ops_plans: OpsPlanItem[]
+  defects: DefectItem[]
+  site_documents: SiteDoc[]
 }
 
 export interface GridRegion {

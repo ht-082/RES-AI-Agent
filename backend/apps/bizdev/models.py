@@ -330,3 +330,125 @@ class SiteEvent(models.Model):
 
     def __str__(self):
         return f'{self.site.name} · {self.summary[:30]}'
+
+
+class OpsDaily(models.Model):
+    """운영 실적 — 하루치 한 줄(발전량·PR·매출).
+
+    당일·1개월 평균·사업년도 누적은 이 줄들을 세어 만든다. 값을 세 벌로 저장하면
+    반드시 어긋나므로, 담는 것은 '하루' 하나뿐이다(양식 §1-1·1-2).
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='ops_daily')
+    date = models.DateField()
+    generation_mwh = models.DecimalField(max_digits=12, decimal_places=3, null=True,
+                                         blank=True, help_text='발전량 (MWh)')
+    pr_pct = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                 help_text='PR (%)')
+    revenue_krw = models.BigIntegerField(null=True, blank=True, help_text='매출 (원)')
+    note = models.CharField(max_length=200, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bizdev_ops_daily'
+        ordering = ['-date']
+        constraints = [models.UniqueConstraint(fields=['site', 'date'],
+                                               name='uniq_bizdev_ops_daily')]
+        indexes = [models.Index(fields=['site', 'date'])]
+        verbose_name = '운영 실적(일별)'
+        verbose_name_plural = '운영 실적(일별)'
+
+    def __str__(self):
+        return f'{self.site.name} · {self.date}'
+
+
+class OpsPlanItem(models.Model):
+    """정기 운영관리 계획 — 월 단위 점검·정비 항목 (양식 §1-3)"""
+    STATUS = [('planned', '예정'), ('doing', '진행중'), ('done', '완료'),
+              ('skip', '미실시')]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='ops_plans')
+    month = models.DateField(help_text='해당 월(1일로 저장)')
+    title = models.CharField(max_length=120, help_text='점검·정비 항목')
+    cycle = models.CharField(max_length=40, blank=True, default='',
+                             help_text='주기 (월 1회 · 분기 등)')
+    owner = models.CharField(max_length=60, blank=True, default='', help_text='담당')
+    status = models.CharField(max_length=10, choices=STATUS, default='planned')
+    done_date = models.DateField(null=True, blank=True)
+    note = models.CharField(max_length=200, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bizdev_ops_plans'
+        ordering = ['-month', 'title']
+        indexes = [models.Index(fields=['site', 'month'])]
+        verbose_name = '운영관리 계획'
+        verbose_name_plural = '운영관리 계획'
+
+    def __str__(self):
+        return f'{self.site.name} · {self.month:%Y-%m} {self.title}'
+
+
+class DefectItem(models.Model):
+    """하자 보수 현황 (양식 §1-4)"""
+    STATUS = [('open', '접수'), ('doing', '조치중'), ('done', '완료'),
+              ('hold', '보류')]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='defects')
+    found_date = models.DateField(null=True, blank=True, help_text='발생·접수일')
+    part = models.CharField(max_length=80, blank=True, default='',
+                            help_text='설비·부위 (모듈 · 인버터 등)')
+    summary = models.TextField(blank=True, default='', help_text='내용')
+    status = models.CharField(max_length=10, choices=STATUS, default='open')
+    fixed_date = models.DateField(null=True, blank=True, help_text='조치 완료일')
+    counterparty = models.CharField(max_length=80, blank=True, default='',
+                                    help_text='조치 주체 (EPC · O&M 등)')
+    note = models.CharField(max_length=200, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bizdev_defects'
+        ordering = [models.F('found_date').desc(nulls_first=True), '-created_at']
+        indexes = [models.Index(fields=['site'])]
+        verbose_name = '하자 보수'
+        verbose_name_plural = '하자 보수'
+
+    def __str__(self):
+        return f'{self.site.name} · {self.part} {self.summary[:20]}'
+
+
+class SiteDocument(models.Model):
+    """문서 보관함 (양식 §3) — 인허가 문서는 PermitDocument 가 따로 들고 있다."""
+    CATEGORY = [('ops', '운영'), ('corp', '법인문서'), ('permit', '인허가'),
+                ('fin', '재무')]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='documents')
+    category = models.CharField(max_length=10, choices=CATEGORY, default='ops')
+    title = models.CharField(max_length=200, help_text='문서 이름')
+    doc_date = models.DateField(null=True, blank=True, help_text='문서 일자')
+    file_name = models.CharField(max_length=300, blank=True, default='')
+    storage_uri = models.CharField(max_length=1000, blank=True, default='',
+                                   help_text='/media/bizdev/site_docs/<uuid>.<ext>')
+    file_size = models.BigIntegerField(null=True, blank=True)
+    note = models.CharField(max_length=200, blank=True, default='')
+    uploaded_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL,
+                                    null=True, blank=True,
+                                    related_name='bizdev_site_documents')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bizdev_site_documents'
+        ordering = ['category', '-doc_date', '-created_at']
+        indexes = [models.Index(fields=['site', 'category'])]
+        verbose_name = '문서 보관함'
+        verbose_name_plural = '문서 보관함'
+
+    def __str__(self):
+        return f'{self.site.name} · {self.get_category_display()} {self.title}'

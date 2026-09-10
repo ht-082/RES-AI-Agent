@@ -26,13 +26,14 @@ from .constants import (
     STAGE_DEFS, STAGE_TO_LIFECYCLE, fact_spec,
 )
 from .models import (
-    BudgetApproval, BudgetEntry, CommunityIssue, Contract, PermitDocument,
-    PermitStage, Site, SiteEvent, SiteFact,
+    BudgetApproval, BudgetEntry, CommunityIssue, Contract, DefectItem, OpsDaily,
+    OpsPlanItem, PermitDocument, PermitStage, Site, SiteDocument, SiteEvent, SiteFact,
 )
 from .permissions import IsAdminOrSitePM, check_site_editable
 from .serializers import (
     BudgetApprovalSerializer, BudgetEntrySerializer, CommunityIssueSerializer,
-    ContractSerializer,
+    ContractSerializer, DefectItemSerializer, OpsDailySerializer,
+    OpsPlanItemSerializer, SiteDocumentSerializer,
     PermitDocumentSerializer, PermitStageSerializer, SiteEventSerializer,
     SiteFactSerializer, SiteListSerializer, SiteWriteSerializer,
 )
@@ -263,6 +264,10 @@ class SiteViewSet(viewsets.ModelViewSet):
                 'exec_pct': round(total / approved * 100) if approved else 0,
             },
             'issues': CommunityIssueSerializer(site.issues.all(), many=True).data,
+            'ops_daily': OpsDailySerializer(site.ops_daily.all()[:400], many=True).data,
+            'ops_plans': OpsPlanItemSerializer(site.ops_plans.all(), many=True).data,
+            'defects': DefectItemSerializer(site.defects.all(), many=True).data,
+            'site_documents': SiteDocumentSerializer(site.documents.all(), many=True).data,
         })
 
 
@@ -682,3 +687,84 @@ class SubstationSearchView(APIView):
     def get(self, request):
         q = (request.query_params.get('q') or '').strip()
         return Response(snapshots.search_substations(q))
+
+
+class OpsDailyViewSet(viewsets.ModelViewSet):
+    """운영 실적(일별) — 당일·1개월·누적은 화면에서 이 줄들로 계산한다."""
+    queryset = OpsDaily.objects.select_related('site')
+    serializer_class = OpsDailySerializer
+    permission_classes = [IsAdminOrSitePM]
+    pagination_class = None
+    filterset_fields = ['site']
+
+    def perform_create(self, serializer):
+        check_site_editable(self.request.user, serializer.validated_data['site'])
+        serializer.save()
+
+
+class OpsPlanItemViewSet(viewsets.ModelViewSet):
+    queryset = OpsPlanItem.objects.select_related('site')
+    serializer_class = OpsPlanItemSerializer
+    permission_classes = [IsAdminOrSitePM]
+    pagination_class = None
+    filterset_fields = ['site']
+
+    def perform_create(self, serializer):
+        check_site_editable(self.request.user, serializer.validated_data['site'])
+        serializer.save()
+
+
+class DefectItemViewSet(viewsets.ModelViewSet):
+    queryset = DefectItem.objects.select_related('site')
+    serializer_class = DefectItemSerializer
+    permission_classes = [IsAdminOrSitePM]
+    pagination_class = None
+    filterset_fields = ['site']
+
+    def perform_create(self, serializer):
+        check_site_editable(self.request.user, serializer.validated_data['site'])
+        serializer.save()
+
+
+class SiteDocumentViewSet(viewsets.ModelViewSet):
+    """문서 보관함 — 목록·메모는 JSON, 파일은 multipart 로 올린다."""
+    queryset = SiteDocument.objects.select_related('site')
+    serializer_class = SiteDocumentSerializer
+    permission_classes = [IsAdminOrSitePM]
+    pagination_class = None
+    filterset_fields = ['site', 'category']
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def perform_create(self, serializer):
+        check_site_editable(self.request.user, serializer.validated_data['site'])
+        doc = serializer.save(uploaded_by=self.request.user)
+        self._attach(doc)
+
+    def perform_update(self, serializer):
+        doc = serializer.save()
+        self._attach(doc)
+
+    def _attach(self, doc):
+        upload = self.request.FILES.get('file')
+        if not upload:
+            return
+        if doc.storage_uri:                       # 갈아 끼울 때 이전 파일 정리
+            _delete_stored(doc.storage_uri)
+        uri, _ext, size = _save_upload(upload, 'site_docs')
+        doc.file_name = upload.name
+        doc.storage_uri = uri
+        doc.file_size = size
+        doc.save(update_fields=['file_name', 'storage_uri', 'file_size'])
+
+    def perform_destroy(self, instance):
+        if instance.storage_uri:
+            _delete_stored(instance.storage_uri)
+        instance.delete()
+
+    @action(detail=True, methods=['get'])
+    def download(self, request, pk=None):
+        doc = self.get_object()
+        if not doc.storage_uri:
+            return Response({'error': '첨부된 파일이 없습니다.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        return _file_response(doc.storage_uri, doc.file_name or 'document')

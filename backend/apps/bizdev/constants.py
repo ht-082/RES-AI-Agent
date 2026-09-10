@@ -101,6 +101,7 @@ FACT_SECTIONS = [
     ('land', '부지 정보'),
     ('econ', '경제성 및 총사업비'),
     ('pf', '금융(PF)'),
+    ('fin', '재무지표'),
 ]
 
 # 사업 단계 — 파이프라인 집계 기준
@@ -203,6 +204,25 @@ FACT_DEFS = [
     {'section': 'econ', 'key': 'p_irr_pretax', 'label': 'P.IRR 세전 (%)', 'input': 'number'},
     {'section': 'econ', 'key': 'p_irr_aftertax', 'label': 'P.IRR 세후 (%)', 'input': 'number'},
     {'section': 'econ', 'key': 'etc', 'label': '기타'},
+
+    # 재무지표 — 운영 사업(손익계산서 · 재무상태표). 결산 기준으로 담당자가 채운다.
+    {'section': 'fin', 'key': 'fin_year', 'label': '기준 연도', 'input': 'number'},
+    {'section': 'fin', 'key': 'revenue', 'label': '매출 (백만원)', 'input': 'number'},
+    {'section': 'fin', 'key': 'operating_profit', 'label': '영업이익 (백만원)',
+     'input': 'number'},
+    {'section': 'fin', 'key': 'net_profit', 'label': '당기순이익 (백만원)',
+     'input': 'number'},
+    {'section': 'fin', 'key': 'assets', 'label': '자산총계 (백만원)', 'input': 'number'},
+    {'section': 'fin', 'key': 'current_assets', 'label': '유동성자산 (백만원)',
+     'input': 'number'},
+    {'section': 'fin', 'key': 'liabilities', 'label': '부채총계 (백만원)',
+     'input': 'number'},
+    {'section': 'fin', 'key': 'current_liabilities', 'label': '유동성부채 (백만원)',
+     'input': 'number'},
+    {'section': 'fin', 'key': 'equity', 'label': '자본총계 (백만원)', 'input': 'number'},
+    {'section': 'fin', 'key': 'retained_earnings', 'label': '이익잉여금 (백만원)',
+     'input': 'number'},
+    {'section': 'fin', 'key': 'etc', 'label': '기타'},
 
     {'section': 'pf', 'key': 'commitment', 'label': '대주별 약정금액'},
     {'section': 'pf', 'key': 'interest_rate', 'label': 'PF 금리'},

@@ -1,28 +1,30 @@
-import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Zap } from 'lucide-react'
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import SiteListRail from './SiteListRail'
-import OverviewCard from './detail/OverviewCard'
+import OverviewSection from './detail/OverviewSection'
 import FactSection from './detail/FactSection'
 import ContractSection from './detail/ContractSection'
 import EventSection from './detail/EventSection'
 import GridCard from './detail/GridCard'
-import SectionHead from './detail/SectionHead'
-import { apiGet } from './api'
-import { formatKRW } from './constants'
+import OpsPerformance from './detail/OpsPerformance'
+import OpsPlanCard from './detail/OpsPlanCard'
+import DefectCard from './detail/DefectCard'
+import DocumentVault from './detail/DocumentVault'
+import SectionJump from './detail/SectionJump'
+import ScrollTopButton from './detail/ScrollTopButton'
 import AliasBadge from './detail/AliasBadge'
+import { apiGet } from './api'
 import type { SiteDetailPayload } from './types'
 import type { DetailProps } from './SiteDetail'
 
-// 월별 발전량 분포 계수 — 실측 데이터가 없어 연간 예상 발전량(annual_gwh)을
-// 국내 태양광 일사량 계절 패턴으로 배분한 "추정치"다. 실시간 연동은 후속.
-const MONTH_WEIGHT = [0.062, 0.070, 0.090, 0.098, 0.104, 0.096,
-                     0.086, 0.088, 0.084, 0.082, 0.070, 0.070]
-
-// 운영 사업 상세 — lifecycle='ops' 전용. 인허가 대신 발전 실적·경제성 중심.
+// 운영 사업 상세 — lifecycle='ops' 전용. 문서 '운영PJT Dashboard' 를 따른다.
+//   1. 운영 현황  발전·재무 실적 / 정기 운영관리 계획 / 하자 보수 / 진행경과
+//   2. SPC 현황   사업 기본 정보 / SPC 정보 / 재무지표 / 부지 정보 / 계약 정보
+//   3. 문서 보관함 운영 · 법인문서 · 인허가 · 재무
 export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSite, onSitesChanged }: DetailProps) {
   const [data, setData] = useState<SiteDetailPayload | null>(null)
   const [error, setError] = useState('')
+  const paneRef = useRef<HTMLElement>(null)
 
   const reload = useCallback(async () => {
     try {
@@ -42,18 +44,13 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
     return () => { cancelled = true }
   }, [siteId])
 
-  const annual = data?.site.annual_gwh ? Number(data.site.annual_gwh) : 0
-  const chartData = MONTH_WEIGHT.map((w, i) => ({
-    month: `${i + 1}월`,
-    추정발전량: Math.round(annual * w * 10) / 10,
-  }))
   const canEdit = data?.site.can_edit ?? false
   const factsOf = (section: string) => (data?.facts || []).filter(f => f.section === section)
   const labelOf = (key: string) => data?.sections.find(s => s.key === key)?.label || key
   void user
 
   return (
-    <section className="pane" style={{ flex: 1, overflowY: 'auto' }}>
+    <section className="pane" ref={paneRef} style={{ flex: 1, overflowY: 'auto' }}>
       <div className="section-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
         <div>
           <button className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, padding: '4px 8px' }} onClick={onBack}>
@@ -64,7 +61,6 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
             <AliasBadge facts={data?.facts} />{' '}
             <span style={{ fontSize: 13, color: 'var(--ink-faint)', fontWeight: 500 }}>운영 사업 상세</span>
           </h2>
-          <p>상업운전 중 자산 — 발전 실적·경제성 중심 (실시간 계측 연동은 후속)</p>
         </div>
       </div>
       {error && <p className="note" style={{ color: 'var(--red)' }}>{error}</p>}
@@ -75,67 +71,61 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
           {!data && !error && <p className="note">불러오는 중...</p>}
           {data && (
             <>
-              <div className="kpi-row">
-                <div className="kpi">
-                  <div className="k-lab"><Zap size={15} /> 설비용량</div>
-                  <div className="k-val">{Math.round(Number(data.site.capacity_mw))}<span className="u">MW</span></div>
-                  <div className="k-sub">{data.site.facility_type || '-'}</div>
-                </div>
-                <div className="kpi">
-                  <div className="k-lab"><Zap size={15} /> 연간 예상 발전량</div>
-                  <div className="k-val">{annual || '-'}<span className="u">GWh</span></div>
-                  <div className="k-sub">등록 기준값</div>
-                </div>
-                <div className="kpi">
-                  <div className="k-lab"><Zap size={15} /> 상업운전</div>
-                  <div className="k-val" style={{ fontSize: 20 }}>{data.site.cod || '운영중'}</div>
-                  <div className="k-sub">담당 {data.site.pm_name || '-'}</div>
-                </div>
-                <div className="kpi">
-                  <div className="k-lab"><Zap size={15} /> 투자비(승인 예산)</div>
-                  <div className="k-val" style={{ fontSize: 20 }}>{formatKRW(data.site.approved_budget_krw)}</div>
-                  <div className="k-sub">집행 {formatKRW(data.budget_summary.total)}</div>
-                </div>
-              </div>
+              <SectionJump targets={[
+                { id: 'ops-perf', label: '발전 · 재무 실적' },
+                { id: 'ops-plan', label: '운영관리 계획' },
+                { id: 'ops-defect', label: '하자 보수' },
+                { id: 'ops-event', label: '진행경과 및 이슈' },
+                { id: 'ops-basic', label: labelOf('basic') },
+                { id: 'ops-spc', label: labelOf('spc') },
+                { id: 'ops-fin', label: labelOf('fin') },
+                { id: 'ops-land', label: labelOf('land') },
+                { id: 'ops-contract', label: '계약 정보' },
+                { id: 'ops-vault', label: '문서 보관함' },
+                { id: 'ops-grid', label: '계통 상황' },
+              ]} />
 
-              <OverviewCard site={data.site} budget={data.budget_summary} />
-
-              <div className="card block">
-                <SectionHead title="월별 발전량 (추정)" />
-                <div className="h-sub" style={{ marginBottom: 12 }}>
-                  연간 예상 발전량 {annual}GWh 를 계절 패턴으로 배분한 추정치 — 실측 계측 연동은 후속
-                </div>
-                <div style={{ width: '100%', height: 240 }}>
-                  <ResponsiveContainer>
-                    <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
-                      <CartesianGrid stroke="var(--line)" vertical={false} />
-                      <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="var(--ink-faint)" />
-                      <YAxis tick={{ fontSize: 11 }} stroke="var(--ink-faint)" />
-                      <Tooltip formatter={(v) => [`${v ?? 0} GWh`, '추정 발전량']} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Bar dataKey="추정발전량" fill="var(--green-accent)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <FactSection title={labelOf('basic')} facts={factsOf('basic')}
-                           canEdit={canEdit} onChanged={reload} />
-              <FactSection title={labelOf('spc')} facts={factsOf('spc')}
-                           canEdit={canEdit} onChanged={reload} />
-              <FactSection title={labelOf('econ')} facts={factsOf('econ')}
-                           canEdit={canEdit} onChanged={reload} />
-              <FactSection title={labelOf('pf')} facts={factsOf('pf')}
-                           canEdit={canEdit} onChanged={reload} />
-              <ContractSection siteId={siteId} contracts={data.contracts}
-                               canEdit={canEdit} onChanged={reload} onError={setError} />
-              <EventSection siteId={siteId} events={data.events}
+              {/* 1. 운영 현황 */}
+              <h3 className="bz-part-title">1. 운영 현황</h3>
+              <OpsPerformance id="ops-perf" rows={data.ops_daily} />
+              <div className="grid-2 bz-even-row">
+                <OpsPlanCard id="ops-plan" siteId={siteId} plans={data.ops_plans}
+                             canEdit={canEdit} onChanged={reload} onError={setError} />
+                <DefectCard id="ops-defect" siteId={siteId} defects={data.defects}
                             canEdit={canEdit} onChanged={reload} onError={setError} />
-              <GridCard sido={data.site.sido || data.site.location} />
+              </div>
+              <EventSection id="ops-event" siteId={siteId} events={data.events}
+                            canEdit={canEdit} onChanged={reload} onError={setError} />
+
+              {/* 2. SPC 현황 */}
+              <h3 className="bz-part-title">2. SPC 현황</h3>
+              <div className="grid-2 bz-even-row">
+                <OverviewSection id="ops-basic" site={data.site} facts={factsOf('basic')}
+                                 canEdit={canEdit} onChanged={reload} />
+                <div className="bz-stack">
+                  <FactSection id="ops-spc" title={labelOf('spc')} facts={factsOf('spc')}
+                               canEdit={canEdit} onChanged={reload} />
+                  <FactSection id="ops-land" title={labelOf('land')} facts={factsOf('land')}
+                               canEdit={canEdit} onChanged={reload} />
+                </div>
+              </div>
+              <div className="grid-2 bz-even-row">
+                <FactSection id="ops-fin" title={labelOf('fin')} facts={factsOf('fin')}
+                             canEdit={canEdit} onChanged={reload} showNote />
+                <ContractSection id="ops-contract" siteId={siteId} contracts={data.contracts}
+                                 canEdit={canEdit} onChanged={reload} onError={setError} />
+              </div>
+
+              {/* 3. 문서 보관함 */}
+              <h3 className="bz-part-title">3. 문서 보관함</h3>
+              <DocumentVault id="ops-vault" siteId={siteId} docs={data.site_documents}
+                             canEdit={canEdit} onChanged={reload} onError={setError} />
+              <GridCard id="ops-grid" sido={data.site.sido || data.site.location} />
             </>
           )}
         </div>
       </div>
+      <ScrollTopButton containerRef={paneRef} />
     </section>
   )
 }
