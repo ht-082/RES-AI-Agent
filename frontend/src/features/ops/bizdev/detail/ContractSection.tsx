@@ -8,7 +8,7 @@ import Lines from './Lines'
 import { EditableSelect, EditableText } from './editors'
 import type { Contract } from '../types'
 
-// 계약 정보 — 양식 §5. 체결된 계약만 담는다(예정·미체결은 두지 않는다).
+// 계약 정보 — 양식 §5. 체결된 계약을 담는다(상태 열은 두지 않는다).
 // 행이 계속 늘어나므로 추가·삭제가 가능하다.
 export default function ContractSection({ siteId, contracts, canEdit, onChanged, onError }: {
   siteId: string
@@ -55,7 +55,7 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
         <h3>계약 정보</h3>
         <div className="bz-sec-actions">
           <span className="bz-chip" style={{ background: 'var(--mint-soft)', color: 'var(--green-600)' }}>
-            체결 {contracts.length}건
+            {contracts.length}건
           </span>
           <span className="bz-updated">{lastEdited(contracts.map(c => c.updated_at))}</span>
           {canEdit && (
