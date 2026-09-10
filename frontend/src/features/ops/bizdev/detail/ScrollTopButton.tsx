@@ -24,8 +24,7 @@ export default function ScrollTopButton({ containerRef }: {
   return (
     <button className="bz-totop" title="맨 위로" aria-label="맨 위로"
             onClick={() => containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}>
-      <ArrowUp size={16} />
-      <span>맨 위로</span>
+      <ArrowUp size={18} />
     </button>
   )
 }
