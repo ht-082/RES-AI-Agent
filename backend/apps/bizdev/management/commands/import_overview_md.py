@@ -357,14 +357,19 @@ class Command(BaseCommand):
             note = cell(r[4]) if len(r) > 4 else ''
             if not (counterparty or summary or note):
                 continue
-            status = ('signed' if '체결' in note and '미체결' not in note
-                      else 'planned' if '예정' in note else 'none')
+            # 계약 정보는 체결된 것만 담는다. 문서의 확정도가 '확정'이고 내용이
+            # 있으면 체결로 본다 — 비고에 '체결'이라 적지 않은 확정 계약이 많다
+            # (임자도는 전 건이 확정인데 비고가 비어 있다). 미체결·검토 중·예정은
+            # 넣지 않는다.
+            confirmed = len(r) > 3 and '확정' in r[3] and '미확정' not in r[3]
+            text = f'{summary} {note}'
+            if not confirmed or re.search(r'미체결|검토\s*중|예정', text):
+                continue
             Contract.objects.create(
                 site=site, category=CONTRACT.get(label, 'etc'),
                 counterparty=counterparty, summary=summary,
-                certainty=('confirmed' if len(r) > 3 and '미확정' not in r[3]
-                           and '확정' in r[3] else 'unconfirmed'),
-                status=status, note='' if status != 'none' else note, sort_order=i)
+                certainty='confirmed', status='signed',
+                note=re.sub(r'^체결(\s*·\s*)?', '', note).strip(), sort_order=i)
             made += 1
         return made
 

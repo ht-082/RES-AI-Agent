@@ -1,18 +1,15 @@
 import { useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { apiSend } from '../api'
-import { CONTRACT_CATEGORIES, CONTRACT_STATUS_META } from '../constants'
+import { CONTRACT_CATEGORIES } from '../constants'
 import SectionModal from './SectionModal'
 import { lastEdited } from './SectionHead'
 import Lines from './Lines'
 import { EditableSelect, EditableText } from './editors'
 import type { Contract } from '../types'
 
-const STATUS_OPTIONS: Array<[string, string]> = [
-  ['signed', '체결'], ['planned', '체결 예정'], ['none', '미체결'],
-]
-
-// 계약 정보 — 양식 §5. 행이 계속 늘어나므로 추가·삭제가 가능하다.
+// 계약 정보 — 양식 §5. 체결된 계약만 담는다(예정·미체결은 두지 않는다).
+// 행이 계속 늘어나므로 추가·삭제가 가능하다.
 export default function ContractSection({ siteId, contracts, canEdit, onChanged, onError }: {
   siteId: string
   contracts: Contract[]
@@ -32,7 +29,7 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
     setAdding(true)
     try {
       await apiSend('POST', '/api/bizdev/contracts/', {
-        site: siteId, category: 'etc', counterparty: '', status: 'none',
+        site: siteId, category: 'etc', counterparty: '', status: 'signed',
         certainty: 'unconfirmed', sort_order: contracts.length,
       })
       onChanged()
@@ -53,14 +50,12 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
     }
   }
 
-  const signed = contracts.filter(c => c.status === 'signed').length
-
   const header = (
       <div className="bz-sec-head">
         <h3>계약 정보</h3>
         <div className="bz-sec-actions">
           <span className="bz-chip" style={{ background: 'var(--mint-soft)', color: 'var(--green-600)' }}>
-            체결 {signed} / {contracts.length}
+            체결 {contracts.length}건
           </span>
           <span className="bz-updated">{lastEdited(contracts.map(c => c.updated_at))}</span>
           {canEdit && (
@@ -71,8 +66,9 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
         </div>
       </div>
   )
-  // 보기 화면 — 계약명 · 상대방 · 금액 · 내용 · 체결 · 비고 여섯 열.
-  // 편집 팝업의 표와 같은 구성이라 무엇을 고치면 어디가 바뀌는지 바로 보인다.
+  // 보기 화면 — 계약명 · 상대방 · 금액 · 내용 · 비고 다섯 열.
+  // 이 표는 체결된 계약만 담는다(예정·미체결은 두지 않는다). 편집 팝업의
+  // 표와 같은 구성이라 무엇을 고치면 어디가 바뀌는지 바로 보인다.
   const list = (
     <table className="tbl bz-doc-tbl bz-contract-view">
       <thead>
@@ -81,19 +77,16 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
           <th>상대방</th>
           <th>금액</th>
           <th>내용</th>
-          <th>체결</th>
           <th>비고</th>
         </tr>
       </thead>
       <tbody>
         {contracts.length === 0 && (
-          <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
+          <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
             등록된 계약이 없습니다.
           </td></tr>
         )}
-        {contracts.map(row => {
-          const st = CONTRACT_STATUS_META[row.status]
-          return (
+        {contracts.map(row => (
             <tr key={row.id}>
               <th scope="row" title={row.category_label}>{row.category_label}</th>
               <td title={row.counterparty}>
@@ -101,15 +94,9 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
               </td>
               <td title={row.amount}>{row.amount || <span className="bz-muted">미정</span>}</td>
               <td title={row.summary}><Lines text={row.summary} /></td>
-              <td>
-                <span className="bz-chip" style={{
-                  background: `color-mix(in srgb, ${st?.color} 12%, transparent)`, color: st?.color,
-                }}>{row.status_label}</span>
-              </td>
               <td className="bz-note" title={row.note}>{row.note}</td>
             </tr>
-          )
-        })}
+        ))}
       </tbody>
     </table>
   )
@@ -122,14 +109,13 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
             <th>상대방</th>
             <th>금액</th>
             <th>주요 내용</th>
-            <th>체결</th>
             <th>비고</th>
             {canEdit && editable && <th className="bz-col-act" />}
           </tr>
         </thead>
         <tbody>
           {contracts.length === 0 && (
-            <tr><td colSpan={canEdit && editable ? 7 : 6} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
+            <tr><td colSpan={canEdit && editable ? 6 : 5} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
               등록된 계약이 없습니다.
             </td></tr>
           )}
@@ -160,23 +146,6 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
                   : <Lines text={row.summary} />}
               </td>
               <td>
-                {editable ? (
-                  <EditableSelect
-                    value={row.status} options={STATUS_OPTIONS} disabled={!canEdit}
-                    onSave={v => patch(row, { status: v as Contract['status'] })}
-                    style={{
-                      color: CONTRACT_STATUS_META[row.status]?.color, fontWeight: 700, fontSize: 11,
-                      background: `color-mix(in srgb, ${CONTRACT_STATUS_META[row.status]?.color} 12%, transparent)`,
-                      borderRadius: 6, textAlign: 'center', width: 84,
-                    }} />
-                ) : (
-                  <span className="bz-chip" style={{
-                    background: `color-mix(in srgb, ${CONTRACT_STATUS_META[row.status]?.color} 12%, transparent)`,
-                    color: CONTRACT_STATUS_META[row.status]?.color,
-                  }}>{row.status_label}</span>
-                )}
-              </td>
-              <td>
                 {editable
                   ? <EditableText value={row.note} placeholder="—" disabled={!canEdit}
                                   onSave={v => patch(row, { note: v })} />
@@ -200,7 +169,7 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
       {header}
       {list}
       {editing && (
-        <SectionModal title="계약 정보" hint="행을 추가·삭제하고 각 칸을 고칠 수 있습니다"
+        <SectionModal title="계약 정보" hint="체결된 계약만 담습니다 · 행을 추가·삭제하고 각 칸을 고칠 수 있습니다"
                       onClose={() => { setEditing(false); onChanged() }}>
           {canEdit && (
             <button className="btn-ghost" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}

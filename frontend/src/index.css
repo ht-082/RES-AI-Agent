@@ -957,21 +957,19 @@ select.bz-cell-input { cursor: pointer; }
 
 /* 계약 표 — 주요 내용에 긴 글이 들어가므로 남는 폭을 몰아 준다.
    실측: 구분 최장 115px(2줄 허용) · 상대방 67px · 주요내용 199px+ */
-/* 계약 정보 — 편집 표(넓은 팝업): 계약명 상대방 금액 내용 체결 비고 */
-.bz-contract-tbl th:nth-child(1) { width: 17%; }
-.bz-contract-tbl th:nth-child(2) { width: 14%; }
-.bz-contract-tbl th:nth-child(3) { width: 14%; }
-.bz-contract-tbl th:nth-child(5) { width: 96px; }
-.bz-contract-tbl th:nth-child(6) { width: 16%; }
+/* 계약 정보 — 편집 표(넓은 팝업): 계약명 상대방 금액 내용 비고 */
+.bz-contract-tbl th:nth-child(1) { width: 18%; }
+.bz-contract-tbl th:nth-child(2) { width: 15%; }
+.bz-contract-tbl th:nth-child(3) { width: 15%; }
+.bz-contract-tbl th:nth-child(5) { width: 18%; }
 
 /* 계약 정보 — 보기 표(반폭 카드). 내용이 가장 길어 남는 폭을 가져간다. */
 .bz-contract-view { margin-top: 10px; }
 .bz-contract-view th[scope="row"] { font-weight: 600; color: var(--ink-2); text-align: left; }
 .bz-contract-view th:nth-child(1) { width: 26%; }
 .bz-contract-view th:nth-child(2) { width: 18.5%; }
-.bz-contract-view th:nth-child(3) { width: 12%; }
-.bz-contract-view th:nth-child(5) { width: 80px; }
-.bz-contract-view th:nth-child(6) { width: 11%; }
+.bz-contract-view th:nth-child(3) { width: 13%; }
+.bz-contract-view th:nth-child(5) { width: 15%; }
 .bz-num { font-variant-numeric: tabular-nums; font-weight: 600; }
 /* 나란한 카드의 높이를 맞출 때, 남는 높이는 표 아래 여백으로 흡수시킨다
    (표 자체는 늘어나지 않으므로 카드를 세로 flex 로 두고 표 영역이 남는 높이를 갖는다) */
