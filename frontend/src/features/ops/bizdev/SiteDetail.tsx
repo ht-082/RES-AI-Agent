@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Trash2 } from 'lucide-react'
 import SiteListRail from './SiteListRail'
 import OverviewSection from './detail/OverviewSection'
@@ -7,6 +7,7 @@ import RegistryImport from './detail/RegistryImport'
 import PermitSection from './detail/PermitSection'
 import EconSection from './detail/EconSection'
 import SectionJump from './detail/SectionJump'
+import ScrollTopButton from './detail/ScrollTopButton'
 import ContractSection from './detail/ContractSection'
 import EventSection from './detail/EventSection'
 import BudgetCard from './detail/BudgetCard'
@@ -62,13 +63,14 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
     }
   }
 
+  const paneRef = useRef<HTMLElement>(null)
   const canEdit = data?.site.can_edit ?? false
   const isAdmin = user?.role === 'admin'
   const factsOf = (section: string) => (data?.facts || []).filter(f => f.section === section)
   const labelOf = (key: string) => data?.sections.find(s => s.key === key)?.label || key
 
   return (
-    <section className="pane" style={{ flex: 1, overflowY: 'auto' }}>
+    <section className="pane" ref={paneRef} style={{ flex: 1, overflowY: 'auto' }}>
       <div className="section-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
         <div>
           <button className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, padding: '4px 8px' }} onClick={onBack}>
@@ -155,6 +157,7 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
           )}
         </div>
       </div>
+      <ScrollTopButton containerRef={paneRef} />
     </section>
   )
 }
