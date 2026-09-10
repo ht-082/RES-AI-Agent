@@ -10,12 +10,13 @@ import type { SiteEvent } from '../types'
 
 // 진행경과 및 이슈 — 양식 §6.
 // 일자를 비우면 "진행 중"으로 표시된다(양식에 실제로 그런 행이 있다).
-export default function EventSection({ siteId, events, canEdit, onChanged, onError }: {
+export default function EventSection({ siteId, events, canEdit, onChanged, onError, id }: {
   siteId: string
   events: SiteEvent[]
   canEdit: boolean
   onChanged: () => void
   onError: (msg: string) => void
+  id?: string
 }) {
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -169,7 +170,7 @@ export default function EventSection({ siteId, events, canEdit, onChanged, onErr
   )
 
   return (
-    <div className="card block">
+    <div className="card block" id={id}>
       {header}
       <div className="bz-scroll bz-scroll-pair">{timeline}</div>
       {editing && (

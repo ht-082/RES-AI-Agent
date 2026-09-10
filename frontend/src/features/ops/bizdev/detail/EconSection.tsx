@@ -41,12 +41,13 @@ const IRR_ROWS: Array<[string, string]> = [
 
 // 경제성 및 총사업비 — 수익률을 맨 위에 크게, 그 아래 가정사항·사업비·손익을 표로.
 // 편집은 다른 섹션과 같이 팝업 안 표에서 한다.
-export default function EconSection({ title, facts, capacityMw, canEdit, onChanged }: {
+export default function EconSection({ title, facts, capacityMw, canEdit, onChanged, id }: {
   title: string
   facts: SiteFact[]
   capacityMw?: number
   canEdit: boolean
   onChanged: () => void
+  id?: string
 }) {
   const [editing, setEditing] = useState(false)
   const by = (key: string) => facts.find(f => f.key === key)
@@ -107,7 +108,7 @@ export default function EconSection({ title, facts, capacityMw, canEdit, onChang
   const empty = facts.every(f => !(f.value || '').trim())
 
   return (
-    <div className="card block">
+    <div className="card block" id={id}>
       <SectionHead title={title} updatedAt={lastEdited(facts.map(f => f.updated_at))}
                    canEdit={canEdit} onEdit={() => setEditing(true)} />
 

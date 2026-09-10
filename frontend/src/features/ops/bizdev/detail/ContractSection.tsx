@@ -10,12 +10,13 @@ import type { Contract } from '../types'
 
 // 계약 정보 — 양식 §5. 체결된 계약을 담는다(상태 열은 두지 않는다).
 // 행이 계속 늘어나므로 추가·삭제가 가능하다.
-export default function ContractSection({ siteId, contracts, canEdit, onChanged, onError }: {
+export default function ContractSection({ siteId, contracts, canEdit, onChanged, onError, id }: {
   siteId: string
   contracts: Contract[]
   canEdit: boolean
   onChanged: () => void
   onError: (msg: string) => void
+  id?: string
 }) {
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -165,7 +166,7 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
   )
 
   return (
-    <div className="card block">
+    <div className="card block" id={id}>
       {header}
       <div className="bz-scroll bz-scroll-pair">{list}</div>
       {editing && (

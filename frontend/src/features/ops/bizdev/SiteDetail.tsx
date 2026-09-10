@@ -6,6 +6,7 @@ import FactSection from './detail/FactSection'
 import RegistryImport from './detail/RegistryImport'
 import PermitSection from './detail/PermitSection'
 import EconSection from './detail/EconSection'
+import SectionJump from './detail/SectionJump'
 import ContractSection from './detail/ContractSection'
 import EventSection from './detail/EventSection'
 import BudgetCard from './detail/BudgetCard'
@@ -95,20 +96,34 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
           {!data && !error && <p className="note">불러오는 중...</p>}
           {data && (
             <>
+              <SectionJump targets={[
+                { id: 'sec-basic', label: labelOf('basic') },
+                { id: 'sec-spc', label: labelOf('spc') },
+                { id: 'sec-land', label: labelOf('land') },
+                { id: 'sec-budget', label: '예산 승인 · 집행' },
+                { id: 'sec-contract', label: '계약 정보' },
+                { id: 'sec-econ', label: labelOf('econ') },
+                { id: 'sec-event', label: '진행경과 및 이슈' },
+                { id: 'sec-permit', label: '인허가 현황' },
+                { id: 'sec-pf', label: labelOf('pf') },
+                { id: 'sec-grid', label: '계통 상황' },
+                { id: 'sec-ordinance', label: '조례 모니터링' },
+              ]} />
+
               {/* 사업 개요(기본 정보 + 부지 지도)를 왼쪽 절반에.
                   오른쪽 칸은 SPC 정보 자리로 비워 둔다. */}
               {/* 좌: 사업 개요 · 우: SPC 정보 + 부지 정보.
                   두 열의 아래 끝이 맞도록 stretch 시킨다. */}
               <div className="grid-2 bz-even-row">
-                <OverviewSection site={data.site} facts={factsOf('basic')}
+                <OverviewSection id="sec-basic" site={data.site} facts={factsOf('basic')}
                                  canEdit={canEdit} onChanged={reload} />
                 <div className="bz-stack">
-                  <FactSection title={labelOf('spc')} facts={factsOf('spc')}
+                  <FactSection id="sec-spc" title={labelOf('spc')} facts={factsOf('spc')}
                                canEdit={canEdit} onChanged={reload}
                                modalExtra={canEdit
                                  ? <RegistryImport siteId={siteId} onDone={reload} />
                                  : undefined} />
-                  <FactSection title={labelOf('land')} facts={factsOf('land')}
+                  <FactSection id="sec-land" title={labelOf('land')} facts={factsOf('land')}
                                canEdit={canEdit} onChanged={reload} />
                 </div>
               </div>
@@ -116,25 +131,25 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
                   열마다 쌓지 않고 한 격자에 네 카드를 넣는다(격자 행이 짝을 맞춘다).
                     예산 승인·집행 ↔ 계약 정보 / 경제성 ↔ 진행경과 및 이슈 */}
               <div className="grid-2 bz-even-row">
-                <BudgetCard siteId={siteId} entries={data.budget_entries}
+                <BudgetCard id="sec-budget" siteId={siteId} entries={data.budget_entries}
                             approvals={data.budget_approvals} summary={data.budget_summary}
                             canEdit={canEdit} onChanged={reload} />
-                <ContractSection siteId={siteId} contracts={data.contracts}
+                <ContractSection id="sec-contract" siteId={siteId} contracts={data.contracts}
                                  canEdit={canEdit} onChanged={reload} onError={setError} />
-                <EconSection title={labelOf('econ')} facts={factsOf('econ')}
+                <EconSection id="sec-econ" title={labelOf('econ')} facts={factsOf('econ')}
                              capacityMw={Number(data.site.capacity_mw) || undefined}
                              canEdit={canEdit} onChanged={reload} />
-                <EventSection siteId={siteId} events={data.events}
+                <EventSection id="sec-event" siteId={siteId} events={data.events}
                               canEdit={canEdit} onChanged={reload} onError={setError} />
               </div>
-              <PermitSection siteId={siteId} stages={data.stages} canEdit={canEdit}
+              <PermitSection id="sec-permit" siteId={siteId} stages={data.stages} canEdit={canEdit}
                              onChanged={reload} onError={setError} />
-              <FactSection title={labelOf('pf')} facts={factsOf('pf')}
+              <FactSection id="sec-pf" title={labelOf('pf')} facts={factsOf('pf')}
                            canEdit={canEdit} onChanged={reload} />
 
               <div className="grid-2 bz-even-row">
-                <GridCard sido={data.site.sido || data.site.location} />
-                <OrdinanceCard sido={data.site.sido || data.site.location} />
+                <GridCard id="sec-grid" sido={data.site.sido || data.site.location} />
+                <OrdinanceCard id="sec-ordinance" sido={data.site.sido || data.site.location} />
               </div>
             </>
           )}

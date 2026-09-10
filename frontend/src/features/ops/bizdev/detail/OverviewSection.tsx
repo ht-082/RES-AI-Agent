@@ -8,11 +8,12 @@ import type { Site, SiteFact } from '../types'
 
 // 사업 개요 — 양식 §1(사업 기본 정보) + 부지 위성 지도를 한 카드로 합쳤다.
 // 반폭 배치라 표는 compact(근거·비고를 내용 밑 작은 줄로) 형태를 쓴다.
-export default function OverviewSection({ site, facts, canEdit, onChanged }: {
+export default function OverviewSection({ site, facts, canEdit, onChanged, id }: {
   site: Site
   facts: SiteFact[]
   canEdit: boolean
   onChanged: () => void
+  id?: string
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
@@ -49,7 +50,7 @@ export default function OverviewSection({ site, facts, canEdit, onChanged }: {
   const updatedAt = lastEdited(facts.map(f => f.updated_at))
 
   return (
-    <div className="card block bz-overview">
+    <div className="card block bz-overview" id={id}>
       <SectionHead title="사업 개요" updatedAt={updatedAt} canEdit={canEdit}
                    onEdit={() => setEditing(true)} />
       <div ref={boxRef} className="bz-overview-map">

@@ -17,12 +17,13 @@ const STATE_OPTIONS: Array<[string, string]> = [
 const GLYPH: Record<string, string> = { done: '✓', active: '◐', idle: '·', na: '—' }
 // 인허가 현황 — 원본 '인허가 상세 진척도' 카드 배치에 사업개요 양식의
 // 내용·확정도·특이사항을 얹었다. 상·하위 묶음은 원본과 같이 tier + 줄 순서로 정한다.
-export default function PermitSection({ siteId, stages, canEdit, onChanged, onError }: {
+export default function PermitSection({ siteId, stages, canEdit, onChanged, onError, id }: {
   siteId: string
   stages: PermitStage[]
   canEdit: boolean
   onChanged: () => void
   onError: (msg: string) => void
+  id?: string
 }) {
   const [editing, setEditing] = useState(false)
   const [openHistory, setOpenHistory] = useState<string | null>(null)
@@ -270,7 +271,7 @@ export default function PermitSection({ siteId, stages, canEdit, onChanged, onEr
   )
 
   return (
-    <div className="card block">
+    <div className="card block" id={id}>
       <SectionHead title="인허가 현황" updatedAt={lastEdited(stages.map(s => s.updated_at))}
                    canEdit={canEdit} onEdit={() => setEditing(true)}
                    extra={

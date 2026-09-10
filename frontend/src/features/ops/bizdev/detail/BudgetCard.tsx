@@ -8,13 +8,14 @@ import type { BudgetApproval, BudgetEntry, BudgetSummary } from '../types'
 // 예산 승인 · 집행 — 보기 전용(그래프 2개 + 집행 목록).
 // 편집은 [편집] 팝업에서 승인 내역 / 집행 내역 두 부분으로 나눠 한다.
 // 그래프에는 제목을 붙였다 — 예전에는 막대 두 개만 있어 무엇을 뜻하는지 알 수 없었다.
-export default function BudgetCard({ siteId, entries, approvals, summary, canEdit, onChanged }: {
+export default function BudgetCard({ siteId, entries, approvals, summary, canEdit, onChanged, id }: {
   siteId: string
   entries: BudgetEntry[]
   approvals: BudgetApproval[]
   summary: BudgetSummary
   canEdit: boolean
   onChanged: () => void
+  id?: string
 }) {
   const [editing, setEditing] = useState(false)
   const [tab, setTab] = useState<'approval' | 'entry'>('entry')
@@ -31,7 +32,7 @@ export default function BudgetCard({ siteId, entries, approvals, summary, canEdi
   ])
 
   return (
-    <div className="card block">
+    <div className="card block" id={id}>
       <SectionHead title="예산 승인 · 집행" updatedAt={updatedAt} canEdit={canEdit}
                    onEdit={() => setEditing(true)} />
       <div className="bz-scroll bz-scroll-pair">

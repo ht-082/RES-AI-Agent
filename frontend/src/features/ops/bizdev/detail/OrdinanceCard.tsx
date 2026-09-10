@@ -5,7 +5,7 @@ import { apiGet } from '../api'
 import type { Law } from '../types'
 
 // 지자체 조례 모니터링 — 원본 project.html 카드6 (법제처 스냅샷 기반, 실시간은 2차)
-export default function OrdinanceCard({ sido }: { sido: string }) {
+export default function OrdinanceCard({ sido, id }: { sido: string; id?: string }) {
   const [rows, setRows] = useState<Law[]>([])
   const [loaded, setLoaded] = useState(false)
 
@@ -19,7 +19,7 @@ export default function OrdinanceCard({ sido }: { sido: string }) {
   }, [sido])
 
   return (
-    <div className="card block">
+    <div className="card block" id={id}>
       <SectionHead title="지자체 조례 모니터링" />
       <div className="h-sub" style={{ marginBottom: 12 }}>재생에너지 관련 조례 (법제처 국가법령정보)</div>
       <div className="bz-scroll bz-scroll-rail">

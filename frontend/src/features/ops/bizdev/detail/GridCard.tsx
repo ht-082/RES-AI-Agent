@@ -8,7 +8,7 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 // 계통 상황 — 인근 변전소 8개 (원본 project.html 카드5, KEPCO 스냅샷 기반)
-export default function GridCard({ sido }: { sido: string }) {
+export default function GridCard({ sido, id }: { sido: string; id?: string }) {
   const [subs, setSubs] = useState<GridSubstation[]>([])
   const [loaded, setLoaded] = useState(false)
 
@@ -22,7 +22,7 @@ export default function GridCard({ sido }: { sido: string }) {
   }, [sido])
 
   return (
-    <div className="card block">
+    <div className="card block" id={id}>
       <SectionHead title="계통 상황" />
       <div className="h-sub" style={{ marginBottom: 12 }}>
         인근 변전소 접속 여유 (KEPCO 분산전원 연계정보 · 여유 적은 순)
