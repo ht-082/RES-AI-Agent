@@ -7,7 +7,6 @@ permit_documents/budget_entries/community_issues 를 Django 로 옮겼다.
 """
 import uuid
 
-from django.core.validators import MaxValueValidator
 from django.db import models
 from django.db.models import Q
 
@@ -81,8 +80,6 @@ class PermitStage(models.Model):
                                  default='unconfirmed')
     remark = models.TextField(blank=True, default='',
                               help_text='허가/협의내용 특이사항 (양식 §3)')
-    progress_pct = models.PositiveSmallIntegerField(
-        default=0, validators=[MaxValueValidator(100)])
     received_date = models.DateField(null=True, blank=True)
     deadline = models.DateField(null=True, blank=True)
     detail = models.TextField(blank=True, default='')

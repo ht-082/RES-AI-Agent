@@ -1,8 +1,9 @@
 import { colStatus, ENERGY_META, PIPE_COLS, STATUS_META } from './constants'
 import type { Site } from './types'
 
-// 인허가 진척 파이프라인 표 — 원본 index.page.js renderPipeline 이식.
-// 7컬럼 상태 도출(colStatus) · 첫 미완료 컬럼 강조 · 홍성 최상단 · 행 클릭 → 상세.
+// 사업 List — 원본 index.page.js renderPipeline 이식.
+// 7컬럼 상태 도출(colStatus) · 첫 미완료 컬럼 강조 · 행 클릭 → 상세.
+// 진척도(%)는 상태에서 기계적으로 만든 수치라 의미가 없어 두지 않는다.
 export default function PipelineTable({ sites, onSelectSite }: {
   sites: Site[]
   onSelectSite: (id: string) => void
@@ -24,7 +25,6 @@ export default function PipelineTable({ sites, onSelectSite }: {
                 {c.label}
               </th>
             ))}
-            <th style={{ width: 150 }}>진척도</th>
           </tr>
         </thead>
         <tbody>
@@ -59,21 +59,6 @@ export default function PipelineTable({ sites, onSelectSite }: {
                           style={{ background: STATUS_META[s].color }} />
                   </td>
                 ))}
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div className="bz-bar" style={{ flex: 1 }}>
-                      <div className="bz-bar-fill" style={{
-                        width: `${site.overall_pct}%`,
-                        background: site.overall_pct >= 80 ? 'var(--green-accent)'
-                          : site.overall_pct >= 50 ? 'var(--brand)'
-                          : site.overall_pct >= 35 ? 'var(--amber)' : 'var(--red)',
-                      }} />
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 600, width: 32, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      {site.overall_pct}%
-                    </span>
-                  </div>
-                </td>
               </tr>
             )
           })}

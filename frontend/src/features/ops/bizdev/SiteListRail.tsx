@@ -26,9 +26,6 @@ export default function SiteListRail({ sites, selectedId, onSelect }: {
             <div style={{ fontSize: 10.5, color: 'var(--ink-faint)', margin: '3px 0 6px' }}>
               {Math.round(Number(site.capacity_mw))}MW · {site.sido || site.location}
             </div>
-            <div className="bz-bar" style={{ height: 5 }}>
-              <div className="bz-bar-fill" style={{ width: `${site.overall_pct}%`, background: 'var(--green-accent)' }} />
-            </div>
           </div>
         )
       })}

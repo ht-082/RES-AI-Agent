@@ -26,7 +26,7 @@ class PermitStageSerializer(serializers.ModelSerializer):
         model = PermitStage
         fields = ['id', 'site', 'stage_no', 'name', 'agency', 'category', 'tier',
                   'status', 'content', 'content_fields', 'certainty', 'remark',
-                  'progress_pct', 'received_date', 'deadline', 'detail',
+                  'received_date', 'deadline', 'detail',
                   'dday_label', 'doc_label', 'documents', 'updated_at', 'is_custom']
         read_only_fields = ['id', 'stage_no', 'is_custom']  # 서버가 부여/재정렬
 
@@ -38,7 +38,7 @@ class StageSummarySerializer(serializers.ModelSerializer):
     """대시보드 파이프라인 표에 필요한 최소 필드"""
     class Meta:
         model = PermitStage
-        fields = ['id', 'stage_no', 'name', 'status', 'progress_pct', 'tier']
+        fields = ['id', 'stage_no', 'name', 'status', 'tier']
 
 
 class BudgetApprovalSerializer(serializers.ModelSerializer):
@@ -75,23 +75,13 @@ class CommunityIssueSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
-def overall_pct(site):
-    """진척률 = 완료 항목 수 ÷ 대상 항목 수.
-
-    예전에는 항목별 progress_pct 평균이었는데, 그 값은 상태에서 기계적으로
-    파생된 수라 근거가 없었다. 사업개요 양식은 완료/미완료만 다루므로
-    "10개 중 1개 완료 = 10%"로 세는 편이 설명 가능하다(미대상은 분모에서 제외).
-    """
-    stages = [s for s in site.stages.all() if s.status != 'na']
-    if not stages:
-        return 0
-    return round(len([s for s in stages if s.status == 'done']) / len(stages) * 100)
-
-
 class SiteListSerializer(serializers.ModelSerializer):
-    """대시보드 단일 호출용 — stages 요약 + 전체 진척도. address_detail 비노출."""
+    """대시보드 단일 호출용 — stages 요약. address_detail 비노출.
+
+    진척률(%)은 두지 않는다. 상태에서 기계적으로 만든 수라 근거가 없고,
+    화면에서도 쓰지 않는다 — 완료 개수만 센다.
+    """
     stages = StageSummarySerializer(many=True, read_only=True)
-    overall_pct = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
 
     class Meta:
@@ -100,11 +90,8 @@ class SiteListSerializer(serializers.ModelSerializer):
                   'facility_type', 'status', 'risk_tag', 'risk_level',
                   'pm', 'pm_name', 'target_ntp', 'approved_budget_krw',
                   'lat', 'lng', 'energy_type', 'lifecycle', 'annual_gwh', 'cod',
-                  'created_at', 'stages', 'overall_pct', 'can_edit']
+                  'created_at', 'stages', 'can_edit']
         read_only_fields = ['id', 'created_at']
-
-    def get_overall_pct(self, obj):
-        return overall_pct(obj)
 
     def get_can_edit(self, obj):
         request = self.context.get('request')

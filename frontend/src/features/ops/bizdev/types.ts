@@ -4,7 +4,6 @@ export interface StageSummary {
   stage_no: number
   name: string
   status: StageStatus
-  progress_pct: number
   tier: 'major' | 'minor'
 }
 
@@ -97,7 +96,6 @@ export interface Site {
   cod: string
   created_at: string
   stages: StageSummary[]
-  overall_pct: number
   can_edit: boolean
   address_detail?: string      // 상세 응답 + 편집 권한자에게만
 }
@@ -127,7 +125,6 @@ export interface PermitStage {
   content_fields: string[]
   certainty: Certainty
   remark: string
-  progress_pct: number
   received_date: string | null
   deadline: string | null
   detail: string

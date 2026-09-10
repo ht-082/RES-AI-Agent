@@ -126,7 +126,7 @@ class SiteViewSet(viewsets.ModelViewSet):
                 PermitStage(
                     site=site, stage_no=d['stage_no'], name=d['name'],
                     agency=d['agency'], category=d['category'],
-                    doc_label=d['doc_label'], status='idle', progress_pct=0,
+                    doc_label=d['doc_label'], status='idle',
                     tier=d['tier'],
                 ) for d in STAGE_DEFS
             ])

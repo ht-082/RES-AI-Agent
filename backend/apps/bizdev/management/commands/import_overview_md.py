@@ -333,8 +333,7 @@ class Command(BaseCommand):
                 status=v['status'] if v else 'idle',
                 content=v['content'] if v else '',
                 certainty=v['certainty'] if v else 'unconfirmed',
-                remark=v['remark'] if v else '',
-                progress_pct=100 if v and v['status'] == 'done' else 0)
+                remark=v['remark'] if v else '')
             made += 1
         for i, (label, v) in enumerate(doc.items()):   # 문서에만 있는 항목
             if label in ('기타 개별법 협의',) and not v['content']:
@@ -343,8 +342,7 @@ class Command(BaseCommand):
                 site=site, stage_no=len(STAGE_DEFS) + 1 + i, name=label,
                 agency='', category='individual', tier='minor', doc_label='문서',
                 is_custom=True, status=v['status'], content=v['content'],
-                certainty=v['certainty'], remark=v['remark'],
-                progress_pct=100 if v['status'] == 'done' else 0)
+                certainty=v['certainty'], remark=v['remark'])
             made += 1
         return made
 

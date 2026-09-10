@@ -35,7 +35,6 @@ export default function OverviewCard({ site, budget }: { site: Site; budget?: Bu
     ['설비 유형', site.facility_type || '-'],
     ['에너지원', ENERGY_META[site.energy_type].label],
     ['설비용량', `${Math.round(Number(site.capacity_mw))} MW`],
-    ['전체 진척도', `${site.overall_pct}%`],
     ['예산 집행률', budget ? `${budget.exec_pct}% (${formatKRW(budget.total)}/${formatKRW(budget.approved)})` : '-'],
     ['연간 발전량', site.annual_gwh ? `${site.annual_gwh} GWh` : '-'],
     ['목표 COD', site.cod || '-'],

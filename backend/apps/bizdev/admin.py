@@ -13,7 +13,7 @@ class SiteAdmin(admin.ModelAdmin):
 
 @admin.register(PermitStage)
 class PermitStageAdmin(admin.ModelAdmin):
-    list_display = ['site', 'stage_no', 'name', 'tier', 'status', 'progress_pct']
+    list_display = ['site', 'stage_no', 'name', 'tier', 'status']
     list_filter = ['status', 'tier']
     search_fields = ['name', 'site__name']
 

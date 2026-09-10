@@ -10,14 +10,13 @@ export default function PipelineStrip({ stages }: { stages: PermitStage[] }) {
 
   const target = stages.filter(s => s.status !== 'na')
   const done = target.filter(s => s.status === 'done').length
-  const pct = target.length ? Math.round((done / target.length) * 100) : 0
 
   return (
     <div className="bz-strip">
       <div className="bz-strip-head">
         <span className="bz-strip-title">진척 개요</span>
         <span className="bz-strip-note">
-          대시보드 사업 List 와 같은 기준 · 완료 {done}/{target.length} ({pct}%)
+          대시보드 사업 List 와 같은 기준 · 완료 {done}/{target.length}
         </span>
       </div>
       <div className="bz-strip-track">

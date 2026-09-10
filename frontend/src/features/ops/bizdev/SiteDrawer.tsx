@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { ENERGY_META, SITE_STATUS_META } from './constants'
+import { ENERGY_META } from './constants'
 import type { Site } from './types'
 
 // 지도 마커 클릭 시 우측 슬라이드 드로어 — 원본 index.page.js 드로어 이식.
@@ -14,7 +14,6 @@ export default function SiteDrawer({ site, onClose, onDetail }: {
     ['설비용량', `${Math.round(Number(site.capacity_mw))} MW`],
     ['연간 예상 발전량', site.annual_gwh ? `${site.annual_gwh} GWh` : '-'],
     ['목표 COD', site.cod || '-'],
-    ['전체 진척도', `${site.overall_pct}%`],
     ['담당 PM', site.pm_name || '-'],
   ]
   return (
@@ -44,9 +43,6 @@ export default function SiteDrawer({ site, onClose, onDetail }: {
             <span style={{ fontWeight: 600 }}>{v}</span>
           </div>
         ))}
-      </div>
-      <div className="bz-bar" style={{ marginTop: 12 }}>
-        <div className="bz-bar-fill" style={{ width: `${site.overall_pct}%`, background: SITE_STATUS_META[site.status].color }} />
       </div>
       <button className="btn-primary" style={{ width: '100%', marginTop: 14 }} onClick={() => onDetail(site)}>
         상세 보기

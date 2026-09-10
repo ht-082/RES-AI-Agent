@@ -112,7 +112,6 @@ class Command(BaseCommand):
                 setattr(stage, field, val)
             if seeded and not stage.content:
                 stage.status, stage.content, stage.certainty, stage.remark = seeded
-            stage.progress_pct = 100 if stage.status == 'done' else 0
             stage.save()
 
     # ── 계약·경과·예산: 비어 있을 때만 채운다(사용자 편집 보존) ─────────
