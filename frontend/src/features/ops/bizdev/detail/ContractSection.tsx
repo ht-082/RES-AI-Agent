@@ -71,48 +71,65 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
         </div>
       </div>
   )
-  // 보기 화면 — 표 대신 목록 카드. 상대방을 앞세우고 분류는 배지로,
-  // 체결 여부는 왼쪽 색 띠로 드러낸다(17종 분류가 열 너비를 잡아먹지 않는다).
+  // 보기 화면 — 계약명 · 상대방 · 금액 · 내용 · 체결 · 비고 여섯 열.
+  // 편집 팝업의 표와 같은 구성이라 무엇을 고치면 어디가 바뀌는지 바로 보인다.
   const list = (
-    <div className="bz-clist">
-      {contracts.length === 0 && <p className="note">등록된 계약이 없습니다.</p>}
-      {contracts.map(row => {
-        const st = CONTRACT_STATUS_META[row.status]
-        return (
-          <div key={row.id} className="bz-citem" style={{ borderLeftColor: st?.color }}>
-            <div className="bz-citem-head">
-              <span className="bz-citem-party">{row.counterparty || '상대방 미정'}</span>
-              <span className="bz-citem-cat">{row.category_label}</span>
-              <span className="bz-chip" style={{
-                background: `color-mix(in srgb, ${st?.color} 12%, transparent)`, color: st?.color,
-              }}>{row.status_label}</span>
-            </div>
-            {row.summary && (
-              <div className="bz-citem-text"><Lines text={row.summary} /></div>
-            )}
-            {row.note && (
-              <div className="bz-citem-text bz-muted"><Lines text={row.note} /></div>
-            )}
-          </div>
-        )
-      })}
-    </div>
+    <table className="tbl bz-doc-tbl bz-contract-view">
+      <thead>
+        <tr>
+          <th>계약명</th>
+          <th>상대방</th>
+          <th>금액</th>
+          <th>내용</th>
+          <th>체결</th>
+          <th>비고</th>
+        </tr>
+      </thead>
+      <tbody>
+        {contracts.length === 0 && (
+          <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
+            등록된 계약이 없습니다.
+          </td></tr>
+        )}
+        {contracts.map(row => {
+          const st = CONTRACT_STATUS_META[row.status]
+          return (
+            <tr key={row.id}>
+              <th scope="row" title={row.category_label}>{row.category_label}</th>
+              <td title={row.counterparty}>
+                {row.counterparty || <span className="bz-muted">미정</span>}
+              </td>
+              <td title={row.amount}>{row.amount || <span className="bz-muted">미정</span>}</td>
+              <td title={row.summary}><Lines text={row.summary} /></td>
+              <td>
+                <span className="bz-chip" style={{
+                  background: `color-mix(in srgb, ${st?.color} 12%, transparent)`, color: st?.color,
+                }}>{row.status_label}</span>
+              </td>
+              <td className="bz-note" title={row.note}>{row.note}</td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
   )
 
   const table = (editable: boolean) => (
       <table className="tbl bz-doc-tbl bz-contract-tbl" style={{ marginTop: 10 }}>
         <thead>
           <tr>
-            <th>구분</th>
+            <th>계약명</th>
             <th>상대방</th>
+            <th>금액</th>
             <th>주요 내용</th>
             <th>체결</th>
+            <th>비고</th>
             {canEdit && editable && <th className="bz-col-act" />}
           </tr>
         </thead>
         <tbody>
           {contracts.length === 0 && (
-            <tr><td colSpan={canEdit && editable ? 5 : 4} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
+            <tr><td colSpan={canEdit && editable ? 7 : 6} style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
               등록된 계약이 없습니다.
             </td></tr>
           )}
@@ -129,6 +146,12 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
                   ? <EditableText value={row.counterparty} placeholder="미정" disabled={!canEdit}
                                   onSave={v => patch(row, { counterparty: v })} />
                   : <span title={row.counterparty}>{row.counterparty || <span className="bz-muted">미정</span>}</span>}
+              </td>
+              <td>
+                {editable
+                  ? <EditableText value={row.amount} placeholder="예: 12억원 · 평당 연 6,000원"
+                                  disabled={!canEdit} onSave={v => patch(row, { amount: v })} />
+                  : <span title={row.amount}>{row.amount}</span>}
               </td>
               <td>
                 {editable
@@ -152,6 +175,12 @@ export default function ContractSection({ siteId, contracts, canEdit, onChanged,
                     color: CONTRACT_STATUS_META[row.status]?.color,
                   }}>{row.status_label}</span>
                 )}
+              </td>
+              <td>
+                {editable
+                  ? <EditableText value={row.note} placeholder="—" disabled={!canEdit}
+                                  onSave={v => patch(row, { note: v })} />
+                  : <span className="bz-note" title={row.note}>{row.note}</span>}
               </td>
               {canEdit && editable && (
                 <td>

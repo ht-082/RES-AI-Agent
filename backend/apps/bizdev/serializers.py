@@ -163,8 +163,8 @@ class ContractSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contract
         fields = ['id', 'site', 'category', 'category_label', 'counterparty',
-                  'summary', 'certainty', 'status', 'status_label', 'note',
-                  'sort_order', 'created_at', 'updated_at']
+                  'amount', 'summary', 'certainty', 'status', 'status_label',
+                  'note', 'sort_order', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 

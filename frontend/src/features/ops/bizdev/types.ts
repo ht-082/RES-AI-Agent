@@ -37,6 +37,7 @@ export interface Contract {
   category: string
   category_label: string
   counterparty: string
+  amount: string
   summary: string
   certainty: Certainty
   status: 'signed' | 'planned' | 'none'

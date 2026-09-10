@@ -274,6 +274,9 @@ class Contract(models.Model):
     category = models.CharField(max_length=24, choices=CONTRACT_CATEGORY_CHOICES,
                                 default='etc')
     counterparty = models.CharField(max_length=100, blank=True, default='', help_text='상대방')
+    # 금액은 자유 입력이다. 계약마다 표현이 달라(총액 '12억원' · 단가 '평당 연 6,000원')
+    # 한 숫자로 담으면 원문을 잃는다. 합산이 필요해지면 그때 숫자 칸을 따로 둔다.
+    amount = models.CharField(max_length=80, blank=True, default='', help_text='계약 금액')
     summary = models.TextField(blank=True, default='', help_text='주요 내용')
     certainty = models.CharField(max_length=12, choices=CERTAINTY_CHOICES,
                                  default='unconfirmed')
