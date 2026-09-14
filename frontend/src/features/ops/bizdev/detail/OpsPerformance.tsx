@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import SectionHead from './SectionHead'
 import { formatKRW } from '../constants'
 import type { OpsDaily } from '../types'
@@ -36,13 +36,21 @@ function stats(rows: OpsDaily[]) {
   }
 }
 
+// 1~12월을 늘 같은 자리에 둔다 — 달이 없다고 축이 줄면 해마다 그래프가
+// 달라 보인다. 실적이 없는 달은 0 이 아니라 빈칸으로 두어 선을 끊는다
+// (0 으로 채우면 발전을 안 한 것처럼 읽힌다).
 function monthlySeries(rows: OpsDaily[]) {
-  const by = new Map<string, number>()
+  const sum = new Map<number, number>()
   rows.forEach(r => {
-    const key = r.date.slice(0, 7)
-    by.set(key, (by.get(key) || 0) + (num(r.generation_mwh) ?? 0))
+    const m = Number(r.date.slice(5, 7))
+    const v = num(r.generation_mwh)
+    if (v === null) return
+    sum.set(m, (sum.get(m) || 0) + v)
   })
-  return [...by.entries()].sort().map(([m, v]) => ({ month: m.slice(5) + '월', 발전량: Math.round(v) }))
+  return Array.from({ length: 12 }, (_, i) => ({
+    month: `${i + 1}월`,
+    발전량: sum.has(i + 1) ? Math.round(sum.get(i + 1)!) : null,
+  }))
 }
 
 const mwh = (v: number | null) => (v === null ? '—' : `${v.toLocaleString(undefined, { maximumFractionDigits: 1 })} MWh`)
@@ -94,18 +102,19 @@ export default function OpsPerformance({ rows, id }: { rows: OpsDaily[]; id?: st
             ['연 누적', formatKRW(s.rev.year)],
           ])}
 
-          {s.monthly.length > 0 && (
+          {s.monthly.some(m => m.발전량 !== null) && (
             <>
               <div className="bz-econ-block-title">월별 발전량 (올해)</div>
               <div style={{ height: 190 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={s.monthly} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+                  <LineChart data={s.monthly} margin={{ top: 6, right: 10, left: -18, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <XAxis dataKey="month" tick={{ fontSize: 10.5 }} interval={0} />
                     <YAxis tick={{ fontSize: 11 }} />
                     <Tooltip formatter={(v) => `${Number(v).toLocaleString()} MWh`} />
-                    <Bar dataKey="발전량" fill="var(--brand)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                    <Line type="monotone" dataKey="발전량" stroke="var(--brand)" strokeWidth={2}
+                          dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls={false} />
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
             </>
