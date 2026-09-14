@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Landmark, Plus, Scale, Sun } from 'lucide-react'
 import SiteMap from './SiteMap'
 import SiteDrawer from './SiteDrawer'
-import GridRail from './GridRail'
 import LawRail from './LawRail'
 import PipelineTable from './PipelineTable'
 import SiteFormModal from './SiteFormModal'
@@ -111,7 +110,7 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
       </div>
 
       {/* 지도 + 우측 레일 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(260px, 1fr)', gap: 16, marginBottom: 22 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(300px, 1fr)', gap: 16, marginBottom: 22 }}>
         <div className="card block" style={{ display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 440 }}>
           <SectionHead title="포트폴리오 지도" />
           <div className="h-sub" style={{ marginBottom: 10 }}>마커 클릭 → 요약 · 상세 이동 (태양광 주황 / 풍력 청록)</div>
@@ -121,9 +120,8 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
                         onDetail={s => { setDrawerSite(null); onSelectSite(s.id) }} />
           )}
         </div>
-        {/* 지도와 아래 끝을 맞춘다 — 두 카드가 남는 높이를 나눠 갖는다(bz-stack) */}
+        {/* 우측에는 법령 동향만 — 지도와 아래 끝을 맞춘다 */}
         <div className="bz-stack" style={{ gap: 16 }}>
-          <GridRail sites={sites} />
           <LawRail laws={laws} />
         </div>
       </div>
