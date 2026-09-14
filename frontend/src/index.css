@@ -1170,3 +1170,12 @@ select.bz-cell-input { cursor: pointer; }
 .bz-map-note { font-size: 11px; color: var(--ink-faint); overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; }
 .bz-map-hint { margin-top: 6px; padding: 8px 12px; font-size: 11.5px; }
+
+/* 대시보드 지표 3장 — 직접 입력하는 값 */
+.bz-kpi-3 { grid-template-columns: repeat(3, 1fr); }
+.bz-kpi-edit { background: none; border: none; padding: 0; cursor: pointer; font: inherit;
+  color: inherit; border-bottom: 1px dashed var(--line); }
+.bz-kpi-edit:hover { border-bottom-color: var(--green-accent); color: var(--green-600); }
+.bz-kpi-input { width: 150px; font-size: 18px; font-weight: 700; padding: 2px 8px; }
+.bz-kpi-pair { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.bz-kpi-sep { color: var(--ink-faint); font-weight: 400; }

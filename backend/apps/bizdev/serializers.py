@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from .models import (
-    DefectItem, OpsDaily, OpsPlanItem, SiteDocument,
+    DefectItem, OpsDaily, OpsPlanItem, PortfolioKpi, SiteDocument,
     BudgetApproval, BudgetEntry, CommunityIssue, Contract, PermitDocument,
     PermitStage, Site, SiteEvent, SiteFact,
 )
@@ -223,3 +223,12 @@ class SiteDocumentSerializer(serializers.ModelSerializer):
 
     def get_has_file(self, obj):
         return bool(obj.storage_uri)
+
+
+class PortfolioKpiSerializer(serializers.ModelSerializer):
+    label = serializers.CharField(source='get_key_display', read_only=True)
+
+    class Meta:
+        model = PortfolioKpi
+        fields = ['key', 'label', 'value', 'note', 'updated_at']
+        read_only_fields = ['key', 'label', 'updated_at']

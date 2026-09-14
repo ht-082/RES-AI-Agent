@@ -7,7 +7,8 @@ from .views import (
     GridNearbyView, LawListView, OrdinanceListView, PermitDocumentViewSet,
     PermitStageViewSet, SiteEventViewSet, SiteFactViewSet, SiteViewSet,
     SubstationSearchView, SummaryView,
-    DefectItemViewSet, OpsDailyViewSet, OpsPlanItemViewSet, SiteDocumentViewSet,
+    DefectItemViewSet, OpsDailyViewSet, OpsPlanItemViewSet, PortfolioKpiViewSet,
+    SiteDocumentViewSet,
 )
 
 router = DefaultRouter()
@@ -24,6 +25,7 @@ router.register('bizdev/ops-daily', OpsDailyViewSet, basename='bizdev-ops-daily'
 router.register('bizdev/ops-plans', OpsPlanItemViewSet, basename='bizdev-ops-plan')
 router.register('bizdev/defects', DefectItemViewSet, basename='bizdev-defect')
 router.register('bizdev/site-documents', SiteDocumentViewSet, basename='bizdev-site-doc')
+router.register('bizdev/kpis', PortfolioKpiViewSet, basename='bizdev-kpi')
 
 urlpatterns = [
     path('bizdev/summary/', SummaryView.as_view(), name='bizdev-summary'),

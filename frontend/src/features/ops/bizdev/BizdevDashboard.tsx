@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Landmark, Plus, Scale, Sun } from 'lucide-react'
+import { Landmark, Plus, Scale, Sun } from 'lucide-react'
 import SiteMap from './SiteMap'
 import SiteDrawer from './SiteDrawer'
 import GridRail from './GridRail'
@@ -7,11 +7,16 @@ import LawRail from './LawRail'
 import PipelineTable from './PipelineTable'
 import SiteFormModal from './SiteFormModal'
 import SectionHead from './detail/SectionHead'
-import { apiGet } from './api'
+import { apiGet, apiSend } from './api'
+import KpiValue from './KpiValue'
+import { formatKRW } from './constants'
 import type { AppUser, Law, Site } from './types'
 
-interface Summary {
-  monthly_pending_issues: { total: number; by: { complaint: number; grid: number; etc: number } }
+interface Kpi {
+  key: string
+  label: string
+  value: string | null
+  note: string
 }
 
 // 사업개발 메인 대시보드 — 원본 index.html 이식
@@ -22,7 +27,7 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
   onSitesChanged: () => void
 }) {
   const [laws, setLaws] = useState<Law[]>([])
-  const [summary, setSummary] = useState<Summary | null>(null)
+  const [kpis, setKpis] = useState<Kpi[]>([])
   const [query, setQuery] = useState('')
   const [drawerSite, setDrawerSite] = useState<Site | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -30,7 +35,7 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
   useEffect(() => {
     let cancelled = false
     apiGet<Law[]>('/api/bizdev/laws/').then(d => { if (!cancelled) setLaws(d) }).catch(() => {})
-    apiGet<Summary>('/api/bizdev/summary/').then(d => { if (!cancelled) setSummary(d) }).catch(() => {})
+    apiGet<Kpi[]>('/api/bizdev/kpis/').then(d => { if (!cancelled) setKpis(d) }).catch(() => {})
     return () => { cancelled = true }
   }, [])
 
@@ -39,16 +44,7 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
   const opsSites = useMemo(() => sites.filter(s => s.lifecycle === 'ops'), [sites])
   const totalGw = mw(sites) / 1000
   const opsGw = mw(opsSites) / 1000
-  const devMw = devSites.reduce((a, s) => a + Number(s.capacity_mw || 0), 0)
-  const solar = devSites.filter(s => s.energy_type === 'solar')
-  const wind = devSites.filter(s => s.energy_type === 'wind')
-  const solarMw = solar.reduce((a, s) => a + Number(s.capacity_mw || 0), 0)
-  const windMw = wind.reduce((a, s) => a + Number(s.capacity_mw || 0), 0)
-  const devGw = devMw / 1000
-
-  const thisMonth = new Date().toISOString().slice(0, 7).replace('-', '.')
-  const monthLaws = laws.filter(l => (l.date || '').startsWith(thisMonth))
-  const lawBy = (cat: string) => monthLaws.filter(l => l.category === cat).length
+  const devGw = mw(devSites) / 1000
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -56,7 +52,16 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
     return sites.filter(s => `${s.name} ${s.location || ''} ${s.sido || ''}`.toLowerCase().includes(q))
   }, [sites, query])
 
-  const issues = summary?.monthly_pending_issues
+  // 아직 자동 집계가 없는 지표 — 값이 없으면 null 로 두어 '0' 과 구분한다
+  const kpi = (key: string) => {
+    const row = kpis.find(k => k.key === key)
+    return row?.value == null ? null : Number(row.value)
+  }
+  const kpiYear = new Date().getFullYear()
+  const saveKpi = async (key: string, value: number | null) => {
+    const row = await apiSend<Kpi>('PATCH', `/api/bizdev/kpis/${key}/`, { value })
+    setKpis(prev => prev.map(k => (k.key === key ? row : k)))
+  }
 
   return (
     <section className="pane" style={{ flex: 1, overflowY: 'auto' }}>
@@ -75,27 +80,33 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
         </div>
       </div>
 
-      {/* KPI 4장 */}
-      <div className="kpi-row">
+      {/* KPI 3장 — 1번은 사업지 목록에서 자동으로 세고, 2·3번은 자동 집계가
+          붙기 전까지 눌러서 직접 넣는다(근거가 생기면 읽기 전용 계산값으로 교체). */}
+      <div className="kpi-row bz-kpi-3">
         <div className="kpi">
           <div className="k-lab"><Landmark size={15} /> 전체 등록 사업</div>
           <div className="k-val">{sites.length}<span className="u">개소</span> · {totalGw.toFixed(2)}<span className="u">GW</span></div>
           <div className="k-sub">개발중 {devSites.length}개소 {devGw.toFixed(2)}GW · 운영중 {opsSites.length}개소 {opsGw.toFixed(2)}GW</div>
         </div>
         <div className="kpi">
-          <div className="k-lab"><Sun size={15} /> 개발 중 파이프라인</div>
-          <div className="k-val">{devSites.length}<span className="u">개소</span> · {devGw.toFixed(2)}<span className="u">GW</span></div>
-          <div className="k-sub">태양광 {solar.length}개소 {Math.round(solarMw)}MW / 풍력 {wind.length}개소 {Math.round(windMw)}MW</div>
+          <div className="k-lab"><Sun size={15} /> 올해 Pipeline 확보 실적</div>
+          <div className="k-val">
+            <KpiValue value={kpi('pipeline_secured_mw')} unit="MW"
+                      format={v => v.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                      onSaved={v => saveKpi('pipeline_secured_mw', v)} />
+          </div>
+          <div className="k-sub">{kpiYear}년 확보 · 직접 입력</div>
         </div>
         <div className="kpi">
-          <div className="k-lab"><AlertTriangle size={15} /> 금월 Pending 이슈</div>
-          <div className="k-val">{issues?.total ?? '-'}<span className="u">건</span></div>
-          <div className="k-sub">민원성 {issues?.by.complaint ?? 0} · 계통 {issues?.by.grid ?? 0} · 기타 {issues?.by.etc ?? 0}</div>
-        </div>
-        <div className="kpi">
-          <div className="k-lab"><Scale size={15} /> 금월 주요 법령 동향</div>
-          <div className="k-val">{monthLaws.length}<span className="u">건</span></div>
-          <div className="k-sub">입법예고 {lawBy('입법예고')} · 시행 {lawBy('시행')} · 개정 {lawBy('개정')}</div>
+          <div className="k-lab"><Scale size={15} /> 재무 실적</div>
+          <div className="k-val bz-kpi-pair">
+            <KpiValue value={kpi('revenue_month_krw')} unit="" format={formatKRW}
+                      onSaved={v => saveKpi('revenue_month_krw', v)} />
+            <span className="bz-kpi-sep">/</span>
+            <KpiValue value={kpi('profit_month_krw')} unit="" format={formatKRW}
+                      onSaved={v => saveKpi('profit_month_krw', v)} />
+          </div>
+          <div className="k-sub">당월 총 매출 / 영업이익 · 직접 입력</div>
         </div>
       </div>
 

@@ -12,7 +12,7 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models import Max, Prefetch
 from django.http import FileResponse
-from rest_framework import status, viewsets
+from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
@@ -27,13 +27,14 @@ from .constants import (
 )
 from .models import (
     BudgetApproval, BudgetEntry, CommunityIssue, Contract, DefectItem, OpsDaily,
-    OpsPlanItem, PermitDocument, PermitStage, Site, SiteDocument, SiteEvent, SiteFact,
+    OpsPlanItem, PermitDocument, PermitStage, PortfolioKpi, Site, SiteDocument,
+    SiteEvent, SiteFact,
 )
 from .permissions import IsAdminOrSitePM, check_site_editable
 from .serializers import (
     BudgetApprovalSerializer, BudgetEntrySerializer, CommunityIssueSerializer,
     ContractSerializer, DefectItemSerializer, OpsDailySerializer,
-    OpsPlanItemSerializer, SiteDocumentSerializer,
+    OpsPlanItemSerializer, PortfolioKpiSerializer, SiteDocumentSerializer,
     PermitDocumentSerializer, PermitStageSerializer, SiteEventSerializer,
     SiteFactSerializer, SiteListSerializer, SiteWriteSerializer,
 )
@@ -768,3 +769,29 @@ class SiteDocumentViewSet(viewsets.ModelViewSet):
             return Response({'error': '첨부된 파일이 없습니다.'},
                             status=status.HTTP_404_NOT_FOUND)
         return _file_response(doc.storage_uri, doc.file_name or 'document')
+
+
+class PortfolioKpiViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin,
+                          viewsets.GenericViewSet):
+    """대시보드 상단 지표 — 목록과 수정만. 키는 정의가 소유한다.
+
+    자동 집계가 붙기 전까지 담당자가 직접 넣는 값이라, 없으면 빈 줄을 만들어
+    돌려준다(화면이 '아직 안 넣었음' 과 '0' 을 구분할 수 있게 value 는 null).
+    """
+    serializer_class = PortfolioKpiSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
+    lookup_field = 'key'
+
+    def get_queryset(self):
+        for key, _label in PortfolioKpi.KEYS:
+            PortfolioKpi.objects.get_or_create(key=key)
+        keys = [k for k, _ in PortfolioKpi.KEYS]
+        rows = {o.key: o for o in PortfolioKpi.objects.filter(key__in=keys)}
+        return [rows[k] for k in keys if k in rows]
+
+    def get_object(self):
+        return PortfolioKpi.objects.get_or_create(key=self.kwargs['key'])[0]
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)

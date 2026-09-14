@@ -452,3 +452,33 @@ class SiteDocument(models.Model):
 
     def __str__(self):
         return f'{self.site.name} · {self.get_category_display()} {self.title}'
+
+
+class PortfolioKpi(models.Model):
+    """대시보드 상단 지표 — 아직 자동 집계가 없는 값을 담아 둔다.
+
+    전체 등록 사업은 사업지 목록에서 바로 세므로 여기 두지 않는다. Pipeline 확보
+    실적·당월 재무는 근거 데이터(계약·회계)가 붙기 전까지 담당자가 직접 넣는다.
+    나중에 연동되면 이 표를 지우고 계산값으로 바꾼다.
+    """
+    KEYS = [
+        ('pipeline_secured_mw', '올해 Pipeline 확보 실적 (MW)'),
+        ('revenue_month_krw', '당월 총 매출 (원)'),
+        ('profit_month_krw', '당월 영업이익 (원)'),
+    ]
+
+    key = models.CharField(max_length=40, primary_key=True, choices=KEYS)
+    value = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    note = models.CharField(max_length=200, blank=True, default='')
+    updated_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL,
+                                   null=True, blank=True,
+                                   related_name='bizdev_kpis')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bizdev_portfolio_kpis'
+        verbose_name = '대시보드 지표'
+        verbose_name_plural = '대시보드 지표'
+
+    def __str__(self):
+        return f'{self.get_key_display()} = {self.value}'
