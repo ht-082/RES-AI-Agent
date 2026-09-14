@@ -194,7 +194,7 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, o
             <p className="bz-advice-loading-sub">
               {advisingName} · 사내 자료를 찾아 답을 씁니다 · {advisingSec}초 경과
             </p>
-            <p className="bz-advice-loading-sub">다 되면 대화 화면으로 넘어갑니다 (보통 30~60초)</p>
+            <p className="bz-advice-loading-sub">다 되면 대화 화면으로 넘어갑니다 (보통 20~30초)</p>
           </div>
         </div>
       )}
