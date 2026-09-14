@@ -1161,3 +1161,12 @@ select.bz-cell-input { cursor: pointer; }
 .bz-vault-hint { font-size: 11.5px; padding: 8px 12px; }
 .bz-vault-tbl th:nth-child(2) { width: 110px; }
 .bz-vault-tbl th:nth-child(3) { width: 160px; }
+
+/* 사업 개요 지도 — 대표 필지 좌표 지정 */
+.bz-overview-map.picking { cursor: crosshair; outline: 2px solid var(--green-accent);
+  outline-offset: -2px; }
+.bz-map-foot { display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-top: 6px; }
+.bz-map-note { font-size: 11px; color: var(--ink-faint); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.bz-map-hint { margin-top: 6px; padding: 8px 12px; font-size: 11.5px; }
