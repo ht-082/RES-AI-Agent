@@ -1180,20 +1180,18 @@ select.bz-cell-input { cursor: pointer; }
 .bz-kpi-pair { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .bz-kpi-sep { color: var(--ink-faint); font-weight: 400; }
 
-/* 전체 영향 법령 동향 — 원본 renderLaws 배치 */
-.bz-law-tag { font-size: 10px; font-weight: 700; color: #fff; background: #7c3aed;
-  padding: 2px 7px; border-radius: 5px; }
-.bz-law-empty { text-align: center; color: var(--ink-faint); font-size: 12px; padding: 16px 0;
-  margin: 0; }
-.bz-law-list { display: flex; flex-direction: column; }
-.bz-law-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 6px;
-  margin: 0 -6px; border-radius: 8px; text-decoration: none; color: inherit;
-  transition: background .12s; }
-.bz-law-item + .bz-law-item { border-top: 1px solid var(--line-soft); }
-.bz-law-item:hover { background: var(--surface-2); }
-.bz-law-badge { flex-shrink: 0; font-size: 9.5px; font-weight: 700; padding: 3px 6px;
-  border-radius: 5px; line-height: 1.2; }
-.bz-law-body { min-width: 0; }
-.bz-law-name { font-size: 12px; font-weight: 500; line-height: 1.35; color: var(--ink);
-  margin: 0; }
-.bz-law-meta { font-size: 10.5px; color: var(--ink-faint); margin-top: 4px; }
+/* 전체 영향 법령 동향 — 표 배치 */
+.bz-law-scroll { overflow-x: auto; margin-top: 10px; }
+.bz-law-tbl { min-width: 720px; }
+.bz-law-tbl th[scope="row"] { font-weight: 600; color: var(--ink); text-align: left; }
+.bz-law-tbl th:nth-child(1) { width: 78px; }
+.bz-law-tbl th:nth-child(3) { width: 15%; }
+.bz-law-tbl th:nth-child(4) { width: 88px; }
+.bz-law-tbl .bz-law-ai-col { width: 86px; }
+.bz-law-link { color: inherit; text-decoration: none; display: inline-flex; align-items: center;
+  gap: 3px; }
+.bz-law-link:hover { color: var(--green-600); text-decoration: underline; }
+.bz-law-link svg { color: var(--ink-faint); flex-shrink: 0; }
+.bz-law-ai { font-size: 11px; display: inline-flex; align-items: center; gap: 3px;
+  padding: 3px 8px; }
+.bz-law-ai:disabled { opacity: .5; cursor: not-allowed; }
