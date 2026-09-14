@@ -19,8 +19,8 @@ import type { DetailProps } from './SiteDetail'
 
 // 운영 사업 상세 — lifecycle='ops' 전용. 문서 '운영PJT Dashboard' 의 항목을
 // 담되 배치는 개발 상세와 맞춘다(사업 개요 · SPC · 부지가 맨 위).
-//   사업 개요 | SPC · 부지  →  진행경과 | 계약  →  발전·재무 실적  →
-//   운영관리 계획 | 하자 보수  →  재무지표  →  계통 상황 | 조례 모니터링
+//   사업 개요 | SPC · 부지  →  진행경과 | 계약  →
+//   발전·재무 실적 | 재무지표  →  운영관리 계획 | 하자 보수  →  계통 | 조례
 export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSite, onSitesChanged }: DetailProps) {
   const [data, setData] = useState<SiteDetailPayload | null>(null)
   const [error, setError] = useState('')
@@ -78,9 +78,9 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
                 { id: 'ops-event', label: '진행경과 및 이슈' },
                 { id: 'ops-contract', label: '계약 정보' },
                 { id: 'ops-perf', label: '발전 · 재무 실적' },
+                { id: 'ops-fin', label: labelOf('fin') },
                 { id: 'ops-plan', label: '운영관리 계획' },
                 { id: 'ops-defect', label: '하자 보수' },
-                { id: 'ops-fin', label: labelOf('fin') },
                 { id: 'ops-grid', label: '계통 상황' },
                 { id: 'ops-law', label: '조례 모니터링' },
               ]} />
@@ -104,7 +104,12 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
                                  canEdit={canEdit} onChanged={reload} onError={setError} />
               </div>
 
-              <OpsPerformance id="ops-perf" rows={data.ops_daily} />
+              <div className="grid-2 bz-even-row">
+                <OpsPerformance id="ops-perf" rows={data.ops_daily} />
+                <FactSection id="ops-fin" title={labelOf('fin')} facts={factsOf('fin')}
+                             canEdit={canEdit} onChanged={reload} showNote />
+              </div>
+
               <div className="grid-2 bz-even-row">
                 <OpsPlanCard id="ops-plan" siteId={siteId} plans={data.ops_plans}
                              canEdit={canEdit} onChanged={reload} onError={setError} />
@@ -112,8 +117,6 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
                             canEdit={canEdit} onChanged={reload} onError={setError} />
               </div>
 
-              <FactSection id="ops-fin" title={labelOf('fin')} facts={factsOf('fin')}
-                           canEdit={canEdit} onChanged={reload} showNote />
               {/* 맨 아래 행 — 개발 상세와 같은 짝(계통 · 조례) */}
               <div className="grid-2 bz-even-row">
                 <GridCard id="ops-grid" sido={data.site.sido || data.site.location} />
