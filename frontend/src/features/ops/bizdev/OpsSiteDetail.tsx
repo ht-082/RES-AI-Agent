@@ -6,10 +6,10 @@ import FactSection from './detail/FactSection'
 import ContractSection from './detail/ContractSection'
 import EventSection from './detail/EventSection'
 import GridCard from './detail/GridCard'
+import OrdinanceCard from './detail/OrdinanceCard'
 import OpsPerformance from './detail/OpsPerformance'
 import OpsPlanCard from './detail/OpsPlanCard'
 import DefectCard from './detail/DefectCard'
-import DocumentVault from './detail/DocumentVault'
 import SectionJump from './detail/SectionJump'
 import ScrollTopButton from './detail/ScrollTopButton'
 import AliasBadge from './detail/AliasBadge'
@@ -20,7 +20,7 @@ import type { DetailProps } from './SiteDetail'
 // 운영 사업 상세 — lifecycle='ops' 전용. 문서 '운영PJT Dashboard' 의 항목을
 // 담되 배치는 개발 상세와 맞춘다(사업 개요 · SPC · 부지가 맨 위).
 //   사업 개요 | SPC · 부지  →  진행경과 | 계약  →  발전·재무 실적  →
-//   운영관리 계획 | 하자 보수  →  재무지표  →  문서 보관함  →  계통 상황
+//   운영관리 계획 | 하자 보수  →  재무지표  →  계통 상황 | 조례 모니터링
 export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSite, onSitesChanged }: DetailProps) {
   const [data, setData] = useState<SiteDetailPayload | null>(null)
   const [error, setError] = useState('')
@@ -81,8 +81,8 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
                 { id: 'ops-plan', label: '운영관리 계획' },
                 { id: 'ops-defect', label: '하자 보수' },
                 { id: 'ops-fin', label: labelOf('fin') },
-                { id: 'ops-vault', label: '문서 보관함' },
                 { id: 'ops-grid', label: '계통 상황' },
+                { id: 'ops-law', label: '조례 모니터링' },
               ]} />
 
               {/* 좌: 사업 개요 · 우: SPC 정보 + 부지 정보 (개발 상세와 같은 배치) */}
@@ -114,9 +114,11 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
 
               <FactSection id="ops-fin" title={labelOf('fin')} facts={factsOf('fin')}
                            canEdit={canEdit} onChanged={reload} showNote />
-              <DocumentVault id="ops-vault" siteId={siteId} docs={data.site_documents}
-                             canEdit={canEdit} onChanged={reload} onError={setError} />
-              <GridCard id="ops-grid" sido={data.site.sido || data.site.location} />
+              {/* 맨 아래 행 — 개발 상세와 같은 짝(계통 · 조례) */}
+              <div className="grid-2 bz-even-row">
+                <GridCard id="ops-grid" sido={data.site.sido || data.site.location} />
+                <OrdinanceCard id="ops-law" sido={data.site.sido || data.site.location} />
+              </div>
             </>
           )}
         </div>
