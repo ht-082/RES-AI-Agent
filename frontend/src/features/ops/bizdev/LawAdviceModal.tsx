@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { RefreshCw, Sparkles, X } from 'lucide-react'
 import { apiSend } from './api'
 import type { Law } from './types'
@@ -16,6 +18,14 @@ export default function LawAdviceModal({ law, onClose }: { law: Law; onClose: ()
   const [data, setData] = useState<Advice | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    if (!loading) return
+    setElapsed(0)
+    const t = window.setInterval(() => setElapsed(v => v + 1), 1000)
+    return () => window.clearInterval(t)
+  }, [loading])
 
   const ask = async (refresh = false) => {
     setLoading(true)
@@ -55,13 +65,23 @@ export default function LawAdviceModal({ law, onClose }: { law: Law; onClose: ()
         </div>
 
         <div className="bz-advice">
-          {loading && <p className="note">사내 자료를 살펴 제언을 만들고 있습니다…</p>}
+          {loading && (
+            <div className="bz-advice-loading">
+              <span className="bz-spinner" />
+              <div>
+                <p className="bz-advice-loading-title">제언을 만들고 있습니다</p>
+                <p className="bz-advice-loading-sub">
+                  보통 10~30초 걸립니다 · {elapsed}초 경과
+                </p>
+              </div>
+            </div>
+          )}
           {error && <p className="note" style={{ color: 'var(--red)' }}>{error}</p>}
           {!loading && !error && data && (
             <>
-              {data.advice.split('\n').map((line, i) => (
-                <p key={i} className="bz-advice-line">{line}</p>
-              ))}
+              <div className="bz-advice-body">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{data.advice}</ReactMarkdown>
+              </div>
               <p className="bz-advice-foot">
                 법령 메타데이터를 근거로 한 해석입니다. 시행 전 원문 확인이 필요합니다.
               </p>
