@@ -82,7 +82,12 @@ export default function App() {
         )}
         {activeView === 'contract' && <ContractView />}
         {activeView === 'finance'  && <FinanceView />}
-        {activeView === 'ops'      && <OpsView user={user} />}
+        {activeView === 'ops'      && (
+          <OpsView
+            user={user}
+            onOpenChat={id => { handleConversationChanged(id); setActiveView('chat') }}
+          />
+        )}
       </main>
     </>
   )

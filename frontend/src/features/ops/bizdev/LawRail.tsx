@@ -1,11 +1,11 @@
-import { useState } from 'react'
 import { ExternalLink, Sparkles } from 'lucide-react'
-import LawAdviceModal from './LawAdviceModal'
 import SectionHead from './detail/SectionHead'
 import type { Law } from './types'
 
 // 전체 영향 법령 동향 — 구분 · 법령명 · 주관부처 · 시행일 · 개정 및 신설 내용 · AI 제언.
 // 법령명은 법제처 원문으로 연결한다(사내 법령 상세 화면은 2차).
+// 'AI 제언'은 정해진 질문을 사내 챗봇에 넣고 그 화면으로 넘긴다 — 검색·출처·
+// 이어 묻기는 챗봇이 하던 대로 한다(우리가 그 파이프라인을 복제하지 않는다).
 const CAT_COLOR: Record<string, string> = {
   입법예고: 'var(--amber)',
   개정: 'var(--brand)',
@@ -13,9 +13,12 @@ const CAT_COLOR: Record<string, string> = {
   기타: 'var(--ink-faint)',
 }
 
-export default function LawRail({ laws }: { laws: Law[] }) {
+export default function LawRail({ laws, onAdvise, busyId }: {
+  laws: Law[]
+  onAdvise: (law: Law) => void
+  busyId?: string | null
+}) {
   const top = laws.slice(0, 5)
-  const [asking, setAsking] = useState<Law | null>(null)
 
   return (
     <div className="card block">
@@ -63,9 +66,10 @@ export default function LawRail({ laws }: { laws: Law[] }) {
                   {l.summary || l.title || <span className="bz-muted">—</span>}
                 </td>
                 <td>
-                  <button className="btn-ghost bz-law-ai" onClick={() => setAsking(l)}
-                          title="이 법령이 우리 사업에 미칠 영향을 물어봅니다">
-                    <Sparkles size={12} /> 제언
+                  <button className="btn-ghost bz-law-ai" disabled={busyId === l.id}
+                          onClick={() => onAdvise(l)}
+                          title="이 법령이 우리 사업에 미칠 영향을 챗봇에 물어봅니다">
+                    <Sparkles size={12} /> {busyId === l.id ? '여는 중' : '제언'}
                   </button>
                 </td>
               </tr>
@@ -74,7 +78,6 @@ export default function LawRail({ laws }: { laws: Law[] }) {
         </tbody>
       </table>
       </div>
-      {asking && <LawAdviceModal law={asking} onClose={() => setAsking(null)} />}
     </div>
   )
 }

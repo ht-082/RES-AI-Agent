@@ -8,7 +8,7 @@ from .views import (
     PermitStageViewSet, SiteEventViewSet, SiteFactViewSet, SiteViewSet,
     SubstationSearchView, SummaryView,
     DefectItemViewSet, OpsDailyViewSet, OpsPlanItemViewSet, PortfolioKpiViewSet,
-    LawAdviceView, SiteDocumentViewSet,
+    LawAdvicePromptView, SiteDocumentViewSet,
 )
 
 router = DefaultRouter()
@@ -28,8 +28,8 @@ router.register('bizdev/site-documents', SiteDocumentViewSet, basename='bizdev-s
 router.register('bizdev/kpis', PortfolioKpiViewSet, basename='bizdev-kpi')
 
 urlpatterns = [
-    path('bizdev/laws/<str:law_id>/advice/', LawAdviceView.as_view(),
-         name='bizdev-law-advice'),
+    path('bizdev/laws/<str:law_id>/advice-prompt/', LawAdvicePromptView.as_view(),
+         name='bizdev-law-advice-prompt'),
     path('bizdev/summary/', SummaryView.as_view(), name='bizdev-summary'),
     path('bizdev/grid/capacity/', GridCapacityView.as_view(), name='bizdev-grid-capacity'),
     path('bizdev/grid/nearby/', GridNearbyView.as_view(), name='bizdev-grid-nearby'),

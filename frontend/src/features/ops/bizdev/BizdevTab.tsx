@@ -7,7 +7,10 @@ import type { AppUser, Site } from './types'
 
 // 사업개발 탭 루트 — 라우터 없이 state 로 대시보드 ↔ 상세 전환(기존 관례).
 // 상세 진입 시 lifecycle 에 따라 분기: dev → 개발 상세, ops → 운영 상세.
-export default function BizdevTab({ user }: { user: AppUser | null }) {
+export default function BizdevTab({ user, onOpenChat }: {
+  user: AppUser | null
+  onOpenChat?: (conversationId: string) => void
+}) {
   const [sites, setSites] = useState<Site[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -59,6 +62,7 @@ export default function BizdevTab({ user }: { user: AppUser | null }) {
     <BizdevDashboard
       sites={sites}
       user={user}
+      onOpenChat={onOpenChat}
       onSelectSite={setSelectedId}
       onSitesChanged={reload}
     />

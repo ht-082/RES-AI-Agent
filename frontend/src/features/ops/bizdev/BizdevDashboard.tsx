@@ -19,14 +19,16 @@ interface Kpi {
 }
 
 // 사업개발 메인 대시보드 — 원본 index.html 이식
-export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }: {
+export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, onOpenChat }: {
   sites: Site[]
   user: AppUser | null
   onSelectSite: (id: string) => void
   onSitesChanged: () => void
+  onOpenChat?: (conversationId: string) => void   // 법령 AI 제언 → 챗봇으로
 }) {
   const [laws, setLaws] = useState<Law[]>([])
   const [kpis, setKpis] = useState<Kpi[]>([])
+  const [advising, setAdvising] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [drawerSite, setDrawerSite] = useState<Site | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -50,6 +52,26 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
     if (!q) return sites
     return sites.filter(s => `${s.name} ${s.location || ''} ${s.sido || ''}`.toLowerCase().includes(q))
   }, [sites, query])
+
+  // AI 제언 — 질문은 서버가 만들고(집계 한 줄 포함), 보내는 것은 챗봇 API 로.
+  // 법령마다 새 대화를 연다(각자 후속 질문을 이어갈 수 있도록).
+  const askAdvice = async (law: Law) => {
+    if (!onOpenChat) return
+    setAdvising(law.id)
+    try {
+      const { title, prompt } = await apiGet<{ title: string; prompt: string }>(
+        `/api/bizdev/laws/${law.id}/advice-prompt/`)
+      const conv = await apiSend<{ id: string }>('POST', '/api/conversations/',
+                                                 { title, use_internal_docs: true })
+      onOpenChat(conv.id)                       // 답을 기다리는 동안 챗봇 화면으로
+      await apiSend('POST', `/api/conversations/${conv.id}/messages/`, { content: prompt })
+      onOpenChat(conv.id)                       // 답이 오면 그 대화를 다시 읽는다
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '챗봇으로 넘기지 못했습니다.')
+    } finally {
+      setAdvising(null)
+    }
+  }
 
   // 아직 자동 집계가 없는 지표 — 값이 없으면 null 로 두어 '0' 과 구분한다
   const kpi = (key: string) => {
@@ -122,7 +144,7 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
         </div>
         {/* 우측에는 법령 동향만 — 지도와 아래 끝을 맞춘다 */}
         <div className="bz-stack" style={{ gap: 16 }}>
-          <LawRail laws={laws} />
+          <LawRail laws={laws} onAdvise={askAdvice} busyId={advising} />
         </div>
       </div>
 
