@@ -1236,3 +1236,10 @@ select.bz-cell-input { cursor: pointer; }
 .bz-advice-body th { background: var(--surface-2); font-weight: 700; }
 .bz-advice-foot { margin-top: 14px; font-size: 11px; color: var(--ink-faint);
   border-top: 1px solid var(--line-soft); padding-top: 10px; }
+
+/* AI 제언 진행 표시 — 답변이 올 때까지 대시보드에 머문다 */
+.bz-advice-toast { position: fixed; right: 26px; bottom: 24px; z-index: 80;
+  display: flex; align-items: flex-start; gap: 12px; max-width: 340px;
+  padding: 14px 16px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: 0 6px 20px rgba(16, 32, 26, .16);
+  animation: fade .2s ease; }

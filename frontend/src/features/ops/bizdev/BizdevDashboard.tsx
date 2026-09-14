@@ -29,6 +29,8 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, o
   const [laws, setLaws] = useState<Law[]>([])
   const [kpis, setKpis] = useState<Kpi[]>([])
   const [advising, setAdvising] = useState<string | null>(null)
+  const [advisingName, setAdvisingName] = useState('')
+  const [advisingSec, setAdvisingSec] = useState(0)
   const [query, setQuery] = useState('')
   const [drawerSite, setDrawerSite] = useState<Site | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -39,6 +41,15 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, o
     apiGet<Kpi[]>('/api/bizdev/kpis/').then(d => { if (!cancelled) setKpis(d) }).catch(() => {})
     return () => { cancelled = true }
   }, [])
+
+  // 제언은 사내 자료를 뒤지고 답을 쓰는 데 1분 가까이 걸린다. 멈춘 것처럼
+  // 보이지 않게 경과 시간을 센다.
+  useEffect(() => {
+    if (!advising) return
+    setAdvisingSec(0)
+    const t = window.setInterval(() => setAdvisingSec(v => v + 1), 1000)
+    return () => window.clearInterval(t)
+  }, [advising])
 
   const mw = (list: Site[]) => list.reduce((a, s) => a + Number(s.capacity_mw || 0), 0)
   const devSites = useMemo(() => sites.filter(s => s.lifecycle === 'dev'), [sites])
@@ -53,19 +64,21 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, o
     return sites.filter(s => `${s.name} ${s.location || ''} ${s.sido || ''}`.toLowerCase().includes(q))
   }, [sites, query])
 
-  // AI 제언 — 질문은 서버가 만들고(집계 한 줄 포함), 보내는 것은 챗봇 API 로.
-  // 법령마다 새 대화를 연다(각자 후속 질문을 이어갈 수 있도록).
+  // AI 제언 — 질문은 서버가 만들고, 보내는 것은 챗봇 API 로.
+  // 답변까지 받은 뒤에 화면을 옮긴다. 먼저 옮기면 챗봇이 아직 비어 있는 대화를
+  // 읽고 끝나 버린다(같은 대화 id 라 다시 읽지도 않는다).
+  // 법령마다 새 대화를 연다 — 사람마다 후속 질문을 따로 이어갈 수 있도록.
   const askAdvice = async (law: Law) => {
     if (!onOpenChat) return
     setAdvising(law.id)
+    setAdvisingName(law.short_name || law.law_name)
     try {
       const { title, prompt } = await apiGet<{ title: string; prompt: string }>(
         `/api/bizdev/laws/${law.id}/advice-prompt/`)
       const conv = await apiSend<{ id: string }>('POST', '/api/conversations/',
                                                  { title, use_internal_docs: true })
-      onOpenChat(conv.id)                       // 답을 기다리는 동안 챗봇 화면으로
       await apiSend('POST', `/api/conversations/${conv.id}/messages/`, { content: prompt })
-      onOpenChat(conv.id)                       // 답이 오면 그 대화를 다시 읽는다
+      onOpenChat(conv.id)
     } catch (e) {
       alert(e instanceof Error ? e.message : '챗봇으로 넘기지 못했습니다.')
     } finally {
@@ -172,6 +185,19 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, o
           )
         })}
       </div>
+
+      {advising && (
+        <div className="bz-advice-toast">
+          <span className="bz-spinner" />
+          <div>
+            <p className="bz-advice-loading-title">AI 제언을 만들고 있습니다</p>
+            <p className="bz-advice-loading-sub">
+              {advisingName} · 사내 자료를 찾아 답을 씁니다 · {advisingSec}초 경과
+            </p>
+            <p className="bz-advice-loading-sub">다 되면 대화 화면으로 넘어갑니다 (보통 30~60초)</p>
+          </div>
+        </div>
+      )}
 
       {showForm && <SiteFormModal onClose={() => setShowForm(false)} onSaved={onSitesChanged} />}
     </section>
