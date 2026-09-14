@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { ExternalLink, Sparkles } from 'lucide-react'
+import LawAdviceModal from './LawAdviceModal'
 import SectionHead from './detail/SectionHead'
 import type { Law } from './types'
 
@@ -13,6 +15,7 @@ const CAT_COLOR: Record<string, string> = {
 
 export default function LawRail({ laws }: { laws: Law[] }) {
   const top = laws.slice(0, 5)
+  const [asking, setAsking] = useState<Law | null>(null)
 
   return (
     <div className="card block">
@@ -60,9 +63,8 @@ export default function LawRail({ laws }: { laws: Law[] }) {
                   {l.summary || l.title || <span className="bz-muted">—</span>}
                 </td>
                 <td>
-                  {/* 법령 영향 분석(2차)이 붙으면 이 버튼이 제언을 띄운다 */}
-                  <button className="btn-ghost bz-law-ai" disabled
-                          title="법령 영향 분석 연동 후 사용 (준비 중)">
+                  <button className="btn-ghost bz-law-ai" onClick={() => setAsking(l)}
+                          title="이 법령이 우리 사업에 미칠 영향을 물어봅니다">
                     <Sparkles size={12} /> 제언
                   </button>
                 </td>
@@ -72,6 +74,7 @@ export default function LawRail({ laws }: { laws: Law[] }) {
         </tbody>
       </table>
       </div>
+      {asking && <LawAdviceModal law={asking} onClose={() => setAsking(null)} />}
     </div>
   )
 }

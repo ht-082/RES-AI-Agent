@@ -482,3 +482,31 @@ class PortfolioKpi(models.Model):
 
     def __str__(self):
         return f'{self.get_key_display()} = {self.value}'
+
+
+class LawAdvice(models.Model):
+    """법령 영향 제언 캐시 — 같은 법령을 다시 눌러도 곧바로 뜨게 한다.
+
+    원본(Re-project-mng)의 policy_advice 자리. 법령 내용이 바뀌면 cache_key 가
+    달라져 새로 만든다.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    cache_key = models.CharField(max_length=120, unique=True,
+                                 help_text='law:<id>:<내용 해시>')
+    law_id = models.CharField(max_length=40)
+    law_name = models.CharField(max_length=200)
+    prompt = models.TextField(help_text='실제로 보낸 질문 — 답이 이상할 때 되짚는다')
+    advice = models.TextField()
+    model = models.CharField(max_length=80, blank=True, default='')
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL,
+                                   null=True, blank=True, related_name='bizdev_law_advices')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'bizdev_law_advice'
+        ordering = ['-created_at']
+        verbose_name = '법령 제언'
+        verbose_name_plural = '법령 제언'
+
+    def __str__(self):
+        return f'{self.law_name} 제언'

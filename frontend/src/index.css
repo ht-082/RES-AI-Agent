@@ -1195,3 +1195,14 @@ select.bz-cell-input { cursor: pointer; }
 .bz-law-ai { font-size: 11px; display: inline-flex; align-items: center; gap: 3px;
   padding: 3px 8px; }
 .bz-law-ai:disabled { opacity: .5; cursor: not-allowed; }
+
+/* 법령 AI 제언 팝업 */
+.bz-advice-head { display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; }
+.bz-advice-title { display: flex; align-items: center; gap: 6px; font-size: 15px;
+  font-weight: 700; }
+.bz-advice { margin-top: 14px; }
+.bz-advice-line { font-size: 13px; line-height: 1.65; margin: 0 0 4px; white-space: pre-wrap; }
+.bz-advice-line:empty { height: 6px; }
+.bz-advice-foot { margin-top: 14px; font-size: 11px; color: var(--ink-faint);
+  border-top: 1px solid var(--line-soft); padding-top: 10px; }

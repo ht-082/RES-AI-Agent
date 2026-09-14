@@ -3,6 +3,7 @@
 DRF 로 통합 이관.
 """
 import hashlib
+from collections import Counter
 import logging
 import os
 import re
@@ -19,6 +20,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.documents.views import resolve_media_path
+from services.llm import generate_response
 
 from . import registry, snapshots
 from .constants import (
@@ -26,7 +28,8 @@ from .constants import (
     STAGE_DEFS, STAGE_TO_LIFECYCLE, fact_spec,
 )
 from .models import (
-    BudgetApproval, BudgetEntry, CommunityIssue, Contract, DefectItem, OpsDaily,
+    BudgetApproval, BudgetEntry, CommunityIssue, Contract, DefectItem, LawAdvice,
+    OpsDaily,
     OpsPlanItem, PermitDocument, PermitStage, PortfolioKpi, Site, SiteDocument,
     SiteEvent, SiteFact,
 )
@@ -795,3 +798,90 @@ class PortfolioKpiViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin,
 
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
+
+
+# ── 법령 영향 제언 ────────────────────────────────────────────────
+ADVICE_SYSTEM = (
+    '너는 한국 재생에너지 사업개발의 인허가·정책 전문가다. '
+    '사실에 근거해 간결히 답한다. 영향이 없으면 없다고 분명히 말한다. '
+    '확실하지 않은 부분은 추정임을 밝힌다.'
+)
+
+
+def portfolio_line():
+    """포트폴리오를 한 줄로 — 사업이 늘어도 프롬프트 길이가 늘지 않게 집계한다."""
+    rows = list(Site.objects.values('energy_type', 'lifecycle', 'sido', 'capacity_mw'))
+    if not rows:
+        return '보유 사업 없음'
+    solar = sum(1 for r in rows if r['energy_type'] == 'solar')
+    wind = len(rows) - solar
+    dev = sum(1 for r in rows if r['lifecycle'] == 'dev')
+    gw = sum(float(r['capacity_mw'] or 0) for r in rows) / 1000
+    regions = Counter(r['sido'] for r in rows if r['sido'])
+    where = ' · '.join(f'{k} {v}' for k, v in regions.most_common(4)) or '지역 미상'
+    return (f'보유 사업 {len(rows)}건 · 총 {gw:.2f}GW — '
+            f'태양광 {solar} / 풍력 {wind} · 개발 {dev} / 운영 {len(rows) - dev} · {where}')
+
+
+def advice_prompt(law):
+    """법령 한 건에 대한 질문. 사업 목록이 아니라 집계 한 줄을 넣어,
+    사업이 늘어도 프롬프트가 길어지지 않게 한다."""
+    name = law.get('short_name') or law.get('law_name') or '법령'
+    body = law.get('summary') or law.get('title') or ''
+    return '\n'.join([
+        f"[{law.get('date', '')}] [{name}] [{law.get('category', '')}]",
+        f'내용: {body}',
+        f"소관: {law.get('ministry', '')}",
+        '',
+        f'우리 포트폴리오: {portfolio_line()}',
+        '',
+        '아래 순서로 답해 주세요.',
+        '1) 핵심 변경점',
+        '2) 영향을 받는 사업 (유형·지역·단계 기준, 없으면 "없음")',
+        '3) 필요한 조치와 기한',
+        '근거를 함께 적고, 확실하지 않으면 추정이라고 밝혀 주세요.',
+    ])
+
+
+class LawAdviceView(APIView):
+    """POST /api/bizdev/laws/<law_id>/advice/ — 법령 영향 제언(캐시)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, law_id):
+        law = next((row for row in snapshots.list_laws() if str(row.get('id')) == law_id), None)
+        if not law:
+            return Response({'error': '법령을 찾을 수 없습니다.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        prompt = advice_prompt(law)
+        key = f'law:{law_id}:{hashlib.sha1(prompt.encode()).hexdigest()[:12]}'
+        cached = LawAdvice.objects.filter(cache_key=key).first()
+        if cached and not request.data.get('refresh'):
+            return Response({'advice': cached.advice, 'model': cached.model,
+                             'created_at': cached.created_at, 'cached': True})
+
+        try:
+            # 모델은 서버 기본값을 쓴다 — 'default' 같은 별칭은 통하지 않는다.
+            # 추론 모델이라 한도가 빠듯하면 생각하는 데 다 쓰고 본문이 비어 온다.
+            out = generate_response(
+                [{'role': 'system', 'content': ADVICE_SYSTEM},
+                 {'role': 'user', 'content': prompt}],
+                model=settings.LLM_MODEL, temperature=0.2, max_tokens=4000)
+        except Exception as exc:                       # LLM 키 미설정·호출 실패
+            logger.warning(f'법령 제언 생성 실패: {exc}')
+            return Response({'error': f'제언 생성 실패: {exc}'},
+                            status=status.HTTP_502_BAD_GATEWAY)
+
+        content = (out.get('content') or '').strip()
+        if not content:                      # 빈 답을 캐시하면 계속 빈 채로 남는다
+            logger.warning('법령 제언이 비어 돌아왔습니다 (토큰 한도 확인 필요)')
+            return Response({'error': '제언이 비어 돌아왔습니다. 다시 시도해 주세요.'},
+                            status=status.HTTP_502_BAD_GATEWAY)
+
+        row, _ = LawAdvice.objects.update_or_create(
+            cache_key=key,
+            defaults={'law_id': law_id, 'law_name': law.get('short_name') or law.get('law_name', ''),
+                      'prompt': prompt, 'advice': content,
+                      'model': out.get('model', ''), 'created_by': request.user})
+        return Response({'advice': row.advice, 'model': row.model,
+                         'created_at': row.created_at, 'cached': False})
