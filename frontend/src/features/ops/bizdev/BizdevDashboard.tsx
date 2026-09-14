@@ -110,7 +110,7 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged }:
       </div>
 
       {/* 지도 + 우측 레일 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(300px, 1fr)', gap: 16, marginBottom: 22 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 1fr)', gap: 16, marginBottom: 22 }}>
         <div className="card block" style={{ display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 440 }}>
           <SectionHead title="포트폴리오 지도" />
           <div className="h-sub" style={{ marginBottom: 10 }}>마커 클릭 → 요약 · 상세 이동 (태양광 주황 / 풍력 청록)</div>
