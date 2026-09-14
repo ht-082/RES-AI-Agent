@@ -85,8 +85,6 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
                 { id: 'ops-grid', label: '계통 상황' },
               ]} />
 
-              {/* 1. 운영 현황 */}
-              <h3 className="bz-part-title">1. 운영 현황</h3>
               <OpsPerformance id="ops-perf" rows={data.ops_daily} />
               <div className="grid-2 bz-even-row">
                 <OpsPlanCard id="ops-plan" siteId={siteId} plans={data.ops_plans}
@@ -97,8 +95,6 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
               <EventSection id="ops-event" siteId={siteId} events={data.events}
                             canEdit={canEdit} onChanged={reload} onError={setError} />
 
-              {/* 2. SPC 현황 */}
-              <h3 className="bz-part-title">2. SPC 현황</h3>
               <div className="grid-2 bz-even-row">
                 <OverviewSection id="ops-basic" site={data.site} facts={factsOf('basic')}
                                  canEdit={canEdit} onChanged={reload} />
@@ -116,8 +112,6 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
                                  canEdit={canEdit} onChanged={reload} onError={setError} />
               </div>
 
-              {/* 3. 문서 보관함 */}
-              <h3 className="bz-part-title">3. 문서 보관함</h3>
               <DocumentVault id="ops-vault" siteId={siteId} docs={data.site_documents}
                              canEdit={canEdit} onChanged={reload} onError={setError} />
               <GridCard id="ops-grid" sido={data.site.sido || data.site.location} />

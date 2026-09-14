@@ -1137,12 +1137,6 @@ select.bz-cell-input { cursor: pointer; }
 /* 목차에서 건너뛴 박스가 화면 맨 위에 딱 붙지 않도록 */
 .card.block { scroll-margin-top: 16px; }
 
-/* 운영 상세 — 문서의 큰 묶음 제목(1. 운영 현황 / 2. SPC 현황 / 3. 문서 보관함) */
-.bz-part-title { font-size: 15px; font-weight: 800; color: var(--brand);
-  margin: 10px 0 -4px; letter-spacing: -0.01em; }
-.bz-part-title::before { content: ''; display: inline-block; width: 4px; height: 15px;
-  border-radius: 2px; background: var(--brand); margin-right: 8px; vertical-align: -2px; }
-
 /* 발전 · 재무 실적 타일 */
 .bz-perf-block + .bz-perf-block { margin-top: 12px; }
 .bz-perf-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
