@@ -238,10 +238,14 @@ class Command(BaseCommand):
                                 elif event == 'error':
                                     out['answer'] += data.get('message', '')
             else:
+                # 응답 모양이 저장소마다 다르다.
+                #   구 저장소: MessageSerializer 를 그대로 (평평한 content/sources)
+                #   통합 저장소: {'user_message': …, 'assistant_message': {…}}
                 data = res.json()
-                out['answer'] = data.get('content', '')
-                out['sources'] = data.get('sources') or []
-                out['model'] = data.get('model', '')
+                msg = data.get('assistant_message') or data
+                out['answer'] = msg.get('content', '')
+                out['sources'] = msg.get('sources') or []
+                out['model'] = msg.get('model', '')
 
             out['total_s'] = time.perf_counter() - t0
             out['status'] = res.status_code
