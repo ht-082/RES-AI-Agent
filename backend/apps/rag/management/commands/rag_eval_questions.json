@@ -1,0 +1,90 @@
+{
+  "version": "1.0",
+  "note": "RAG Baseline 평가셋. 질문을 바꾸면 Baseline 과 비교할 수 없다. 추가는 하되 기존 id 의 문장은 고치지 않는다.",
+  "questions": [
+    {
+      "id": "F1",
+      "type": "사실조회",
+      "question": "홍성1 태양광 사업의 발전사업허가 용량과 계통 연계점을 알려줘",
+      "expect": "99MW(AC) · 은하변전소 (사업개요_홍성1태양광)",
+      "expect_grounded": true
+    },
+    {
+      "id": "F2",
+      "type": "사실조회",
+      "question": "주식회사 홍성빛나래솔라의 사업자등록번호가 뭐야?",
+      "expect": "324-86-03682 (사업개요_홍성1태양광 §2 SPC 정보)",
+      "expect_grounded": true
+    },
+    {
+      "id": "F3",
+      "type": "사실조회",
+      "question": "당진1 태양광 사업의 사업단계와 위치를 알려줘",
+      "expect": "사업개요_당진1 기준 사업단계·소재지",
+      "expect_grounded": true
+    },
+    {
+      "id": "S1",
+      "type": "종합",
+      "question": "홍성1, 당진1, 당진2 사업의 설비용량을 표로 비교해줘",
+      "expect": "사업개요 3건을 모아 표로. 한 사업이라도 누락되면 감점",
+      "expect_grounded": true
+    },
+    {
+      "id": "S2",
+      "type": "종합",
+      "question": "당진행복솔라 PF 대주단 구성을 표로 보여줘",
+      "expect": "회귀 기준 질의. v1.0 에서 실패했고 v2.0 에서 사업개요 금융(PF) 절로 복구됨",
+      "expect_grounded": true
+    },
+    {
+      "id": "G1",
+      "type": "근거중요",
+      "question": "홍성 설계 인허가 용역 어떤 업체에서 하는데?",
+      "expect": "리랭커 헤더 주입 효과 검증 질의(실측 0.117 → 0.835). 계약서의 계약 당사자 조항이 상위로 와야 한다",
+      "expect_grounded": true
+    },
+    {
+      "id": "G2",
+      "type": "근거중요",
+      "question": "홍성1 태양광의 총사업비와 P.IRR을 알려주고, 각 수치가 확정인지 미확정인지도 함께 밝혀줘",
+      "expect": "약 1,560억원(미확정) · P.IRR 8.25%(미확정). 확정도를 빠뜨리면 감점",
+      "expect_grounded": true
+    },
+    {
+      "id": "H1",
+      "type": "검색난이도",
+      "question": "임자도 태양광 사업의 전력거래 개시일은 언제야?",
+      "expect": "임자 PJT 사업개요 또는 관련 문서",
+      "expect_grounded": true
+    },
+    {
+      "id": "H2",
+      "type": "검색난이도",
+      "question": "안면도 사업 대출약정서상 인출선행조건으로 어떤 서류가 필요해?",
+      "expect": "365p 대출약정서는 적재에서 제외(media/_deferred). 인출선행조건 관련 서류철이 잡히면 부분 성공, 아니면 '자료 없음'이 정답",
+      "expect_grounded": false
+    },
+    {
+      "id": "N1",
+      "type": "무근거",
+      "question": "베트남 붕따우 태양광 사업의 PPA 계약단가는 얼마인가요?",
+      "expect": "해외 사업 문서 없음. 수치를 지어내면 Hallucination",
+      "expect_grounded": false
+    },
+    {
+      "id": "N2",
+      "type": "무근거",
+      "question": "우리 회사 2026년 신입사원 채용 일정 알려줘",
+      "expect": "인사 문서 없음. 모른다고 답해야 한다",
+      "expect_grounded": false
+    },
+    {
+      "id": "N3",
+      "type": "무근거",
+      "question": "제주 해상풍력 프로젝트의 착공 예정일이 언제야?",
+      "expect": "해상풍력 사업 없음. 모른다고 답해야 한다",
+      "expect_grounded": false
+    }
+  ]
+}
