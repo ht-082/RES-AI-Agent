@@ -227,6 +227,10 @@ def build_messages(conversation, user_msg, user_content, use_docs, context_text,
         "당신은 재생에너지(태양광/풍력) 분야의 전문 지식을 갖고 있는 사업개발실의 사내 AI 에이전트입니다.\n"
         "한국어로 친절하고 격식 있게 답변하십시오.\n"
     )
+    # 첨부는 근거의 한 종류다. 아래 분기가 '근거가 없다'고 말하기 전에 먼저 확인해야
+    # 첨부만 있는 경우에 "일반적인 지식으로 답하라"는 잘못된 지시가 나가지 않는다.
+    attachment_text = build_attachment_context(conversation)
+
     if use_docs and context_text:
         system_prompt += (
             "주어진 [사내 참고 문서 내용]을 기반으로만 사용자의 질문에 대답하십시오.\n"
@@ -234,6 +238,14 @@ def build_messages(conversation, user_msg, user_content, use_docs, context_text,
             "가설적인 추론이나 없는 사실을 꾸며내는 행위는 완전히 금지됩니다.\n"
             "자료가 부족해 정확한 대답을 할 수 없다면 솔직히 모른다고 답변하십시오.\n\n"
             f"[사내 참고 문서 내용]\n{context_text}"
+        )
+    elif attachment_text:
+        # 사내 검색은 비었지만 첨부가 있는 경우. 첨부는 코퍼스에 없는 새 파일이 대부분이라
+        # 검색이 비는 것이 정상이며, 이때 근거는 첨부 하나다.
+        system_prompt += (
+            "사내 문서에서는 관련 자료를 찾지 못했습니다. 아래 [첨부파일 내용]만을 근거로 "
+            "답변하고, 첨부파일에 없는 내용은 지어내지 마십시오.\n"
+            "첨부파일로도 답할 수 없으면 솔직히 모른다고 답변하십시오."
         )
     elif not web_text:
         system_prompt += "사내 문서 참조 모드가 꺼져있거나 제공된 참고 자료가 없습니다. 일반적인 지식 범주에서 답변하십시오."
@@ -255,7 +267,6 @@ def build_messages(conversation, user_msg, user_content, use_docs, context_text,
         )
 
     # 사용자가 이 대화에 첨부한 파일 (C-6) — 토글과 무관하게 항상 제공
-    attachment_text = build_attachment_context(conversation)
     if attachment_text:
         system_prompt += (
             "\n\n사용자가 이 대화에 파일을 첨부했습니다. 아래 [첨부파일 내용]도 "
@@ -300,6 +311,15 @@ def finalize_conversation(conversation, user_content):
     if not conversation.title:
         conversation.title = user_content[:50]
     conversation.save()
+
+
+def has_attachment_text(conversation):
+    """근거로 쓸 수 있는 첨부가 붙어 있는지 **싸게** 확인한다.
+
+    '자료 없음' 단락 판정에 쓰인다. build_attachment_context()는 파일을 전부 읽으므로
+    존재 여부만 알면 되는 자리에서는 쓰지 않는다.
+    """
+    return conversation.attachments.exclude(parsed_text_uri='').exists()
 
 
 def build_attachment_context(conversation):
@@ -404,7 +424,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     rag_logger.info("=== [RAG DIAGNOSTIC END] ===")
 
                 # 임계값을 넘는 조각이 하나도 없는 경우: 고정 응답 반환 및 차단
-                if len(final_chunks) == 0:
+                #
+                # 단, 첨부파일이 붙어 있으면 단락하지 않는다. 첨부는 코퍼스에 없는 새 파일이
+                # 대부분이라 검색이 비는 것이 정상인데, 여기서 끊으면 **답이 되는 파일을
+                # 읽어보지도 않고 거절**하게 된다("이 계약서 위약금 조항 정리해줘").
+                # 첨부는 build_messages()에서 프롬프트에 붙는데 그 지점은 이 return 뒤에 있다.
+                if len(final_chunks) == 0 and not has_attachment_text(conversation):
                     ai_msg = Message.objects.create(
                         conversation=conversation,
                         role='assistant',
@@ -496,6 +521,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
             "당신은 재생에너지(태양광/풍력) 분야의 전문 지식을 갖고 있는 사업개발실의 사내 AI 에이전트입니다.\n"
             "한국어로 친절하고 격식 있게 답변하십시오.\n"
         )
+        # 첨부는 근거의 한 종류다. 아래 분기가 '근거가 없다'고 말하기 전에 먼저 확인해야
+        # 첨부만 있는 경우에 "일반적인 지식으로 답하라"는 잘못된 지시가 나가지 않는다.
+        attachment_text = build_attachment_context(conversation)
+
         if use_docs and context_text:
             system_prompt += (
                 "주어진 [사내 참고 문서 내용]을 기반으로만 사용자의 질문에 대답하십시오.\n"
@@ -504,12 +533,18 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 "자료가 부족해 정확한 대답을 할 수 없다면 솔직히 모른다고 답변하십시오.\n\n"
                 f"[사내 참고 문서 내용]\n{context_text}"
             )
+        elif attachment_text:
+            # 사내 검색은 비었지만 첨부가 있는 경우. 근거는 첨부 하나다.
+            system_prompt += (
+                "사내 문서에서는 관련 자료를 찾지 못했습니다. 아래 [첨부파일 내용]만을 근거로 "
+                "답변하고, 첨부파일에 없는 내용은 지어내지 마십시오.\n"
+                "첨부파일로도 답할 수 없으면 솔직히 모른다고 답변하십시오."
+            )
         else:
             system_prompt += "사내 문서 참조 모드가 꺼져있거나 제공된 참고 자료가 없습니다. 일반적인 지식 범주에서 답변하십시오."
 
         # 사용자가 이 대화에 첨부한 파일의 내용 (C-6)
         # 사내 문서 참조 토글과 무관하게, 사용자가 직접 올린 자료이므로 항상 제공한다.
-        attachment_text = build_attachment_context(conversation)
         if attachment_text:
             system_prompt += (
                 "\n\n사용자가 이 대화에 파일을 첨부했습니다. 아래 [첨부파일 내용]도 "
@@ -636,9 +671,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 finally:
                     pool.shutdown(wait=False)
 
-            # 사내에도 없고 웹 근거도 없으면 여기서 끝낸다.
+            # 사내에도 없고 웹 근거도 첨부도 없으면 여기서 끝낸다.
             # 웹 근거가 있으면 사내가 비어도 답변을 시도한다(사용자가 웹을 켠 경우).
-            if use_docs and no_hit and not web_text:
+            # 첨부도 마찬가지다 — 첨부는 코퍼스에 없는 새 파일이 대부분이라 검색이 비는 것이
+            # 정상인데, 여기서 끊으면 **답이 되는 파일을 읽어보지도 않고 거절**하게 된다.
+            # (첨부는 build_messages()에서 붙는데 그 호출은 이 return 뒤에 있다.)
+            if use_docs and no_hit and not web_text and not has_attachment_text(conversation):
                 content = "관련 자료를 찾지 못했습니다."
                 msg = Message.objects.create(conversation=conversation, role='assistant',
                                              content=content, used_internal_docs=True,
