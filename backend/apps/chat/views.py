@@ -87,8 +87,14 @@ def run_rag(conversation, user_content):
 
         loc = format_location(chunk)
 
+        # 컨텍스트 줄에 사업명을 박는다. 파일명만으로는 어느 사업 문서인지 알 수 없어
+        # (`보고서_1차투소위사업개요_181221.pdf` → 임자 PJT), LLM 이 질문의 사업과
+        # 대조할 근거 자체를 못 받는다. 실측: 코퍼스에 없는 '울산 부유식 해상풍력'을 물었더니
+        # 임자 PJT 문서의 200MW 를 그 사업의 계통연계 용량으로 단정했다.
         rank = len(sources) + 1
-        context_parts.append(f"[참고자료 {rank}] {doc.title} ({loc})\n{body}")
+        proj = project_label_for(payload)
+        head = f"[참고자료 {rank}] [사업: {proj}] {doc.title} ({loc})"
+        context_parts.append(f"{head}\n{body}")
         sources.append(MessageSource(
             document=doc,
             document_chunk=chunk,
@@ -236,7 +242,10 @@ def build_messages(conversation, user_msg, user_content, use_docs, context_text,
             "주어진 [사내 참고 문서 내용]을 기반으로만 사용자의 질문에 대답하십시오.\n"
             "답변은 반드시 참고 자료의 사실에 근거해야 하며, 참고 자료에 없는 내용은 절대 지어내거나 가상의 수치, 예측값 등을 임의로 만들어 대답하지 마십시오.\n"
             "가설적인 추론이나 없는 사실을 꾸며내는 행위는 완전히 금지됩니다.\n"
-            "자료가 부족해 정확한 대답을 할 수 없다면 솔직히 모른다고 답변하십시오.\n\n"
+            "자료가 부족해 정확한 대답을 할 수 없다면 솔직히 모른다고 답변하십시오.\n"
+            "각 참고자료 앞의 [사업: X]가 질문의 사업과 일치하는지 먼저 확인하십시오. "
+            "일치하는 자료가 하나도 없으면 추정하지 말고 해당 사업 자료를 찾지 못했다고 밝히십시오. "
+            "다른 사업의 자료를 근거로 쓸 때는 어느 사업 문서인지 반드시 함께 밝히십시오.\n\n"
             f"[사내 참고 문서 내용]\n{context_text}"
         )
     elif attachment_text:
@@ -311,6 +320,25 @@ def finalize_conversation(conversation, user_content):
     if not conversation.title:
         conversation.title = user_content[:50]
     conversation.save()
+
+
+def project_label_for(payload):
+    """검색 결과 payload → 사업명. 사업에 매이지 않는 문서(법령·지침)는 '공용'.
+
+    리랭커 헤더와 **같은 매핑**을 쓴다. 두 곳이 서로 다른 이름을 쓰면 LLM 이 받는
+    사업명과 검색이 쓴 사업명이 어긋난다.
+    """
+    if payload.get('is_global'):
+        return '공용'
+    pid = payload.get('project_id')
+    if not pid:
+        return '공용'
+    try:
+        from services.retriever import _project_label_map
+        return _project_label_map().get(str(pid), '미상')
+    except Exception as e:
+        logger.debug(f"사업명 조회 실패: {e}")
+        return '미상'
 
 
 def has_attachment_text(conversation):
@@ -465,8 +493,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
                         elif chunk.sheet_name:
                             loc_lbl = f"시트: {chunk.sheet_name} ({chunk.cell_range})"
 
+                        # 사업명을 박는다 — 파일명만으로는 어느 사업 문서인지 알 수 없어
+                        # LLM 이 질문의 사업과 대조할 근거를 못 받는다(스트리밍 경로와 동일).
                         context_parts.append(
-                            f"[참고자료 {idx+1}] {doc.title} ({loc_lbl})\n{chunk.content}"
+                            f"[참고자료 {idx+1}] [사업: {project_label_for(payload)}] "
+                            f"{doc.title} ({loc_lbl})\n{chunk.content}"
                         )
 
                         # MessageSource 데이터 리스트업
@@ -530,7 +561,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 "주어진 [사내 참고 문서 내용]을 기반으로만 사용자의 질문에 대답하십시오.\n"
                 "답변은 반드시 참고 자료의 사실에 근거해야 하며, 참고 자료에 없는 내용은 절대 지어내거나 가상의 수치, 예측값 등을 임의로 만들어 대답하지 마십시오.\n"
                 "가설적인 추론이나 없는 사실을 꾸며내는 행위는 완전히 금지됩니다.\n"
-                "자료가 부족해 정확한 대답을 할 수 없다면 솔직히 모른다고 답변하십시오.\n\n"
+                "자료가 부족해 정확한 대답을 할 수 없다면 솔직히 모른다고 답변하십시오.\n"
+                "각 참고자료 앞의 [사업: X]가 질문의 사업과 일치하는지 먼저 확인하십시오. "
+                "일치하는 자료가 하나도 없으면 추정하지 말고 해당 사업 자료를 찾지 못했다고 밝히십시오. "
+                "다른 사업의 자료를 근거로 쓸 때는 어느 사업 문서인지 반드시 함께 밝히십시오.\n\n"
                 f"[사내 참고 문서 내용]\n{context_text}"
             )
         elif attachment_text:
