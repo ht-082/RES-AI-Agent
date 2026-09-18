@@ -334,9 +334,15 @@ def _rerank_context_header(meta: dict) -> str:
 def rerank_documents(query: str, docs: List[Document]) -> List[Document]:
     """리랭커 점수 내림차순으로 재정렬한다.
 
-    bge-reranker-v2-m3의 출력은 로짓(대략 -12 ~ +12)이라 그대로는 컷 기준으로 쓰기
-    어렵다. 시그모이드를 씌운 확률(0~1)을 metadata['rerank_score']에 함께 남겨
-    관련성 게이트가 해석 가능한 값으로 판단하게 한다.
+    `score()` 가 돌려주는 값은 **이미 확률(0~1)** 이다. sentence-transformers 의
+    predict() 가 num_labels=1 이면 시그모이드를 씌워 주기 때문이다
+    (실측: 모델 로짓 1.541 → predict 0.8236 = sigmoid(1.541)).
+
+    ⚠ **예전에는 이 값을 로짓으로 보고 시그모이드를 한 번 더 씌웠다.**
+    그 결과 rerank_score 가 sigmoid([0,1]) = [0.5, 0.7311] 에 갇혀,
+    확률 0.9997 짜리와 0.8236 짜리가 0.7310 vs 0.6952 로 뭉개졌다.
+    순위는 단조라 그대로였지만 **게이트 임계값의 의미가 왜곡**됐다
+    (0.55 는 실제로는 '확률 0.2007 미만 차단'이었다).
 
     입력에는 임베딩과 동일한 컨텍스트 헤더를 붙인다(_rerank_context_header).
     """
@@ -349,10 +355,8 @@ def rerank_documents(query: str, docs: List[Document]) -> List[Document]:
         pairs.append((query, joined))
     scores = get_reranker().score(pairs)
     for doc, score in zip(docs, scores):
-        logit = float(score)
-        doc.metadata['rerank_logit'] = logit
-        # 로짓이 극단값일 때 math.exp 오버플로를 피한다.
-        doc.metadata['rerank_score'] = 1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, logit))))
+        # 이미 확률이다. 활성화를 다시 씌우지 말 것 — 위 주석 참조.
+        doc.metadata['rerank_score'] = float(score)
     return sorted(docs, key=lambda d: d.metadata['rerank_score'], reverse=True)
 
 
@@ -452,13 +456,22 @@ def apply_relevance_gate(hits) -> tuple[list, str]:
     이었다. 즉 질문이 코퍼스와 무관해도 항상 8칸이 채워졌고, LLM은 무관한 자료를
     받아 "정보가 없습니다"라고 답하거나 지어낼 위험에 놓였다.
 
-    실측(질의 10건: 코퍼스에 답이 있는 6건 / 전혀 없는 4건)으로 1위 점수가
-    두 그룹을 깨끗하게 가른다는 것을 확인했다.
+    ⚠ **2026-09-18 재산정.** 예전 캘리브레이션은 시그모이드가 두 번 걸린 값
+    (`[0.5, 0.7311]` 에 갇힌 값)으로 잡은 것이라 스케일이 왜곡돼 있었다
+    (옛 수치: 답있음 0.6019~0.7310 vs 답없음 0.5001~0.5179, 기준 0.55).
 
-        리랭커 확률  답있음 0.6019~0.7310  vs  답없음 0.5001~0.5179
-        Qdrant 점수  답있음 0.6464~0.8115  vs  답없음 0.3949~0.4715
+    이중 적용을 걷어내고 **진짜 확률**로 다시 재니 분리가 훨씬 넓다(평가셋 12문항):
 
-    두 지표 모두 빈 구간 한가운데인 0.55를 기준으로 삼는다.
+        리랭커 확률  답있음 0.4904~0.9998  vs  답없음(N2·N3) 0.0033·0.0422
+
+    빈 구간이 0.0422~0.4904 로 넓어, floor 를 그 사이 어디에 둬도 판정이 같다
+    (0.10·0.15·0.25·0.30·0.40 실측 결과 동일). 중앙에 가까운 0.25 를 쓴다.
+
+    다만 **N1(코퍼스에 없는 베트남 사업)이 0.4547 로 높다.** 유효 질의 최저값
+    S2(0.4904)와 0.036 밖에 차이가 없어 floor 로는 가를 수 없다. 이건 게이트가
+    아니라 검색 단계에서 풀 문제다.
+
+    Qdrant 점수 쪽(0.55/0.15)은 코사인 값이라 이번 변경과 무관하며 그대로 둔다.
 
     2단 구성:
       ① 질의 게이트 — 1위가 바닥값 미만이면 전부 버리고 '자료 없음'으로 분기

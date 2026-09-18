@@ -271,15 +271,20 @@ RAG_PREFETCH_K = int(os.getenv('RAG_PREFETCH_K', '64'))
 RAG_SIMILARITY_THRESHOLD = float(os.getenv('RAG_SIMILARITY_THRESHOLD', '0.5'))
 
 # ── 관련성 게이트 [C-3] ────────────────────────────────────────────────
-# 근거(실측, 질의 10건 = 코퍼스에 답 있음 6 / 전혀 없음 4):
-#   리랭커 확률 1위  답있음 0.6019~0.7310  vs  답없음 0.5001~0.5179
-#   Qdrant 점수 1위  답있음 0.6464~0.8115  vs  답없음 0.3949~0.4715
-# 두 지표 모두 빈 구간 한가운데인 0.55를 바닥값으로 잡았다.
-# 표본이 작으므로, 정상 질문이 '자료 없음'으로 튕기면 이 값을 먼저 낮춘다.
-RAG_GATE_MIN_TOP1_RERANK = float(os.getenv('RAG_GATE_MIN_TOP1_RERANK', '0.55'))
+# ⚠ 2026-09-18 재산정. 예전 값(0.55/0.12)은 **시그모이드가 두 번 걸린 점수**로 잡은
+# 것이라 스케일이 왜곡돼 있었다(그 값은 [0.5, 0.7311]에 갇혀 있었다).
+# 이중 적용을 걷어내고 진짜 확률로 다시 잰 분포(평가셋 12문항):
+#   리랭커 확률 1위  답있음 0.4904~0.9998  vs  답없음(N2·N3) 0.0033·0.0422
+# 빈 구간이 0.0422~0.4904 로 넓어 floor 를 그 사이 어디에 둬도 판정이 같다
+# (0.10·0.15·0.25·0.30·0.40 실측 동일). 중앙에 가까운 0.25 를 쓴다.
+# 정상 질문이 '자료 없음'으로 튕기면 이 값을 먼저 낮춘다.
+RAG_GATE_MIN_TOP1_RERANK = float(os.getenv('RAG_GATE_MIN_TOP1_RERANK', '0.25'))
+# Qdrant 쪽은 코사인 점수라 위 변경과 무관하다. 그대로 둔다.
 RAG_GATE_MIN_TOP1_QDRANT = float(os.getenv('RAG_GATE_MIN_TOP1_QDRANT', '0.55'))
 # 상대 컷: 1위에서 이 폭 이상 떨어진 후보는 노이즈로 보고 버린다.
-RAG_GATE_REL_MARGIN_RERANK = float(os.getenv('RAG_GATE_REL_MARGIN_RERANK', '0.12'))
+# 스케일이 바뀌었으므로 함께 재산정한다. 예전 0.12 는 압축된 스케일 기준이라
+# 실제로는 "거의 다 통과"에 가까웠다(폭이 0.231 뿐이었다).
+RAG_GATE_REL_MARGIN_RERANK = float(os.getenv('RAG_GATE_REL_MARGIN_RERANK', '0.40'))
 RAG_GATE_REL_MARGIN_QDRANT = float(os.getenv('RAG_GATE_REL_MARGIN_QDRANT', '0.15'))
 
 # ── 프롬프트 길이 가드 [M-1] ───────────────────────────────────────────
