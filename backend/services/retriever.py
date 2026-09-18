@@ -45,6 +45,13 @@ class ExistingQdrantRetriever(BaseRetriever):
     project_id: str | None = None
     top_k: int = 20
     collection_name: str | None = None  # None이면 settings 기본 컬렉션
+    # sparse prefetch 한도. **top_k와 분리해야 한다.**
+    # Qdrant의 prefetch는 후보를 먼저 좁히고 본 질의(dense)는 그 부분집합만 재점수한다.
+    # 즉 sparse가 관문이고 dense는 순서만 바꾼다. 둘을 같은 값으로 두면 sparse에서
+    # 밀린 문서는 dense가 1위로 볼 실력이 있어도 들어오지 못한다.
+    # 실측(2026-09-18): '홍성1과 당진1의 인허가 진척 경과 비교'에서
+    #   dense 단독 1위(0.6901) / sparse 단독 59위 → 한도 16이면 탈락, 64면 5위로 진입.
+    prefetch_k: int = 64
 
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
@@ -90,7 +97,7 @@ class ExistingQdrantRetriever(BaseRetriever):
                     Prefetch(
                         query=sparse_query,
                         using="sparse",
-                        limit=self.top_k,
+                        limit=self.prefetch_k,
                         filter=query_filter,
                     )
                 ] if sparse_query else None,
@@ -428,6 +435,7 @@ def retrieve_for_views(query: str, project_id: str | None = None,
     retriever = ExistingQdrantRetriever(
         project_id=str(project_id) if project_id else None,
         top_k=getattr(settings, 'RAG_RETRIEVE_K', 20),
+        prefetch_k=getattr(settings, 'RAG_PREFETCH_K', 64),
         collection_name=resolve_collection(corpus_version),
     )
     docs = retriever.invoke(query)

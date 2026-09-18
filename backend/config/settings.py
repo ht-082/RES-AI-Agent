@@ -259,6 +259,13 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800
 # 원칙: RAG_MAX_CONTEXT_K의 2~3배. 최종 개수(8)에 가까우면 리랭커가 고를 게 없어 무의미해진다.
 # 리랭킹 비용은 이 값에 거의 비례하므로 속도와의 절충점이다.
 RAG_RETRIEVE_K = int(os.getenv('RAG_RETRIEVE_K', '16'))
+# RAG_PREFETCH_K: sparse prefetch 한도. **RAG_RETRIEVE_K와 분리한다.**
+# Qdrant prefetch는 후보를 먼저 좁히고 dense는 그 부분집합만 재점수하므로 sparse가 관문이다.
+# 둘을 같게 두면 sparse에서 밀린 문서는 dense가 1위로 평가할 실력이 있어도 들어오지 못한다.
+# 실측(2026-09-18): 비교 질의에서 사업개요 청크가 dense 1위(0.6901)인데 sparse 59위라
+# 한도 16에서 탈락했다. 64면 최종 후보 5위로 진입한다.
+# 최종 후보 수는 여전히 RAG_RETRIEVE_K가 정하므로 리랭킹 비용은 늘지 않는다.
+RAG_PREFETCH_K = int(os.getenv('RAG_PREFETCH_K', '64'))
 # (구) 청크별 절대 임계값. 실측상 출처 197건 중 1건만 걸러 사실상 무력했다.
 # 지금은 아래 관련성 게이트가 이 역할을 대신한다. 호환을 위해 값만 남겨둔다.
 RAG_SIMILARITY_THRESHOLD = float(os.getenv('RAG_SIMILARITY_THRESHOLD', '0.5'))
