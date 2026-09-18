@@ -390,10 +390,15 @@ RERANK_MAX_LENGTH = int(os.getenv('RERANK_MAX_LENGTH', '384'))
 RERANK_BACKEND = os.getenv('RERANK_BACKEND', 'openvino_int8')
 RERANK_OV_INT8_DIR = os.getenv('RERANK_OV_INT8_DIR', os.path.join(BASE_DIR, '.ov_reranker_int8'))
 
-# 조건부 리랭킹 — Qdrant 점수만으로 컨텍스트 선택이 이미 명확하면 리랭킹을 건너뛴다.
-# 컨텍스트 경계(K번째 vs K+1번째)의 점수 차가 전체 점수 폭에서 이 비율 이상이면 생략.
-# 0으로 두면 항상 리랭킹(기존 동작). 값이 클수록 리랭킹을 더 자주 수행한다.
-RERANK_SKIP_MARGIN = float(os.getenv('RERANK_SKIP_MARGIN', '0.25'))
+# 조건부 리랭킹 건너뛰기 — **기본 0(= 끔).**
+# 컨텍스트 경계(K번째 vs K+1번째) 점수 차가 전체 점수 폭에서 이 비율 이상이면 생략하는
+# 장치였는데, 실측에서 그 비율이 잡음으로 드러났다(2026-09-18, 질의 17건):
+#   Qdrant 점수 폭이 항상 0.01~0.10 으로 압축돼 있어 0.018 짜리 미세한 격차도 비율 0.32 가
+#   된다. 정작 리랭킹의 실제 영향과는 어긋난다 — 비율 0.32 인 질의는 상위8 중 1건만 바뀌고
+#   비율 0.04 인 질의는 5건이 바뀌었다. 리랭킹은 평균 2.7/8 을 교체하는 실질 단계다.
+# 끄는 비용은 전체 평균 +0.7초(발동률 약 6% × 약 9초). 자세한 근거는 should_rerank 주석.
+# 되살리려면 0보다 큰 값을 주되, **건너뛰기가 발동하는 질의를 충분히 모아 재측정한 뒤**에 한다.
+RERANK_SKIP_MARGIN = float(os.getenv('RERANK_SKIP_MARGIN', '0'))
 
 # 서버 기동 시 임베딩·리랭커 모델을 백그라운드로 미리 로드 (첫 질의 2~3분 지연 제거)
 RAG_WARMUP_ON_START = os.getenv('RAG_WARMUP_ON_START', 'True').lower() in ('true', '1', 'yes')

@@ -343,27 +343,44 @@ def dedupe_documents(docs: List[Document]) -> List[Document]:
 
 
 def should_rerank(docs: List[Document]) -> tuple[bool, str]:
-    """조건부 리랭킹 판정 — 리랭킹이 결과를 바꿀 여지가 있을 때만 실행한다.
+    """리랭킹 실행 판정.
 
-    리랭커는 질의당 수 초를 쓰는 가장 비싼 단계다. 그런데 Qdrant 점수만으로도
-    '어떤 문서가 컨텍스트에 들어갈지'가 이미 명확한 질의가 있다. 컨텍스트 경계
-    (MAX_CONTEXT_K번째와 그 다음 문서) 사이 점수 차가 전체 점수 폭에서 충분히 크면
-    선택이 뒤집힐 가능성이 낮으므로 건너뛴다.
+    **비율 기반 건너뛰기는 기본으로 껐다(RERANK_SKIP_MARGIN=0).**
+    원래 의도는 "Qdrant 점수만으로 선택이 이미 명확하면 비싼 리랭커를 건너뛴다"였는데,
+    그 판정에 쓰던 gap/span 이 실측상 잡음이었다.
+
+    실측(2026-09-18, 질의 17건):
+      · Qdrant 점수 폭(span)이 0.0095~0.0961 로 **항상 압축돼 있다.**
+        후보 16건이 0.1 이내에 몰려 '명확한 경계'라 부를 구간이 없다.
+      · 경계 격차(gap)는 0.0008~0.0184. 그 좁은 span 으로 나누니
+        **0.018 짜리 미세한 차이가 비율 0.32 가 되어 건너뛰기가 발동**했다(F3).
+      · 정작 리랭킹의 실제 영향과 비율은 어긋난다 —
+        비율 0.32 인 F3 는 상위8 중 1건만 바뀌었고,
+        비율 0.04 인 C4 는 **5건**이 바뀌었다.
+      · 리랭킹은 평균 상위8 중 2.7건을 교체한다. 실제로 일을 하는 단계다.
+
+    즉 "리랭커를 뺄지"를 그 영향과 무관한 값으로 정하고 있었다. 근거의 정확성이
+    이 시스템의 핵심 가치이므로, 예측 불가능한 생략보다 일정한 비용을 택한다.
+    비용은 전체 평균 +0.7초다(발동률 약 6% × 약 9초).
+
+    되살리려면 `RERANK_SKIP_MARGIN` 을 0보다 크게 준다. 그 전에 **건너뛰기가 발동하는
+    질의를 충분히 모아 재측정할 것** — 위 실측은 발동 사례가 1건뿐이라 표본이 부족하다.
 
     반환: (실행 여부, 사유)
     """
     if not getattr(settings, 'RERANK_ENABLED', True):
         return False, 'disabled'
 
+    # 후보가 1~2건이면 고를 것도 정렬할 것도 사실상 없다. 이 생략은 잡음과 무관하게 타당하다.
+    if len(docs) <= 2:
+        return False, f'candidates<=2({len(docs)})'
+
     ctx_k = getattr(settings, 'RAG_MAX_CONTEXT_K', 8)
     margin = getattr(settings, 'RERANK_SKIP_MARGIN', 0.0)
     if margin <= 0:
         return True, 'always'
     if len(docs) <= ctx_k:
-        # 후보가 컨텍스트 정원 이하면 '선택'이 없다. 다만 순서는 답변 품질에
-        # 영향을 주므로 후보가 매우 적을 때만 건너뛴다.
-        if len(docs) <= 2:
-            return False, f'candidates<=2({len(docs)})'
+        # 후보가 컨텍스트 정원 이하면 '선택'은 없지만 순서는 답변 품질에 영향을 준다.
         return True, f'no-selection-but-order({len(docs)})'
 
     scores = sorted((float(d.metadata.get('qdrant_score', 0.0)) for d in docs), reverse=True)
