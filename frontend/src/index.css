@@ -330,7 +330,11 @@ input, textarea, select { font-family: inherit; font-size: inherit; color: inher
 }
 
 /* 웹 검색 토글 — 켜져 있을 때 경고색으로 상태를 드러낸다 */
-.web-switch input:checked ~ .track { background: #d9a441; }
+/* 웹 검색 토글은 켜지면 경고색(호박)이어야 한다 — 질문이 외부로 나간다는 신호다.
+   ⚠ `.switch.web-switch` 로 명시도를 올리고 결합자를 `+` 로 맞춘다. 예전에는
+   `.web-switch input:checked ~ .track` 이라 아래 `.switch input:checked + .track`(398행)과
+   명시도가 같았고, 소스 순서에서 뒤인 초록이 이겨 **경고색이 아예 안 보였다.** */
+.switch.web-switch input:checked + .track { background: #d9a441; }
 
 /* ── 도식 (mermaid) ────────────────────────────────────────────── */
 .mermaid-block {
