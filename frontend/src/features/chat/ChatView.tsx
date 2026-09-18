@@ -699,9 +699,18 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
           {(attachments.length > 0 || uploading || attachError) && (
             <div className="attach-bar">
               {attachments.map(att => (
-                <span key={att.id} className="attach-chip" title={att.filename}>
+                // 추출 실패 파일은 답변에 반영되지 않는다. 멀쩡한 파일과 똑같이 보이면
+                // 사용자가 "왜 내 파일을 안 읽지"를 알 방법이 없다.
+                <span
+                  key={att.id}
+                  className={att.parsed === false ? 'attach-chip is-unparsed' : 'attach-chip'}
+                  title={att.parsed === false
+                    ? `${att.filename} · 텍스트를 추출하지 못해 답변에 반영되지 않습니다`
+                    : att.filename}
+                >
                   <FileText size={12} />
                   {att.filename}
+                  {att.parsed === false && <span className="attach-warn">⚠</span>}
                 </span>
               ))}
               {uploading && <span className="attach-chip is-busy">첨부하는 중…</span>}

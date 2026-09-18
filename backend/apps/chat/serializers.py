@@ -34,11 +34,19 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class MessageAttachmentSerializer(serializers.ModelSerializer):
+    # 텍스트 추출에 성공했는가. **목록에도 실어야 한다** — 예전에는 업로드 응답에만
+    # 담겨서, 새로고침하면 추출 실패 파일이 멀쩡한 파일과 똑같이 보였다.
+    # 사용자는 그 파일이 답변에 반영되지 않는다는 것을 알 방법이 없었다.
+    parsed = serializers.SerializerMethodField()
+
     class Meta:
         model = MessageAttachment
         fields = ['id', 'conversation', 'message', 'filename', 'file_type',
-                  'storage_uri', 'file_size', 'created_at']
+                  'storage_uri', 'file_size', 'created_at', 'parsed']
         read_only_fields = ['id', 'created_at']
+
+    def get_parsed(self, obj):
+        return bool(obj.parsed_text_uri)
 
 
 class ConversationSerializer(serializers.ModelSerializer):
