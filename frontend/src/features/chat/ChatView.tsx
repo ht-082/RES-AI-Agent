@@ -296,13 +296,21 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
     return () => { cancelled = true }
   }, [conversationId])
 
+  /** 출처 머릿글. 웹이 섞였는데 "사내 자료"라고 적으면 근거의 출처를 잘못 알린다. */
+  const sourceLabel = (sources?: Source[]) => {
+    const list = sources || []
+    const web = list.filter(s => s.kind === 'web').length
+    if (!web) return `참조한 사내 자료 ${list.length}건`
+    return `참조한 자료 ${list.length}건 (사내 ${list.length - web} · 웹 ${web})`
+  }
+
   /** 답변을 Markdown 원문 + 출처 목록으로 복사 (엑셀·워드에 표 그대로 붙습니다) */
   const handleCopy = async (msg: Message) => {
     const srcLines = (msg.sources || []).map(
       (s, i) => `${i + 1}. ${s.display_title}${s.location_label ? ` (${s.location_label})` : ''}`
     )
     const text = srcLines.length
-      ? `${msg.content}\n\n---\n참조한 사내 자료 ${srcLines.length}건\n${srcLines.join('\n')}`
+      ? `${msg.content}\n\n---\n${sourceLabel(msg.sources)}\n${srcLines.join('\n')}`
       : msg.content
     try {
       await navigator.clipboard.writeText(text)
@@ -546,7 +554,7 @@ export default function ChatView({ conversationId, onConversationChanged }: Chat
                   <div className="sources">
                     <div className="s-lab">
                       <FileText size={13} />
-                      참조한 사내 자료 {msg.sources.length}건
+                      {sourceLabel(msg.sources)}
                     </div>
                     <div className="chips">
                       {msg.sources.map((src, i) => {

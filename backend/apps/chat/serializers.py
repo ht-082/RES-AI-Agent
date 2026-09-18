@@ -80,7 +80,10 @@ class ConversationShareSerializer(serializers.ModelSerializer):
 class SendMessageSerializer(serializers.Serializer):
     """사용자 메시지 전송 시 사용하는 시리얼라이저"""
     content = serializers.CharField()
-    use_internal_docs = serializers.BooleanField(required=False, default=True)
-    use_web_search = serializers.BooleanField(required=False, default=False)
+    # ⚠ default 를 두면 **대화에 저장된 설정이 죽는다.** DRF 는 키가 없어도 default 로
+    # 채우므로 `validated_data.get(key, conversation.X)` 의 두 번째 인자가 영영 쓰이지 않는다.
+    # None 으로 두고 호출측이 '요청에 값이 있으면 그것, 없으면 대화 설정'을 판정한다.
+    use_internal_docs = serializers.BooleanField(required=False, allow_null=True, default=None)
+    use_web_search = serializers.BooleanField(required=False, allow_null=True, default=None)
     # 값 검증은 views.resolve_llm_model 이 allowlist 로 수행한다
     llm_model = serializers.CharField(required=False, allow_blank=True, default='')

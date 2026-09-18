@@ -322,6 +322,15 @@ def finalize_conversation(conversation, user_content):
     conversation.save()
 
 
+def resolve_toggle(requested, conversation_value):
+    """요청에 값이 있으면 그것, 없으면(None) 대화에 저장된 설정을 쓴다.
+
+    시리얼라이저 default 를 None 으로 둔 이유와 한 쌍이다 — default 가 True/False 면
+    키가 없어도 채워져서 대화 설정이 영영 반영되지 않는다.
+    """
+    return conversation_value if requested is None else bool(requested)
+
+
 def project_label_for(payload):
     """검색 결과 payload → 사업명. 사업에 매이지 않는 문서(법령·지침)는 '공용'.
 
@@ -397,7 +406,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         user_content = serializer.validated_data['content']
-        use_docs = serializer.validated_data.get('use_internal_docs', conversation.use_internal_docs)
+        use_docs = resolve_toggle(serializer.validated_data.get('use_internal_docs'),
+                                  conversation.use_internal_docs)
 
         # 1. 사용자 메시지 저장
         user_msg = Message.objects.create(
@@ -650,10 +660,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
         serializer = SendMessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_content = serializer.validated_data['content']
-        use_docs = serializer.validated_data.get('use_internal_docs',
-                                                 conversation.use_internal_docs)
-        use_web = serializer.validated_data.get('use_web_search',
-                                                conversation.use_web_search)
+        use_docs = resolve_toggle(serializer.validated_data.get('use_internal_docs'),
+                                  conversation.use_internal_docs)
+        use_web = resolve_toggle(serializer.validated_data.get('use_web_search'),
+                                 conversation.use_web_search)
 
         user_msg = Message.objects.create(
             conversation=conversation, role='user', content=user_content, status='done')

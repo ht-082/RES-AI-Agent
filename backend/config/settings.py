@@ -337,7 +337,16 @@ TAVILY_REL_MARGIN = float(os.getenv('TAVILY_REL_MARGIN', '0.25'))
 # ⚠ 기본 False를 유지할 것. 실측에서 사내 전용 질의("당진행복솔라 PF 대주단")에
 #   이름만 비슷한 **다른 사업 기사**가 상위로 올라왔다. 자동 폴백을 켜면
 #   실제 대주단(우리은행·교보생명) 대신 그 기사의 은행명을 답할 수 있다.
+#
+# ⚠ **이 플래그는 선언이지 장치가 아니다.** 읽는 코드가 한 곳도 없다.
+#   자동 폴백이 막혀 있는 진짜 이유는 구조다 — run_web_search()는 사용자가 토글을
+#   켤 때만 호출된다. 나중에 자동 폴백을 구현한다면 이 값을 실제로 읽어야 한다.
 TAVILY_AUTO_FALLBACK = os.getenv('TAVILY_AUTO_FALLBACK', 'False').lower() in ('true', '1', 'yes')
+
+# 사내망 인증서 때문에 SSL 검증이 실패할 때만 켠다(services/web_search.py).
+# ⚠ 기본 False. 켜면 질문이 검증 없이 외부로 나간다.
+TAVILY_INSECURE_SSL_FALLBACK = os.getenv(
+    'TAVILY_INSECURE_SSL_FALLBACK', 'False').lower() in ('true', '1', 'yes')
 
 # 웹 컨텍스트 예산은 사내(24,000자)보다 작게 둔다 — 웹이 사내 근거를 밀어내면 안 된다.
 TAVILY_CONTEXT_CHAR_BUDGET = int(os.getenv('TAVILY_CONTEXT_CHAR_BUDGET', '6000'))

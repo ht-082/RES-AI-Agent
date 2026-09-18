@@ -22,15 +22,21 @@ logger = logging.getLogger(__name__)
 
 TAVILY_ENDPOINT = 'https://api.tavily.com/search'
 
+# ⚠ settings.py 의 기본값과 **반드시 같아야 한다.** 이 표는 Django 없이 이 모듈을 단독
+# 실행할 때만 쓰이는데, 그 단독 실행의 목적이 바로 '임계값 실측'이다. 값이 어긋나면
+# 운영과 다른 문턱으로 실측하게 된다(과거 MIN_SCORE 0.5/0.3 vs settings 0.3/0.25로 어긋나 있었다).
 _DEFAULTS = {
     'TAVILY_API_KEY': '',
     'TAVILY_ENABLED': False,
     'TAVILY_SEARCH_DEPTH': 'basic',
     'TAVILY_MAX_RESULTS': 5,
     'TAVILY_TIMEOUT': 8.0,
-    'TAVILY_MIN_SCORE': 0.5,
-    'TAVILY_REL_MARGIN': 0.3,
+    'TAVILY_MIN_SCORE': 0.3,
+    'TAVILY_REL_MARGIN': 0.25,
     'TAVILY_CONTEXT_CHAR_BUDGET': 6000,
+    # 사내망 인증서 때문에 SSL 검증이 실패할 때만 켠다. **기본은 끔.**
+    # 질문 내용이 외부로 나가는 경로라, 검증을 끄면 가로챈 쪽이 질문을 그대로 읽는다.
+    'TAVILY_INSECURE_SSL_FALLBACK': False,
 }
 
 
@@ -59,19 +65,23 @@ def _load_dotenv_once():
         logger.debug(f'.env 로드 생략: {e}')
 
 
-def _conf(name):
-    """설정값 조회 — Django settings 우선, 없으면 .env/환경변수, 없으면 기본값."""
+def _conf(name, fallback=None):
+    """설정값 조회 — Django settings 우선, 없으면 .env/환경변수, 없으면 기본값.
+
+    _DEFAULTS 에 없는 이름도 KeyError 없이 다룬다(fallback 반환). 예전에는
+    표에 없는 키를 물으면 그대로 터졌다.
+    """
+    default = _DEFAULTS.get(name, fallback)
     try:
         from django.conf import settings
         if settings.configured:
-            return getattr(settings, name, _DEFAULTS[name])
+            return getattr(settings, name, default)
     except Exception:
         pass
     _load_dotenv_once()
     raw = os.getenv(name)
     if raw is None:
-        return _DEFAULTS[name]
-    default = _DEFAULTS[name]
+        return default
     if isinstance(default, bool):
         return raw.lower() in ('true', '1', 'yes')
     if isinstance(default, int):
@@ -110,21 +120,30 @@ def _post(payload, timeout, api_key):
     except httpx.ConnectError as e:
         if 'certificate' not in str(e).lower() and 'ssl' not in str(e).lower():
             raise
-        logger.warning('Tavily SSL 검증 실패 — 사내망 인증서로 보고 verify=False 재시도')
+        # **SSL 검증을 끄는 재시도는 옵트인이다.** 이 경로로는 사용자의 질문이 밖으로
+        # 나가고, 그 질문에 사업명·계약 상대방이 담긴다. 검증을 끄면 가로챈 쪽이 평문으로
+        # 읽는다. 사내망 인증서 때문에 필요한 환경에서만 명시적으로 켠다.
+        if not _conf('TAVILY_INSECURE_SSL_FALLBACK'):
+            logger.warning('Tavily SSL 검증 실패 — 검증을 끄고 재시도하지 않는다. '
+                           '사내망 인증서 문제라면 TAVILY_INSECURE_SSL_FALLBACK=True 로 켜라.')
+            raise
+        logger.warning('⚠ Tavily SSL 검증을 끄고 재시도한다 '
+                       '(TAVILY_INSECURE_SSL_FALLBACK=True) — 질문이 검증 없이 전송된다.')
         with httpx.Client(timeout=timeout, verify=False) as client:
             return client.post(TAVILY_ENDPOINT, json=payload, headers=headers)
 
 
-def search(query, *, max_results=None, depth=None, timeout=None, force=False):
+def search(query, *, max_results=None, depth=None, timeout=None):
     """웹 검색 실행. 정규화된 결과 리스트를 반환한다.
 
-    force=True면 TAVILY_ENABLED를 무시한다(임계값 실측 스크립트 전용).
-    운영 경로에서는 절대 force를 쓰지 말 것 — 킬스위치가 무력화된다.
+    **킬스위치 우회(force) 인자는 두지 않는다.** 예전에 임계값 실측 스크립트용으로
+    있었는데 부르는 곳이 한 곳도 없었다. 실측이 필요하면 그때 TAVILY_ENABLED를 켜라 —
+    쓰이지 않는 우회로를 남겨두면 언젠가 운영 경로에서 불린다.
     """
     api_key = _conf('TAVILY_API_KEY')
     if not api_key:
         raise WebSearchError('TAVILY_API_KEY가 설정되지 않았습니다.')
-    if not force and not _conf('TAVILY_ENABLED'):
+    if not _conf('TAVILY_ENABLED'):
         raise WebSearchError('TAVILY_ENABLED=False — 웹 검색이 꺼져 있습니다.')
 
     query = (query or '').strip()
