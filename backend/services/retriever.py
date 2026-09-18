@@ -156,15 +156,66 @@ RERANK_MODEL_ID = "BAAI/bge-reranker-v2-m3"
 
 
 class _CrossEncoderAdapter:
-    """sentence-transformers CrossEncoder를 기존 호출부(.score / .client)와 맞춰주는 래퍼."""
+    """sentence-transformers CrossEncoder를 기존 호출부(.score / .client)와 맞춰주는 래퍼.
 
-    def __init__(self, cross_encoder):
+    **OpenVINO 백엔드는 추론 요청을 공유하면 동시 호출에서 터진다.**
+    `predict()`는 내부적으로 CompiledModel 의 기본 InferRequest 하나를 쓰는데,
+    두 스레드가 겹치면 `RuntimeError: Infer Request is busy` 가 나고 호출측은 이를
+    '리랭킹 실패'로 처리해 **Qdrant 순위로 조용히 폴백**한다. 사용자에게는 오류가
+    안 보이고 답변 품질만 떨어진다(리랭킹은 상위 8건 중 평균 2.7건을 바꾼다).
+
+    실측(2026-09-18, 스레드 4개 동시 출발): 기본 경로에서 4건 중 1건 실패.
+
+    그래서 InferRequest 를 여러 개 만들어 돌려 쓴다. **가중치는 CompiledModel 이
+    공유하므로 추가 메모리가 0이다**(실측: 요청 4개 생성 후 RSS 증가 0MB).
+    총 처리량은 락으로 직렬화한 것과 같지만(CPU 가 병목), 요청들이 조금씩 함께
+    진행해 먼저 온 사람이 끝날 때까지 뒤엣사람이 멈춰 있지 않는다.
+
+    풀을 못 만들면 기존 `predict()` 경로로 조용히 되돌아간다.
+    """
+
+    def __init__(self, cross_encoder, pool_size=4):
         self.client = cross_encoder
+        self._pool = None
+        self._max_len = getattr(settings, 'RERANK_MAX_LENGTH', 384)
+        try:
+            compiled = getattr(getattr(cross_encoder, 'model', None), 'request', None)
+            if compiled is not None and hasattr(compiled, 'create_infer_request'):
+                import queue
+                self._pool = queue.Queue()
+                for _ in range(max(1, pool_size)):
+                    self._pool.put(compiled.create_infer_request())
+                logger.info(f"리랭커 InferRequest 풀 {pool_size}개 준비 완료")
+        except Exception as e:
+            logger.warning(f"리랭커 풀 생성 실패 — predict() 경로를 쓴다: {e}")
+            self._pool = None
 
     def score(self, pairs):
         if not pairs:
             return []
-        return self.client.predict(pairs, batch_size=len(pairs))
+        if self._pool is None:
+            return self.client.predict(pairs, batch_size=len(pairs))
+
+        req = self._pool.get()          # 빈 자리가 날 때까지 기다린다(풀 크기만큼 동시 실행)
+        try:
+            tok = self.client.tokenizer(
+                [a for a, _ in pairs], [b for _, b in pairs],
+                padding=True, truncation=True,
+                max_length=self._max_len, return_tensors='np')
+            req.infer(dict(tok))
+            raw = req.get_output_tensor(0).data.reshape(-1)
+            # ⚠ **predict() 와 같은 값을 돌려줘야 한다.**
+            # 모델이 내는 것은 로짓인데, sentence-transformers 의 predict() 는
+            # num_labels=1 이면 시그모이드를 씌워 확률을 돌려준다(실측으로 확인:
+            # 로짓 1.541 → predict 0.8236 = sigmoid(1.541)).
+            # 여기서 활성화를 빼면 호출측 게이트 임계값(0.55/0.12)이 전부 무의미해진다.
+            # (호출측이 시그모이드를 한 번 더 씌우는 것은 별개 문제다 — rerank_documents 주석 참조)
+            return [1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, float(v))))) for v in raw]
+        except Exception as e:
+            logger.warning(f"리랭커 풀 경로 실패 — predict()로 재시도: {e}")
+            return self.client.predict(pairs, batch_size=len(pairs))
+        finally:
+            self._pool.put(req)
 
 
 def _load_openvino_reranker(backend):
@@ -184,7 +235,7 @@ def _load_openvino_reranker(backend):
     logger.info(f"리랭커 로드 중 (backend={backend}, path={path})...")
     ce = CrossEncoder(path, max_length=max_len, backend='openvino')
     logger.info(f"리랭커 로드 완료 (backend={backend}, max_length={max_len})")
-    return _CrossEncoderAdapter(ce)
+    return _CrossEncoderAdapter(ce, pool_size=getattr(settings, 'RERANK_POOL_SIZE', 4))
 
 
 def get_reranker():

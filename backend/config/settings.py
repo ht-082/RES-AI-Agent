@@ -389,6 +389,12 @@ RERANK_MAX_LENGTH = int(os.getenv('RERANK_MAX_LENGTH', '384'))
 # IR 재생성: docker exec re_backend python bench_openvino.py c
 RERANK_BACKEND = os.getenv('RERANK_BACKEND', 'openvino_int8')
 RERANK_OV_INT8_DIR = os.getenv('RERANK_OV_INT8_DIR', os.path.join(BASE_DIR, '.ov_reranker_int8'))
+# 리랭커 InferRequest 풀 크기 — 동시에 리랭킹할 수 있는 요청 수.
+# OpenVINO 는 요청을 공유하면 동시 호출에서 'Infer Request is busy' 로 터지고,
+# 호출측이 이를 리랭킹 실패로 보아 Qdrant 순위로 조용히 폴백한다(품질 저하).
+# CompiledModel 이 가중치를 공유하므로 **요청을 늘려도 추가 메모리가 0이다**(실측).
+# 총 처리량은 CPU 가 정하므로 크게 잡아도 빨라지지 않는다. 동시 사용자 수 정도면 충분.
+RERANK_POOL_SIZE = int(os.getenv('RERANK_POOL_SIZE', '4'))
 
 # 조건부 리랭킹 건너뛰기 — **기본 0(= 끔).**
 # 컨텍스트 경계(K번째 vs K+1번째) 점수 차가 전체 점수 폭에서 이 비율 이상이면 생략하는
