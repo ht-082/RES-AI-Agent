@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import mermaid from 'mermaid'
 
 /**
  * mermaid 코드블록을 도식으로 렌더링한다.
@@ -11,9 +10,37 @@ import mermaid from 'mermaid'
  *   부모 마크다운 렌더링에 영향을 주지 않는다.
  */
 
-let initialized = false
-function ensureInit() {
-  if (initialized) return
+type Mermaid = typeof import('mermaid')['default']
+
+/**
+ * mermaid 를 **도식이 실제로 나올 때** 받아온다.
+ *
+ * 이 라이브러리는 앱에서 가장 무거운 의존성인데, 도식은 사용자가 요청했을 때만
+ * 나온다. 최상단에서 import 하면 도식을 한 번도 안 쓰는 사용자까지 첫 화면에서
+ * 그 비용을 치른다. 받아온 뒤 초기화는 한 번만 하고, 이후 호출은 같은 약속을
+ * 재사용한다(동시에 여러 도식이 와도 중복 로드되지 않는다).
+ */
+let mermaidPromise: Promise<Mermaid> | null = null
+
+function loadMermaid(): Promise<Mermaid> {
+  if (!mermaidPromise) {
+    mermaidPromise = import('mermaid')
+      .then(mod => {
+        const mermaid = mod.default
+        init(mermaid)
+        return mermaid
+      })
+      // 실패한 약속을 남겨두면 이후 도식이 전부 같은 오류를 재사용한다.
+      // 비워서 다음 도식이 다시 시도하게 한다.
+      .catch(e => {
+        mermaidPromise = null
+        throw e
+      })
+  }
+  return mermaidPromise
+}
+
+function init(mermaid: Mermaid) {
   mermaid.initialize({
     startOnLoad: false,
     securityLevel: 'strict',   // 다이어그램 안의 클릭 핸들러·HTML 삽입 차단
@@ -48,7 +75,6 @@ function ensureInit() {
       titleColor: '#153F35',
     },
   })
-  initialized = true
 }
 
 /** 본문 폰트(Pretendard)가 실제로 준비될 때까지 기다린다.
@@ -107,11 +133,12 @@ export default function MermaidBlock({ code }: { code: string }) {
     const source = code.trim()
     if (!source) return
 
-    ensureInit()
     const id = `mmd-${Date.now()}-${seq++}`
 
-    fontsReady()
-      .then(async () => {
+    // 라이브러리 내려받기와 폰트 대기를 함께 진행한다. 어차피 둘 다 끝나야
+    // 그릴 수 있고, 순서대로 기다릴 이유가 없다.
+    Promise.all([loadMermaid(), fontsReady()])
+      .then(async ([mermaid]) => {
         if (cancelled) throw new Error('cancelled')
         // **먼저 문법을 확인한다.** 답변이 스트리밍되는 동안 이 컴포넌트는 미완성
         // 코드로 수십 번 호출되는데, 곧바로 render()를 부르면 그때마다 mermaid가
