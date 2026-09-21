@@ -234,9 +234,63 @@ def parse_pdf(file_path, pdf_offset=0):
 
     return pages + tables
 
+# 표 제목 후보로 쓸 수 있는 직전 단락의 최대 길이.
+# 이보다 길면 제목이 아니라 본문 문장으로 본다(실측: 「1. 대주들의 대출약정금」 13자,
+# 「부록 I 대주들의 대출약정금 및 통지처」 24자).
+_TABLE_TITLE_MAX = 80
+
+
+def _iter_docx_blocks(doc):
+    """단락과 표를 **문서에 놓인 순서대로** 내놓는다.
+
+    python-docx의 `doc.paragraphs`와 `doc.tables`는 서로 다른 컬렉션이라
+    **둘 사이의 순서 정보가 없다.** 그래서 예전에는 단락을 전부 훑은 뒤 표를
+    문서 끝에 몰아 붙였고("위치 보존은 한계 인정"), 표가 어느 절에 속했는지가
+    통째로 사라졌다.
+
+    실측(2026-09-21): `계약서_대출약정서_20240703.docx`의 대주단 표가 본문 위치를
+    잃고 문서 끝 `chunk_index=218`에 절 제목 `표 2`로 떨어져 있었다. 그 표가
+    S2("당진행복솔라 PF 대주단 구성을 표로")의 정답인데 리랭커 점수가 0.0012였다.
+    「부록 I 대주들의 대출약정금」이라는 맥락이 `표 2`로 바뀌었기 때문이다.
+
+    XML 바디(`w:body`)를 직접 훑으면 `w:p`(단락)와 `w:tbl`(표)이 원래 순서로 나온다.
+    """
+    from docx.oxml.ns import qn
+    from docx.table import Table
+    from docx.text.paragraph import Paragraph
+
+    for child in doc.element.body.iterchildren():
+        if child.tag == qn('w:p'):
+            yield 'p', Paragraph(child, doc)
+        elif child.tag == qn('w:tbl'):
+            yield 't', Table(child, doc)
+
+
+def _docx_heading_of(para):
+    """이 단락이 제목으로 쓸 만하면 그 텍스트를, 아니면 ''를 준다.
+
+    Word 스타일이 Heading/제목이면 확실하다. 다만 실무 문서는 스타일을 안 쓰고
+    굵게만 한 경우가 많아서, **짧은 한 줄**도 제목 후보로 받는다.
+    """
+    text = (para.text or '').strip()
+    if not text or len(text) > _TABLE_TITLE_MAX:
+        return ''
+    try:
+        style = (para.style.name or '')
+    except Exception:
+        style = ''
+    if style.startswith('Heading') or style.startswith('제목') or style == 'Title':
+        return text
+    return text          # 짧은 한 줄은 스타일과 무관하게 후보로 둔다
+
+
 def parse_docx(file_path):
     """
-    Word 파일 파싱 (단락 단위 -> 적정 묶음으로 분할)
+    Word 파일 파싱 — 단락은 적정 묶음으로, 표는 **놓인 자리에서** 뽑는다.
+
+    표는 직전의 짧은 단락을 절 제목으로 물려받는다(`_iter_docx_blocks` 주석 참조).
+    page_number는 여전히 단락 묶음의 인위적 순번이다 — 실제 쪽번호가 아니므로
+    화면 표기에서는 숨긴다(apps/chat/views.format_location).
     """
     paragraphs_data = []
     try:
@@ -245,30 +299,15 @@ def parse_docx(file_path):
         current_text = []
         para_count = 0
         section_idx = 1
-        
-        for para in doc.paragraphs:
-            text = para.text.strip()
-            if not text:
-                continue
-            current_text.append(text)
-            para_count += 1
-            
-            # 5개 단락마다 또는 800자가 넘어가면 하나의 섹션으로 묶음
-            joined_text = "\n".join(current_text)
-            if para_count >= 5 or len(joined_text) >= 800:
-                paragraphs_data.append({
-                    'text': joined_text,
-                    'page_number': section_idx,
-                    'section_title': f"섹션 {section_idx}",
-                    'sheet_name': '',
-                    'cell_range': ''
-                })
-                current_text = []
-                para_count = 0
-                section_idx += 1
-                
-        # 남은 텍스트 처리
-        if current_text:
+        table_idx = 0
+        last_heading = ''      # 표가 물려받을 직전 제목 후보
+
+        def flush():
+            """모아 둔 단락을 한 섹션으로 확정한다. 표를 만나도 먼저 끊어야
+            표가 단락 묶음 사이에 제 순서대로 들어간다."""
+            nonlocal current_text, para_count, section_idx
+            if not current_text:
+                return
             paragraphs_data.append({
                 'text': "\n".join(current_text),
                 'page_number': section_idx,
@@ -276,40 +315,54 @@ def parse_docx(file_path):
                 'sheet_name': '',
                 'cell_range': ''
             })
-            
-        # 표(Table) 파싱 — Markdown 직렬화 (전략 §3.6). 위치 보존은 한계 인정(문서 말미 배치),
-        # page 번호는 본문 섹션과 겹치지 않게 마지막 섹션 다음부터 부여한다(기존 충돌 버그 수정).
-        table_page = section_idx + 1
-        for table_idx, table in enumerate(doc.tables):
-            rows = [[cell.text for cell in row.cells] for row in table.rows]
+            current_text = []
+            para_count = 0
+            section_idx += 1
+
+        for kind, block in _iter_docx_blocks(doc):
+            if kind == 'p':
+                text = block.text.strip()
+                if not text:
+                    continue
+                heading = _docx_heading_of(block)
+                if heading:
+                    last_heading = heading
+                current_text.append(text)
+                para_count += 1
+                # 5개 단락마다 또는 800자가 넘어가면 하나의 섹션으로 묶는다
+                if para_count >= 5 or len("\n".join(current_text)) >= 800:
+                    flush()
+                continue
+
+            # ── 표: 놓인 자리에서 뽑고 직전 제목을 물려준다 ──────────────
+            flush()
+            table_idx += 1
+            title = last_heading or f"표 {table_idx}"
+            rows = [[cell.text for cell in row.cells] for row in block.rows]
             md_parts = _rows_to_markdown(rows)
-            if md_parts:
-                for part_idx, md in enumerate(md_parts):
-                    paragraphs_data.append({
-                        'text': f"[표 {table_idx + 1}]\n{md}",
-                        'page_number': table_page,
-                        'section_title': f"표 {table_idx + 1}",
-                        'kind': 'table',
-                        'sheet_name': '',
-                        'cell_range': ''
-                    })
-                    table_page += 1
-            else:
-                # 1행짜리 등 표로 볼 수 없는 것은 기존 방식으로 텍스트 보존
+            if not md_parts:
+                # 1행짜리 등 표로 볼 수 없는 것은 텍스트로 보존한다
                 flat = [" | ".join(c.strip() for c in r if c.strip()) for r in rows]
-                flat = [f for f in flat if f]
-                if flat:
-                    paragraphs_data.append({
-                        'text': f"[표 {table_idx + 1}]\n" + "\n".join(flat),
-                        'page_number': table_page,
-                        'section_title': f"표 {table_idx + 1}",
-                        'sheet_name': '',
-                        'cell_range': ''
-                    })
-                    table_page += 1
+                md_parts = ["\n".join(f for f in flat if f)] if any(flat) else []
+            for md in md_parts:
+                if not md:
+                    continue
+                paragraphs_data.append({
+                    'text': f"[{title}]\n{md}",
+                    'page_number': section_idx,
+                    'section_title': title,
+                    'kind': 'table',
+                    'sheet_name': '',
+                    'cell_range': ''
+                })
+                section_idx += 1
+            last_heading = ''    # 한 제목을 여러 표가 나눠 갖지 않게 한다
+
+        flush()
     except Exception as e:
         logger.error(f"Docx 파싱 실패 ({file_path}): {e}")
     return paragraphs_data
+
 
 # ── Excel 부피 제어 (재무모델 대응) ──────────────────────────────────
 # 실측(재무모델 xlsm 8건): 원시 텍스트는 파일당 54만자인데 행 서술화('헤더: 값' 쌍)를
