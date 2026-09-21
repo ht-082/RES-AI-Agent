@@ -184,18 +184,32 @@ def resolve_llm_model(conversation, requested=''):
     return settings.LLM_MODEL
 
 
+# page_number가 문서의 실제 쪽번호인 포맷. 나머지는 파서가 만든 순번이라
+# 화면에 "p.N"으로 쓰면 거짓말이 된다 — apps/rag/chunkers.py 머리말 4번 참조.
+# 실측(2026-09-21): 계약서_대출약정서_20240703.docx는 257청크인데 page_number가
+# 493까지 올라간다(서로 다른 값 249개). 100쪽 남짓한 약정서에 493쪽은 없다.
+# hwp는 전부 1이라 최소한 틀린 티가 나지만, docx는 그럴듯해 보여서 더 위험하다.
+_REAL_PAGE_FORMATS = ('pdf', 'pptx')
+
+
 def format_location(chunk):
     """출처 위치 라벨. 포맷마다 '위치'의 의미가 달라 분기한다.
 
     xlsx는 페이지가 시트 순번일 뿐이라 "p.3"이 아무 정보도 주지 않는다.
     시트명이 있으면 그것을 쓴다. (LLM 컨텍스트와 출처 칩이 같은 값을 쓰도록
     한 곳에서 만든다 — 예전에는 두 곳이 따로 계산해 서로 달랐다.)
+
+    docx·hwp의 page_number도 같은 이유로 숨긴다. 절 제목만 남으면 라벨이
+    짧아지지만, **틀린 쪽번호보다는 없는 쪽이 낫다** — 사용자가 그 숫자를 믿고
+    원문에서 찾으면 없다.
     """
     if getattr(chunk, 'sheet_name', ''):
         loc = f"시트: {chunk.sheet_name}"
         return f"{loc} ({chunk.cell_range})" if chunk.cell_range else loc
     parts = []
-    if chunk.page_number is not None:
+    # chunk.document는 호출부에서 이미 조회해 FK 캐시에 있다(추가 쿼리 없음).
+    file_type = (getattr(getattr(chunk, 'document', None), 'file_type', '') or '').lower()
+    if chunk.page_number is not None and file_type in _REAL_PAGE_FORMATS:
         parts.append(f"p.{chunk.page_number}")
     if chunk.section_title:
         parts.append(chunk.section_title)
@@ -496,12 +510,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
                         chunk = DocumentChunk.objects.get(qdrant_point_id=chunk_id)
                         doc = chunk.document
                         
-                        # 컨텍스트 추가
-                        loc_lbl = f"페이지 {chunk.page_number}"
-                        if chunk.section_title:
-                            loc_lbl += f" · {chunk.section_title}"
-                        elif chunk.sheet_name:
-                            loc_lbl = f"시트: {chunk.sheet_name} ({chunk.cell_range})"
+                        # 위치 라벨은 format_location() 한 곳에서만 만든다.
+                        # 여기 인라인 구현이 따로 남아 있어 스트리밍 경로와 값이 달랐다
+                        # ("페이지 3 · 제5조" vs "p.3 · 제5조"). 같은 청크인데 어느
+                        # 엔드포인트로 물었느냐에 따라 출처 표기가 갈렸다.
+                        loc_lbl = format_location(chunk)
 
                         # 사업명을 박는다 — 파일명만으로는 어느 사업 문서인지 알 수 없어
                         # LLM 이 질문의 사업과 대조할 근거를 못 받는다(스트리밍 경로와 동일).
@@ -518,7 +531,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
                             display_title=doc.original_filename or doc.title,
                             short_label=short_lbl,
                             page_number=chunk.page_number,
-                            location_label=f"p.{chunk.page_number} · {chunk.section_title}" if chunk.section_title else f"p.{chunk.page_number}",
+                            # loc_lbl과 같은 값을 쓴다. 여기도 인라인 구현이 따로 있어
+                            # LLM에 준 위치와 화면 출처 칩의 위치가 서로 달랐다.
+                            location_label=loc_lbl,
                             score=score,
                             rank=idx + 1,
                             snippet=chunk.content[:200]
