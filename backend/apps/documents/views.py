@@ -270,8 +270,12 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def file(self, request, pk=None):
         """GET /api/documents/{id}/file — 원문 열람 (C-4, 출처 칩 클릭 대상)
 
-        ?page= 파라미터는 표기용이며 서버는 파일 전체를 내려준다.
-        페이지 이동은 프론트가 PDF 뷰어의 #page= 프래그먼트로 처리한다.
+        서버는 파일 전체를 내려준다. 페이지 이동은 프론트가 PDF 뷰어의
+        #page= 프래그먼트로 처리한다(ChatView.sourceHref).
+
+        예전에는 출처 URL에 `?page=`도 함께 붙였는데, 서버가 읽지 않는 값이라
+        쿼리스트링에 남을 뿐이었다. docx·hwp의 page_number는 파서가 만든 합성
+        순번이라 그 숫자 자체가 문서의 쪽번호도 아니다. 지금은 붙이지 않는다.
         """
         doc = self.get_object()
 

@@ -754,8 +754,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
                      'page_number': s.page_number, 'location_label': s.location_label,
                      'score': s.score, 'rank': s.rank, 'snippet': s.snippet,
                      'document_id': str(s.document_id),
-                     'open_url': (f'/api/documents/{s.document_id}/file/'
-                                  + (f'?page={s.page_number}' if s.page_number else ''))}
+                     # 쪽번호는 붙이지 않는다 — 이유는 MessageSourceSerializer.get_open_url 주석 참조.
+                     # (두 경로가 같은 URL을 만들어야 한다. 예전에는 여기만 고치고 직렬화기를
+                     #  빠뜨려 스트리밍과 비스트리밍의 출처 링크가 달랐다.)
+                     'open_url': f'/api/documents/{s.document_id}/file/'}
                     for s in sources
                 ] + [
                     {'kind': 'web',

@@ -14,12 +14,15 @@ class MessageSourceSerializer(serializers.ModelSerializer):
 
     def get_open_url(self, obj):
         # 라우터가 등록한 경로는 끝에 슬래시가 있다. 빼먹으면 301 리다이렉트가 한 번 더 돈다.
+        #
+        # **쪽번호는 붙이지 않는다.** 서버는 `?page=`를 읽지 않고(파일 전체를 내려준다)
+        # 페이지 이동은 프론트가 `#page=` 프래그먼트로 처리한다(ChatView.sourceHref).
+        # 양쪽이 다 붙이면 `…/file/?page=493#page=493`이 되고, 쿼리스트링은 서버 로그에
+        # 남는다. 게다가 docx·hwp의 page_number는 파서가 만든 합성 순번이라
+        # (apps/rag/chunkers.py 머리말 4번) 그 숫자 자체가 문서의 쪽번호가 아니다.
         if not obj.document_id:
             return None
-        url = f'/api/documents/{obj.document_id}/file/'
-        if obj.page_number:
-            url += f'?page={obj.page_number}'
-        return url
+        return f'/api/documents/{obj.document_id}/file/'
 
 
 class MessageSerializer(serializers.ModelSerializer):
