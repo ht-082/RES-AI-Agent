@@ -266,6 +266,19 @@ RAG_RETRIEVE_K = int(os.getenv('RAG_RETRIEVE_K', '16'))
 # 한도 16에서 탈락했다. 64면 최종 후보 5위로 진입한다.
 # 최종 후보 수는 여전히 RAG_RETRIEVE_K가 정하므로 리랭킹 비용은 늘지 않는다.
 RAG_PREFETCH_K = int(os.getenv('RAG_PREFETCH_K', '64'))
+
+# RAG_MAX_CHUNKS_PER_DOC: 한 문서가 후보에서 차지할 최대 칸 수(0=제한 없음).
+# 큰 표는 조각마다 표 헤더가 다시 붙어(chunkers._continuation_heading) 서로 거의
+# 같은 텍스트로 시작한다. 그래서 조각 전체가 비슷한 점수로 함께 상위를 차지한다.
+# 실측(2026-09-21, G1 '홍성 설계 인허가 용역 어떤 업체에서 하는데?'):
+#   상한 없음 → 후보 16칸이 단 2종 문서로 채워짐. 정답 계약서_설계용역_251231.docx는
+#     sparse 34위·dense 41위로 **후보 안에 있었는데** top_k=16에서 잘려 리랭커가 못 봤다.
+#   상한 4   → 정답이 1위(0.8088)로 진입. 공정표 최고점(0.7762)보다 높다.
+#   상한 3   → 들어오지만 3위로 밀림.  상한 6 → 여전히 못 들어옴.
+# 낮을수록 좋은 값이 아니다. 한 문서가 정말 여러 조각으로 답해야 하는 질의
+# (G2 사업개요, H2 사업성검토)가 실제로 4칸까지 쓰므로 그 아래로 내리면 그쪽이 깎인다.
+RAG_MAX_CHUNKS_PER_DOC = int(os.getenv('RAG_MAX_CHUNKS_PER_DOC', '4'))
+
 # (구) 청크별 절대 임계값. 실측상 출처 197건 중 1건만 걸러 사실상 무력했다.
 # 지금은 아래 관련성 게이트가 이 역할을 대신한다. 호환을 위해 값만 남겨둔다.
 RAG_SIMILARITY_THRESHOLD = float(os.getenv('RAG_SIMILARITY_THRESHOLD', '0.5'))

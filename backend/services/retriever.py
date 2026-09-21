@@ -52,6 +52,9 @@ class ExistingQdrantRetriever(BaseRetriever):
     # 실측(2026-09-18): '홍성1과 당진1의 인허가 진척 경과 비교'에서
     #   dense 단독 1위(0.6901) / sparse 단독 59위 → 한도 16이면 탈락, 64면 5위로 진입.
     prefetch_k: int = 64
+    # 한 문서가 후보에서 차지할 수 있는 최대 칸 수. 0이면 제한 없음.
+    # 왜 필요한지는 _cap_per_document 주석 참조.
+    max_per_doc: int = 0
 
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
@@ -90,6 +93,11 @@ class ExistingQdrantRetriever(BaseRetriever):
                 values=list(sparse.values()),
             )
 
+        # 문서당 상한을 걸려면 자를 여유분이 있어야 하므로 더 받아 온다.
+        # payload만 오가는 구간이라 비용은 무시할 만하다 — 본문은 상한을 적용해
+        # 16건으로 줄인 뒤 _to_documents에서 한 번만 조회한다.
+        fetch_limit = self.prefetch_k if self.max_per_doc else self.top_k
+
         try:
             hits = client.query_points(
                 collection_name=collection_name,
@@ -103,7 +111,7 @@ class ExistingQdrantRetriever(BaseRetriever):
                 ] if sparse_query else None,
                 query=dense,
                 using="dense",
-                limit=self.top_k,
+                limit=fetch_limit,
                 query_filter=query_filter,
                 with_payload=True,
             ).points
@@ -111,7 +119,47 @@ class ExistingQdrantRetriever(BaseRetriever):
             logger.error(f"🚨 리트리버 내 하이브리드 검색 실패: {e}")
             raise e
 
+        hits = self._cap_per_document(hits)
         return self._to_documents(hits)
+
+    def _cap_per_document(self, hits):
+        """한 문서가 후보를 독식하지 못하게 문서당 칸 수를 제한한다.
+
+        **왜 필요한가.** 큰 표는 조각으로 쪼개지고, 조각마다 표 헤더가 다시 붙는다
+        (apps/rag/chunkers.py `_continuation_heading`). 안 붙이면 뒷조각이 어느 열이
+        무엇인지 알 수 없어 읽을 수 없기 때문인데, 그 대가로 **조각들이 서로 거의 같은
+        텍스트로 시작한다.** 그러면 한 질의에 조각 전체가 비슷한 점수로 함께 상위에 올라
+        후보 칸을 나눠 갖는다.
+
+        실측(2026-09-21, G1 '홍성 설계 인허가 용역 어떤 업체에서 하는데?'):
+          · 후보 16칸이 **단 2종 문서**로 채워졌다(공정표 6 + 착수보고자료 9 + 1).
+          · 정답 `계약서_설계용역_251231.docx`는 **sparse 34위·dense 41위로 후보 안에
+            있었는데**, top_k=16에서 잘려 리랭커가 **보지도 못했다.**
+          · 상한 4를 걸자 정답이 **1위(0.8088)** 로 들어왔다. 공정표 최고점(0.7762)보다
+            높다 — 리랭커는 처음부터 정답을 알아볼 수 있었고 기회가 없었을 뿐이다.
+
+        **상한은 낮을수록 좋은 것이 아니다.** 같은 실측에서 6은 정답을 못 들여왔고
+        (여전히 공정표가 8칸 중 5칸), 3은 들여왔지만 3위로 밀었다. 4가 가장 좋았다.
+        한 문서가 정말로 여러 조각으로 답해야 하는 질의(G2 사업개요, H2 사업성검토)가
+        실제로 4칸까지 쓰므로, 그 아래로 내리면 그쪽이 깎인다.
+
+        순서는 그대로 두고 초과분만 건너뛴다 — 점수 순위를 바꾸지 않는다.
+        """
+        cap = self.max_per_doc
+        if not cap:
+            return hits
+        seen, out = {}, []
+        for hit in hits:
+            key = str((getattr(hit, 'payload', None) or {}).get('document_id'))
+            if seen.get(key, 0) >= cap:
+                continue
+            seen[key] = seen.get(key, 0) + 1
+            out.append(hit)
+            if len(out) >= self.top_k:
+                break
+        if len(out) < len(hits):
+            logger.debug(f"문서당 상한 {cap} 적용: {len(hits)} → {len(out)}")
+        return out
 
     def _to_documents(self, hits) -> List[Document]:
         """Qdrant 결과를 Document로 변환한다.
@@ -517,6 +565,7 @@ def retrieve_for_views(query: str, project_id: str | None = None,
         project_id=str(project_id) if project_id else None,
         top_k=getattr(settings, 'RAG_RETRIEVE_K', 20),
         prefetch_k=getattr(settings, 'RAG_PREFETCH_K', 64),
+        max_per_doc=getattr(settings, 'RAG_MAX_CHUNKS_PER_DOC', 0),
         collection_name=resolve_collection(corpus_version),
     )
     docs = retriever.invoke(query)
