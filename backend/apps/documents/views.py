@@ -204,11 +204,49 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 md5.update(chunk)
         checksum = md5.hexdigest()
 
+        # 내용이 그대로면 교체가 아니다. 그냥 진행하면 옛 문서를 지우고 같은 내용을
+        # 다시 적재하느라 수 분을 쓴 뒤 아무것도 바뀌지 않는다.
+        dup = (Document.objects
+               .filter(checksum=checksum, corpus=old.corpus)
+               .exclude(id=old.id).first())
+        if dup:
+            os.remove(tmp_path)
+            return Response(
+                {'error': f'같은 내용의 문서가 이미 있습니다: {dup.title}',
+                 'existing_document_id': str(dup.id)},
+                status=status.HTTP_409_CONFLICT)
+
         stored_name = f'{checksum[:8]}_{uploaded_file.name}'
         final_path = os.path.join(media_dir, stored_name)
         os.replace(tmp_path, final_path)
 
-        # 옛 문서 삭제 — post_delete 시그널이 Qdrant 벡터까지 정리한다
+        # 벡터를 **DB 행보다 먼저** 지운다.
+        #
+        # post_delete 시그널(apps/documents/signals.py)도 같은 일을 하지만, 그쪽은
+        # 실패해도 로그만 남기고 삭제를 되돌리지 않는다. 그 설계는 일반 삭제에서는
+        # 맞다 — 고아 벡터가 남아도 문서 id 가 로그에 찍혀 수동 정리가 된다.
+        # **교체 경로에서는 그 단서가 함께 사라진다.** 새 문서가 같은 자리를 차지해
+        # 옛 벡터와 새 벡터가 한 문서인 것처럼 섞여 검색된다.
+        # 그래서 여기서는 먼저 지우고, 실패하면 아무것도 건드리지 않고 멈춘다.
+        from services.qdrant_client import delete_by_document
+        collection = None
+        try:
+            if old.corpus_id and old.corpus:
+                collection = old.corpus.collection_name
+        except Exception:
+            pass   # 코퍼스를 못 읽으면 기본 컬렉션으로 처리한다(시그널과 같은 규칙)
+        try:
+            delete_by_document(old.id, collection_name=collection)
+        except Exception as e:
+            logger.error(f"교체 중단 — 옛 벡터를 지우지 못했습니다 "
+                         f"document_id={old.id} title={old.title}: {e}")
+            os.remove(final_path)
+            return Response(
+                {'error': '검색 색인에서 옛 내용을 지우지 못해 교체를 중단했습니다. '
+                          '문서는 그대로입니다. 잠시 후 다시 시도해 주세요.'},
+                status=status.HTTP_502_BAD_GATEWAY)
+
+        # 위에서 이미 비웠으므로 시그널은 0건을 지운다(무해).
         old.delete()
 
         doc = Document.objects.create(
