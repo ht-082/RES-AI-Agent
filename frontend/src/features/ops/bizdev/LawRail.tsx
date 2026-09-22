@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { Check, ExternalLink, Plus, Sparkles } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ExternalLink, Plus, Search, Sparkles, X } from 'lucide-react'
 import SectionHead from './detail/SectionHead'
 import SectionModal from './detail/SectionModal'
-import { apiSend } from './api'
-import type { Law, LawCatalogItem, WatchedLaw } from './types'
+import { apiGet, apiSend } from './api'
+import type { Law, LawSearchItem, LawSearchResponse, WatchedLaw } from './types'
 
 // 전체 영향 법령 동향 — 지켜보는 법령을 위에 띄우고, 그 법(과 시행령)의
 // 개정만 아래 표에 올린다. 스냅샷에는 법령 묶음이 21개 들어 있는데 전부
@@ -18,10 +18,9 @@ const CAT_COLOR: Record<string, string> = {
   기타: 'var(--ink-faint)',
 }
 
-export default function LawRail({ laws, watched, catalog, onAdvise, busyId, onWatchedChanged }: {
+export default function LawRail({ laws, watched, onAdvise, busyId, onWatchedChanged }: {
   laws: Law[]
   watched: WatchedLaw[]
-  catalog: LawCatalogItem[]
   onAdvise: (law: Law) => void
   busyId?: string | null
   onWatchedChanged: () => void
@@ -29,8 +28,28 @@ export default function LawRail({ laws, watched, catalog, onAdvise, busyId, onWa
   const [editing, setEditing] = useState(false)
   const [busyFamily, setBusyFamily] = useState('')
   const [error, setError] = useState('')
+  const [query, setQuery] = useState('')
+  const [found, setFound] = useState<LawSearchResponse | null>(null)
+  const [searching, setSearching] = useState(false)
+  const seq = useRef(0)
 
   const watchedOf = (family: string) => watched.find(w => w.family === family)
+
+  // 법제처를 부르는 검색이라 글자마다 두드리지 않는다. 응답이 뒤바뀌어 도착해도
+  // 마지막 입력의 결과만 남도록 순번을 붙인다.
+  useEffect(() => {
+    if (!editing) return
+    const q = query.trim()
+    if (q.length < 2) { setFound(null); setSearching(false); return }
+    setSearching(true)
+    const mine = ++seq.current
+    const t = window.setTimeout(() => {
+      apiGet<LawSearchResponse>(`/api/bizdev/laws/search/?q=${encodeURIComponent(q)}`)
+        .then(d => { if (seq.current === mine) { setFound(d); setSearching(false) } })
+        .catch(() => { if (seq.current === mine) { setFound(null); setSearching(false) } })
+    }, 350)
+    return () => window.clearTimeout(t)
+  }, [query, editing])
 
   // 고르는 즉시 저장한다 (다른 편집 팝업과 같은 방식 — 따로 저장 버튼 없음)
   const toggle = async (family: string) => {
@@ -127,41 +146,86 @@ export default function LawRail({ laws, watched, catalog, onAdvise, busyId, onWa
       </div>
 
       {editing && (
-        <SectionModal title="관심 법령" onClose={() => setEditing(false)}
-                      hint="고른 법령의 개정만 동향 표에 올라갑니다 (시행령 포함 · 자동 저장)">
+        <SectionModal title="관심 법령" onClose={() => { setEditing(false); setQuery('') }}
+                      hint="법령명으로 찾아 담습니다 — 담은 법의 개정만 동향 표에 올라갑니다 (시행령 · 시행규칙 포함 · 자동 저장)">
           {error && <p className="note" style={{ color: 'var(--red)' }}>{error}</p>}
-          <table className="tbl bz-doc-tbl bz-law-pick">
-            <thead>
-              <tr>
-                <th className="bz-law-pick-act" />
-                <th>법령</th>
-                <th>정식 명칭</th>
-                <th>주관부처</th>
-                <th className="bz-nowrap">최근 개정</th>
-              </tr>
-            </thead>
-            <tbody>
-              {catalog.map(c => {
-                const on = !!watchedOf(c.family)
-                return (
-                  <tr key={c.family} className={on ? 'bz-law-pick-on' : ''}>
-                    <td>
-                      <button className={on ? 'btn-primary bz-law-pick-btn' : 'btn-ghost bz-law-pick-btn'}
-                              disabled={busyFamily === c.family}
-                              onClick={() => toggle(c.family)}
-                              title={on ? '동향에서 빼기' : '동향에 넣기'}>
-                        {on ? <Check size={13} /> : <Plus size={13} />}
-                      </button>
-                    </td>
-                    <th scope="row">{c.family}</th>
-                    <td title={c.law_name}>{c.law_name}</td>
-                    <td title={c.ministry}>{c.ministry || <span className="bz-muted">—</span>}</td>
-                    <td className="bz-nowrap">{c.latest || <span className="bz-muted">—</span>}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+
+          <div className="bz-law-search">
+            <Search size={14} />
+            <input className="inp" autoFocus value={query} placeholder="법령명 (예: 농지법, 태양광)"
+                   onChange={e => setQuery(e.target.value)} />
+          </div>
+
+          <div className="bz-law-block-title">지금 담은 법령 ({watched.length})</div>
+          {watched.length === 0 ? (
+            <p className="note">아직 없습니다. 위에서 찾아 담아 주세요.</p>
+          ) : (
+            <div className="bz-chips">
+              {watched.map(w => (
+                <span key={w.id} className="bz-law-pill bz-law-pill-del" title={w.law_name}>
+                  {w.family}
+                  <button disabled={busyFamily === w.family} onClick={() => toggle(w.family)}
+                          aria-label={`${w.family} 빼기`}><X size={11} /></button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="bz-law-block-title">
+            검색 결과
+            {found && (
+              <span className="bz-chip bz-law-src"
+                    style={found.source === 'live'
+                      ? { background: 'var(--mint-soft)', color: 'var(--green-600)' }
+                      : { background: 'color-mix(in srgb, var(--amber) 16%, transparent)', color: 'var(--amber)' }}>
+                {found.source === 'live' ? '법제처 실시간' : '스냅샷'}
+              </span>
+            )}
+          </div>
+          {found?.source === 'snapshot' && found.reason && (
+            <p className="note">{found.reason}</p>
+          )}
+          {query.trim().length < 2 ? (
+            <p className="note">두 글자 이상 입력하면 찾습니다.</p>
+          ) : searching ? (
+            <p className="note">찾는 중...</p>
+          ) : !found || found.results.length === 0 ? (
+            <p className="note">찾은 법령이 없습니다.</p>
+          ) : (
+            <div className="bz-law-results">
+            <table className="tbl bz-doc-tbl bz-law-pick">
+              <thead>
+                <tr>
+                  <th className="bz-law-pick-act" />
+                  <th>법령</th>
+                  <th>주관부처</th>
+                  <th className="bz-nowrap">딸린 법령</th>
+                  <th className="bz-nowrap">최근 시행</th>
+                </tr>
+              </thead>
+              <tbody>
+                {found.results.map((c: LawSearchItem) => {
+                  const on = !!watchedOf(c.family)
+                  return (
+                    <tr key={c.family} className={on ? 'bz-law-pick-on' : ''}>
+                      <td>
+                        <button className="btn-ghost bz-law-pick-btn" disabled={busyFamily === c.family}
+                                onClick={() => toggle(c.family)}
+                                title={on ? '동향에서 빼기' : '동향에 넣기'}>
+                          {on ? <X size={13} /> : <Plus size={13} />}
+                        </button>
+                      </td>
+                      <th scope="row" title={c.law_name}>{c.family}</th>
+                      <td title={c.ministry}>{c.ministry || <span className="bz-muted">—</span>}</td>
+                      <td className="bz-nowrap">{c.count}건</td>
+                      <td className="bz-nowrap">{c.latest || <span className="bz-muted">—</span>}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            </div>
+          )}
         </SectionModal>
       )}
     </div>

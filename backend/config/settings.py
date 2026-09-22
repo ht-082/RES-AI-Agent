@@ -329,6 +329,16 @@ PROJECT_ALIAS_FILE = os.getenv('PROJECT_ALIAS_FILE', os.path.join(BASE_DIR, 'pro
 #       오염이 아니라서, 이것 하나로 문서를 버리지는 않는다.
 RAG_STRICT_INVARIANTS = os.getenv('RAG_STRICT_INVARIANTS', 'True').lower() in ('true', '1', 'yes')
 
+# ── 법제처 Open API (사업개발 법령 동향) ──────────────────────────────
+# 관심 법령 검색과 동향 조회에 쓴다. 비어 있으면 apps/bizdev/data/
+# law_snapshot.json 으로 되돌아가므로 화면은 키 없이도 동작한다.
+#
+# ⚠ 키만으로는 통하지 않는다 — 법제처에 **호출 서버의 IP·도메인까지 등록**해야
+#    한다(미등록 시 '사용자 정보 검증에 실패' 로 거절, 2026-09-22 실측).
+#    나가는 것은 법령명 검색어뿐이고 사내 자료는 보내지 않는다.
+LAW_API_OC = os.getenv('LAW_API_OC', '')
+LAW_API_BASE = os.getenv('LAW_API_BASE', 'http://www.law.go.kr/DRF')
+
 # ── Tavily 웹 검색 ─────────────────────────────────────────────────────
 # 사내 문서가 담지 못하는 정보(법령 개정·SMP/REC 시세·정책 동향)를 보완한다.
 #

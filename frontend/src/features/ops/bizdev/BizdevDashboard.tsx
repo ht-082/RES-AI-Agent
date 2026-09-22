@@ -9,7 +9,7 @@ import SectionHead from './detail/SectionHead'
 import { apiGet, apiSend } from './api'
 import KpiValue from './KpiValue'
 import { formatKRW } from './constants'
-import type { AppUser, Law, LawCatalogItem, Site, WatchedLaw } from './types'
+import type { AppUser, Law, Site, WatchedLaw } from './types'
 
 interface Kpi {
   key: string
@@ -28,7 +28,6 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, o
 }) {
   const [laws, setLaws] = useState<Law[]>([])
   const [watchedLaws, setWatchedLaws] = useState<WatchedLaw[]>([])
-  const [lawCatalog, setLawCatalog] = useState<LawCatalogItem[]>([])
   const [kpis, setKpis] = useState<Kpi[]>([])
   const [advising, setAdvising] = useState<string | null>(null)
   const [advisingName, setAdvisingName] = useState('')
@@ -51,8 +50,6 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, o
   useEffect(() => {
     let cancelled = false
     loadLaws().catch(() => {})
-    apiGet<LawCatalogItem[]>('/api/bizdev/laws/catalog/')
-      .then(d => { if (!cancelled) setLawCatalog(d) }).catch(() => {})
     apiGet<Kpi[]>('/api/bizdev/kpis/').then(d => { if (!cancelled) setKpis(d) }).catch(() => {})
     return () => { cancelled = true }
   }, [loadLaws])
@@ -172,7 +169,7 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, o
         </div>
         {/* 우측에는 법령 동향만 — 지도와 아래 끝을 맞춘다 */}
         <div className="bz-stack" style={{ gap: 16 }}>
-          <LawRail laws={laws} watched={watchedLaws} catalog={lawCatalog}
+          <LawRail laws={laws} watched={watchedLaws}
                    onAdvise={askAdvice} busyId={advising}
                    onWatchedChanged={() => { void loadLaws() }} />
         </div>

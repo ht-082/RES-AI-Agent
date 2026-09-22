@@ -246,7 +246,15 @@ class WatchedLawSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'law_name', 'ministry', 'created_at']
 
     def _meta_of(self, obj):
-        from . import snapshots
+        """정식 명칭·소관은 법제처에서(캐시된 동향 조회 결과 재사용), 없으면 스냅샷.
+
+        검색으로 담은 법은 스냅샷에 없으므로 그쪽만 보면 이름이 빈다.
+        """
+        from . import lawapi, snapshots
+        live = lawapi.rows_for_family(obj.family)
+        if live:
+            head = next((r for r in live if r['law_name'] == obj.family), live[0])
+            return {'law_name': head['law_name'], 'ministry': head['ministry']}
         cache = getattr(self, '_catalog_cache', None)
         if cache is None:
             cache = {g['family']: g for g in snapshots.law_catalog()}
@@ -260,7 +268,24 @@ class WatchedLawSerializer(serializers.ModelSerializer):
         return self._meta_of(obj).get('ministry') or ''
 
     def validate_family(self, value):
-        from . import snapshots
+        """실제로 있는 법인지 한 번 확인하고 담는다.
+
+        오타나 지어낸 이름을 담으면 동향 표에 영영 빈 줄로 남는다 — 담는
+        순간에 잡는 편이 낫다. 법제처 키가 있으면 거기에, 없으면 스냅샷
+        목록에 있는 이름만 받는다.
+        """
+        from . import lawapi, snapshots
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError('법령 이름이 비어 있습니다.')
+        if lawapi.enabled():
+            found = lawapi.search_families(value)
+            if found is None:
+                raise serializers.ValidationError(
+                    '법제처 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+            if not any(g['family'] == value for g in found):
+                raise serializers.ValidationError('법제처에서 찾지 못한 이름입니다.')
+            return value
         names = {g['family'] for g in snapshots.law_catalog()}
         if value not in names:
             raise serializers.ValidationError('법령 목록에 없는 이름입니다.')

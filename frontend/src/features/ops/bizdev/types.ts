@@ -297,13 +297,19 @@ export interface WatchedLaw {
   created_at: string
 }
 
-/** 고를 수 있는 법령 묶음 (편집 화면용) */
-export interface LawCatalogItem {
+/** 법령 검색 결과 한 줄 — 시행령·시행규칙까지 묶은 단위 */
+export interface LawSearchItem {
   family: string
   law_name: string
   ministry: string
-  count: number
-  latest: string
+  count: number          // 묶음에 딸린 법령 수 (법률 + 시행령 + 시행규칙)
+  latest: string         // 가장 최근 시행일
+}
+
+export interface LawSearchResponse {
+  source: 'live' | 'snapshot'   // 법제처 실시간인지, 키가 없어 스냅샷인지
+  reason?: string
+  results: LawSearchItem[]
 }
 
 export interface AppUser {

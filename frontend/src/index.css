@@ -1203,10 +1203,28 @@ select.bz-cell-input { cursor: pointer; }
   border-radius: 7px; padding: 3px 9px; }
 .bz-law-note { margin-top: 7px; font-size: 11px; }
 .bz-law-empty { margin: 0; }
+/* 관심 법령 고르기 — 검색창 · 담은 목록 · 결과 표 */
+.bz-law-search { display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 9px; background: var(--surface, #fff); }
+.bz-law-search svg { color: var(--ink-faint); flex-shrink: 0; }
+.bz-law-search .inp { border: none; background: none; padding: 9px 0; flex: 1;
+  outline: none; font-size: 13px; }
+.bz-law-block-title { display: flex; align-items: center; gap: 7px; margin: 16px 0 8px;
+  font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.bz-law-src { font-size: 10px; }
+.bz-law-pill-del { gap: 4px; padding-right: 4px; }
+.bz-law-pill-del button { background: none; border: none; cursor: pointer; padding: 1px;
+  display: inline-flex; color: var(--ink-faint); border-radius: 4px; }
+.bz-law-pill-del button:hover { color: var(--red); background: var(--line-soft); }
+.bz-law-pill-del button:disabled { opacity: .4; cursor: not-allowed; }
 /* 고르기 표 — 담은 법령은 줄째로 옅게 칠해 한눈에 구분되게 */
 .bz-law-pick .bz-law-pick-act { width: 44px; }
+/* 법령명은 잘라 내지 않는다 — 실시간 검색에는 '전기통신사업 회계정리 및 보고에
+   관한 규정' 처럼 긴 이름이 섞여 들어오고, 잘리면 무엇을 담는지 알 수 없다. */
 .bz-law-pick th[scope="row"] { font-weight: 700; color: var(--ink); text-align: left;
-  white-space: nowrap; }
+  white-space: normal; word-break: keep-all; line-height: 1.35; }
+/* 결과가 스무 건까지 오므로 팝업이 화면을 넘지 않게 표만 스크롤시킨다 */
+.bz-law-results { max-height: 320px; overflow-y: auto; }
 .bz-law-pick-on > * { background: color-mix(in srgb, var(--brand) 7%, transparent); }
 .bz-law-pick-btn { padding: 3px 7px; display: inline-flex; align-items: center; }
 .bz-law-tbl { min-width: 720px; }

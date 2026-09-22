@@ -21,7 +21,7 @@ from rest_framework.views import APIView
 
 from apps.documents.views import resolve_media_path
 
-from . import registry, snapshots
+from . import lawapi, registry, snapshots
 from .constants import (
     CAPEX_PARTS, FACT_DEFS, FACT_SECTIONS, INVESTMENT_PARTS, LIFECYCLE_TO_STAGE,
     STAGE_DEFS, STAGE_TO_LIFECYCLE, fact_spec,
@@ -524,13 +524,44 @@ class GridNearbyView(APIView):
         return Response(snapshots.grid_nearby(request.query_params.get('sido')))
 
 
-class LawListView(APIView):
-    """법령 동향 — 기본은 '관심 법령' 으로 좁힌다.
+def watched_law_rows():
+    """관심 법령의 동향 — 법제처에서 받아오고, 안 되면 스냅샷으로 되돌아간다.
 
-    스냅샷 전체를 늘어놓으면 우리 사업에 걸리는 개정이 묻히기 때문에, 담당자가
-    골라 둔 법(과 그 시행령)만 돌려준다. ?all=1 은 고르기 화면용으로 전부.
-    관심 목록이 비어 있으면 빈 배열 — 임의로 전체를 보여 주면 '아무것도 안
-    골랐다' 와 '전부 본다' 를 화면이 구분할 수 없다.
+    묶음마다 따로 조회하므로 일부만 실패해도 나머지는 보인다(전부 실패하면
+    스냅샷 필터 결과와 같아진다). 시행일 내림차순.
+    """
+    families = list(WatchedLaw.objects.values_list('family', flat=True))
+    if not families:
+        return [], False
+    snap = snapshots.list_laws()
+    rows, live_used = [], False
+    for family in families:
+        got = lawapi.rows_for_family(family) if lawapi.enabled() else None
+        if got:
+            live_used = True
+            rows.extend(got)
+        else:
+            rows.extend([r for r in snap if r.get('family') == family])
+    rows.sort(key=lambda r: r.get('date') or '', reverse=True)
+    return rows, live_used
+
+
+def find_law(law_id):
+    """제언 프롬프트용 — 실시간 결과와 스냅샷 양쪽에서 찾는다."""
+    rows, _ = watched_law_rows()
+    hit = next((r for r in rows if str(r.get('id')) == law_id), None)
+    if hit:
+        return hit
+    return next((r for r in snapshots.list_laws() if str(r.get('id')) == law_id), None)
+
+
+class LawListView(APIView):
+    """법령 동향 — '관심 법령' 으로 고른 것만.
+
+    전부 늘어놓으면 우리 사업에 걸리는 개정이 묻히기 때문에, 담당자가 골라 둔
+    법(과 그 시행령·시행규칙)만 돌려준다. 관심 목록이 비어 있으면 빈 배열 —
+    임의로 전체를 보여 주면 '아무것도 안 골랐다' 와 '전부 본다' 를 화면이
+    구분할 수 없다.
     """
     def get(self, request):
         limit = request.query_params.get('limit')
@@ -538,17 +569,31 @@ class LawListView(APIView):
             limit = int(limit) if limit else None
         except ValueError:
             limit = None
-        rows = snapshots.list_laws()
-        if request.query_params.get('all') not in ('1', 'true'):
-            watched = set(WatchedLaw.objects.values_list('family', flat=True))
-            rows = [r for r in rows if r.get('family') in watched]
+        rows, _ = watched_law_rows()
         return Response(rows[:limit] if limit else rows)
 
 
-class LawCatalogView(APIView):
-    """고를 수 있는 법령 묶음 — 관심 법령 편집 화면이 쓴다."""
+class LawSearchView(APIView):
+    """관심 법령 고르기 — 법제처에서 법령명으로 찾는다.
+
+    키가 없으면 스냅샷 목록을 같은 모양으로 걸러 돌려준다(검색창은 그대로
+    쓰이고, 고를 수 있는 범위만 21개로 좁아진다). source 로 어느 쪽인지 알린다.
+    """
     def get(self, request):
-        return Response(snapshots.law_catalog())
+        query = (request.query_params.get('q') or '').strip()
+        live = lawapi.search_families(query) if query else None
+        if live is not None:
+            return Response({'source': 'live', 'results': live})
+        pool = snapshots.law_catalog()
+        if query:
+            pool = [g for g in pool
+                    if query in g['family'] or query in g['law_name']]
+        return Response({
+            'source': 'snapshot',
+            'reason': '법제처 키(LAW_API_OC)가 없어 스냅샷에서 찾습니다'
+                      if not lawapi.enabled() else '법제처 조회에 실패해 스냅샷에서 찾습니다',
+            'results': pool[:20],
+        })
 
 
 class WatchedLawViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
@@ -564,8 +609,13 @@ class WatchedLawViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
 
     def perform_create(self, serializer):
         last = WatchedLaw.objects.order_by('-sort_order').first()
-        serializer.save(added_by=self.request.user,
-                        sort_order=(last.sort_order + 1) if last else 0)
+        obj = serializer.save(added_by=self.request.user,
+                              sort_order=(last.sort_order + 1) if last else 0)
+        lawapi.forget(obj.family)
+
+    def perform_destroy(self, instance):
+        lawapi.forget(instance.family)
+        instance.delete()
 
 
 class OrdinanceListView(APIView):
@@ -887,7 +937,7 @@ class LawAdvicePromptView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, law_id):
-        law = next((row for row in snapshots.list_laws() if str(row.get('id')) == law_id), None)
+        law = find_law(law_id)
         if not law:
             return Response({'error': '법령을 찾을 수 없습니다.'},
                             status=status.HTTP_404_NOT_FOUND)
