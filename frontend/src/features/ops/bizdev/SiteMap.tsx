@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { ENERGY_META, siteCoords } from './constants'
+import { ENERGY_META, KOREA_BOUNDS, siteCoords } from './constants'
 import type { Site } from './types'
 
 const TILES = {
@@ -44,7 +44,8 @@ export default function SiteMap({ sites, onPick }: {
 
   useEffect(() => {
     if (!boxRef.current || mapRef.current) return
-    const map = L.map(boxRef.current, { scrollWheelZoom: true }).setView([36.3, 127.8], 7)
+    const map = L.map(boxRef.current, { scrollWheelZoom: true })
+    map.fitBounds(L.latLngBounds(KOREA_BOUNDS))
     mapRef.current = map
     return () => { map.remove(); mapRef.current = null }
   }, [])
@@ -90,7 +91,10 @@ export default function SiteMap({ sites, onPick }: {
             {TILES[k].label}
           </button>
         ))}
-        <button className="bz-map-btn" onClick={() => mapRef.current?.setView([36.3, 127.8], 7)}>전국</button>
+        {/* 고정 줌이 아니라 경계 맞춤 — 지도 칸 너비가 바뀌어도 우리나라가
+            잘리거나 빈 바다가 남지 않는다 */}
+        <button className="bz-map-btn"
+                onClick={() => mapRef.current?.fitBounds(L.latLngBounds(KOREA_BOUNDS))}>전국</button>
       </div>
     </div>
   )

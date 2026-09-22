@@ -157,7 +157,11 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, o
       </div>
 
       {/* 지도 + 우측 레일 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 1fr)', gap: 16, marginBottom: 22 }}>
+      {/* 우리나라는 세로로 긴 모양이라(가로:세로 = 0.55) 지도 칸을 반으로 잡으면
+          양옆이 바다로 남는다. 칸을 좁혀 그 폭을 법령 표에 넘긴다 — 1:1 에서는
+          표의 10칸이 잘렸고(최대 140px 부족), 0.55:1.45 에서는 2칸·11px 로 줄었다.
+          지도 칸 아래한계 380px 은 요약 드로어(250px)가 지도를 다 덮지 않을 폭. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(380px, 0.55fr) minmax(0, 1.45fr)', gap: 16, marginBottom: 22 }}>
         <div className="card block" style={{ display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 440 }}>
           <SectionHead title="포트폴리오 지도" />
           <div className="h-sub" style={{ marginBottom: 10 }}>마커 클릭 → 요약 · 상세 이동 (태양광 주황 / 풍력 청록)</div>
