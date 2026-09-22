@@ -1188,6 +1188,16 @@ select.bz-cell-input { cursor: pointer; }
 .bz-kpi-sep { color: var(--ink-faint); font-weight: 400; }
 
 /* 전체 영향 법령 동향 — 표 배치 */
+/* 일별 실적 편집표 — 숫자 칸은 오른쪽 맞춤, 폭은 고정해 날짜·비고가 밀리지 않게 */
+.bz-daily-scroll { max-height: 460px; overflow: auto; margin-top: 10px; }
+.bz-daily-tbl { min-width: 620px; }
+.bz-daily-tbl th:nth-child(1) { width: 132px; }
+.bz-daily-tbl th:nth-child(2) { width: 116px; }
+.bz-daily-tbl th:nth-child(3) { width: 84px; }
+.bz-daily-tbl th:nth-child(4) { width: 124px; }
+.bz-daily-tbl .bz-num { text-align: right; }
+.bz-daily-tbl .bz-num .bz-cell-input { text-align: right; }
+
 /* 조례 모니터링 — 시·군 조례와 도 조례를 갈라 놓는다 */
 .bz-ord-group { font-size: 11.5px; font-weight: 700; color: var(--ink);
   margin: 12px 0 7px; padding-bottom: 5px; border-bottom: 1px solid var(--line-soft); }

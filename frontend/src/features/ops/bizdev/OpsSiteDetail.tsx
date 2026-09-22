@@ -105,7 +105,8 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
               </div>
 
               <div className="grid-2 bz-even-row">
-                <OpsPerformance id="ops-perf" rows={data.ops_daily} />
+                <OpsPerformance id="ops-perf" rows={data.ops_daily} siteId={siteId}
+                                canEdit={canEdit} onChanged={reload} onError={setError} />
                 <FactSection id="ops-fin" title={labelOf('fin')} facts={factsOf('fin')}
                              canEdit={canEdit} onChanged={reload} showNote />
               </div>
