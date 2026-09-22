@@ -235,15 +235,20 @@ class PortfolioKpiSerializer(serializers.ModelSerializer):
 
 
 class WatchedLawSerializer(serializers.ModelSerializer):
-    """관심 법령. law_name·ministry 는 스냅샷에서 붙여 준다(저장하지 않는다 —
-    법령 메타가 바뀌면 스냅샷 한 곳만 갱신되게)."""
+    """관심 대상 — 법령명(kind='law') 또는 본문 키워드(kind='keyword').
+
+    law_name·ministry 는 법령일 때만 붙여 준다(저장하지 않는다 — 법령 메타가
+    바뀌면 스냅샷·법제처 한 곳만 갱신되게).
+    """
+    kind_label = serializers.CharField(source='get_kind_display', read_only=True)
     law_name = serializers.SerializerMethodField()
     ministry = serializers.SerializerMethodField()
 
     class Meta:
         model = WatchedLaw
-        fields = ['id', 'family', 'law_name', 'ministry', 'sort_order', 'created_at']
-        read_only_fields = ['id', 'law_name', 'ministry', 'created_at']
+        fields = ['id', 'kind', 'kind_label', 'term', 'law_name', 'ministry',
+                  'sort_order', 'created_at']
+        read_only_fields = ['id', 'kind_label', 'law_name', 'ministry', 'created_at']
 
     def _meta_of(self, obj):
         """정식 명칭·소관은 법제처에서(캐시된 동향 조회 결과 재사용), 없으면 스냅샷.
@@ -251,42 +256,55 @@ class WatchedLawSerializer(serializers.ModelSerializer):
         검색으로 담은 법은 스냅샷에 없으므로 그쪽만 보면 이름이 빈다.
         """
         from . import lawapi, snapshots
-        live = lawapi.rows_for_family(obj.family)
+        if obj.kind != 'law':
+            return {}
+        live = lawapi.rows_for_family(obj.term)
         if live:
-            head = next((r for r in live if r['law_name'] == obj.family), live[0])
+            head = next((r for r in live if r['law_name'] == obj.term), live[0])
             return {'law_name': head['law_name'], 'ministry': head['ministry']}
         cache = getattr(self, '_catalog_cache', None)
         if cache is None:
             cache = {g['family']: g for g in snapshots.law_catalog()}
             self._catalog_cache = cache
-        return cache.get(obj.family) or {}
+        return cache.get(obj.term) or {}
 
     def get_law_name(self, obj):
-        return self._meta_of(obj).get('law_name') or obj.family
+        return self._meta_of(obj).get('law_name') or obj.term
 
     def get_ministry(self, obj):
         return self._meta_of(obj).get('ministry') or ''
 
-    def validate_family(self, value):
-        """실제로 있는 법인지 한 번 확인하고 담는다.
+    def validate(self, attrs):
+        """담기 전에 실제로 걸리는 게 있는지 확인한다.
 
-        오타나 지어낸 이름을 담으면 동향 표에 영영 빈 줄로 남는다 — 담는
-        순간에 잡는 편이 낫다. 법제처 키가 있으면 거기에, 없으면 스냅샷
-        목록에 있는 이름만 받는다.
+        오타는 동향 표에 영영 빈 줄로 남는다 — 담는 순간에 잡는 편이 낫다.
+        법령명은 그 이름이 있는지, 키워드는 한 건이라도 물어오는지 본다.
         """
         from . import lawapi, snapshots
-        value = (value or '').strip()
-        if not value:
-            raise serializers.ValidationError('법령 이름이 비어 있습니다.')
+        kind = attrs.get('kind') or 'law'
+        term = (attrs.get('term') or '').strip()
+        if len(term) < 2:
+            raise serializers.ValidationError({'term': '두 글자 이상 입력해 주세요.'})
+        attrs['term'] = term
+
+        if kind == 'keyword':
+            hits = lawapi.rows_for_keyword(term) if lawapi.enabled() else None
+            if hits is None:
+                hits = snapshots.laws_matching(term)
+            if not hits:
+                raise serializers.ValidationError(
+                    {'term': '이 말이 들어간 법령을 찾지 못했습니다.'})
+            return attrs
+
         if lawapi.enabled():
-            found = lawapi.search_families(value)
+            found = lawapi.search_families(term)
             if found is None:
                 raise serializers.ValidationError(
-                    '법제처 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.')
-            if not any(g['family'] == value for g in found):
-                raise serializers.ValidationError('법제처에서 찾지 못한 이름입니다.')
-            return value
+                    {'term': '법제처 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.'})
+            if not any(g['family'] == term for g in found):
+                raise serializers.ValidationError({'term': '법제처에서 찾지 못한 이름입니다.'})
+            return attrs
         names = {g['family'] for g in snapshots.law_catalog()}
-        if value not in names:
-            raise serializers.ValidationError('법령 목록에 없는 이름입니다.')
-        return value
+        if term not in names:
+            raise serializers.ValidationError({'term': '법령 목록에 없는 이름입니다.'})
+        return attrs

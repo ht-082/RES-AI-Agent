@@ -150,6 +150,25 @@ def law_catalog():
     return sorted(groups.values(), key=lambda g: g['family'])
 
 
+def laws_matching(term, limit=10):
+    """키워드에 걸리는 법 — 법제처 키가 없을 때의 대체 경로.
+
+    스냅샷에는 조문 본문이 없다. 법령명·약칭과 분류 태그(재생에너지 일반 ·
+    해상풍력 등)까지만 훑을 수 있어, 실제 본문 검색보다 훨씬 덜 잡힌다.
+    키가 들어오면 lawapi.rows_for_keyword 가 이 자리를 대신한다.
+    """
+    key = (term or '').strip()
+    if not key:
+        return []
+    rows = [
+        law for law in list_laws()
+        if key in law['law_name'] or key in (law['short_name'] or '')
+        or any(key in c for c in law['categories'])
+    ]
+    rows.sort(key=lambda law: law['date'] or '', reverse=True)
+    return rows[:limit]
+
+
 def get_law(law_id):
     return next((l for l in _all_laws() if l['id'] == law_id), None)
 

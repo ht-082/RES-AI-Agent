@@ -30,6 +30,9 @@ logger = logging.getLogger(__name__)
 TIMEOUT = 10.0
 SEARCH_TTL = 600      # 검색 결과 10분 — 고르는 동안만 쓰인다
 FAMILY_TTL = 3600     # 동향 1시간 — 대시보드가 열릴 때마다 외부를 두드리지 않게
+# 키워드 하나가 물어오는 법이 수백 건이다(실측: '재생에너지' 292건 · '태양광'
+# 62건). 전부 올리면 표가 키워드 하나로 덮이므로 최신 시행일 순으로 자른다.
+KEYWORD_LIMIT = 10
 SUFFIXES = (' 시행규칙', ' 시행령')
 
 
@@ -100,19 +103,26 @@ def _normalize(block):
     }
 
 
-def _search_raw(query, display=50):
-    """법제처 lawSearch.do 호출. 실패하면 None (호출부가 스냅샷으로 되돌아간다)."""
+def _search_raw(query, display=50, search='1', sort=None):
+    """법제처 lawSearch.do 호출. 실패하면 None (호출부가 스냅샷으로 되돌아간다).
+
+    search='1' 은 법령명, '2' 는 본문 검색이다(실측 확인). 본문 검색은 최신
+    시행일 순(sort='efdes')으로 받아야 '요즘 바뀐 것' 이 앞에 온다.
+    """
     if not enabled() or not (query or '').strip():
         return None
-    key = f'bizdev:lawapi:search:{query}:{display}'
+    key = f'bizdev:lawapi:search:{search}:{sort}:{query}:{display}'
     hit = cache.get(key)
     if hit is not None:
         return hit
+    params = {'OC': oc(), 'target': 'law', 'type': 'XML',
+              'query': query, 'display': str(display), 'search': search}
+    if sort:
+        params['sort'] = sort
     try:
         res = httpx.get(f'{base()}/lawSearch.do', timeout=TIMEOUT,
                         headers={'User-Agent': 'res-ai-agent/1.0'},
-                        params={'OC': oc(), 'target': 'law', 'type': 'XML',
-                                'query': query, 'display': str(display)})
+                        params=params)
         res.raise_for_status()
         body = res.text
     except Exception as exc:
@@ -169,7 +179,28 @@ def rows_for_family(family):
     return mine
 
 
+def rows_for_keyword(term, limit=KEYWORD_LIMIT):
+    """본문에 그 말이 들어간 법 — 최신 시행일 순 상위 몇 건. 실패하면 None.
+
+    법령명만 지켜보면 새로 생긴 법이나 엉뚱한 법에 끼어든 재생에너지 조문을
+    영영 못 본다. 그래서 본문 검색(search=2)으로 따로 훑는다.
+    """
+    if not enabled():
+        return None
+    key = f'bizdev:lawapi:kw:{term}:{limit}'
+    hit = cache.get(key)
+    if hit is not None:
+        return hit
+    rows = _search_raw(term, display=max(limit, 20), search='2', sort='efdes')
+    if rows is None:
+        return None
+    rows = rows[:limit]
+    cache.set(key, rows, FAMILY_TTL)
+    return rows
+
+
 def forget(family=None):
     """관심 법령을 더하거나 뺐을 때 캐시를 비운다."""
     if family:
         cache.delete(f'bizdev:lawapi:family:{family}')
+        cache.delete(f'bizdev:lawapi:kw:{family}:{KEYWORD_LIMIT}')

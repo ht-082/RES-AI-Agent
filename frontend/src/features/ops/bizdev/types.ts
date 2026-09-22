@@ -289,11 +289,13 @@ export interface Law {
   scope?: 'local' | 'province'
 }
 
-/** 지켜보는 법령 — 표에 올릴 법을 담당자가 고른 목록 */
+/** 지켜보는 대상 — 법령명으로 담은 것과 본문 키워드로 담은 것 */
 export interface WatchedLaw {
   id: string
-  family: string
-  law_name: string
+  kind: 'law' | 'keyword'
+  kind_label: string
+  term: string           // 법령 묶음 이름 또는 키워드
+  law_name: string       // 법령일 때만 채워진다
   ministry: string
   sort_order: number
   created_at: string
@@ -310,8 +312,17 @@ export interface LawSearchItem {
 
 export interface LawSearchResponse {
   source: 'live' | 'snapshot'   // 법제처 실시간인지, 키가 없어 스냅샷인지
+  mode: 'law'
   reason?: string
   results: LawSearchItem[]
+}
+
+/** 키워드 미리보기 — 담기 전에 무엇이 딸려 올지 보여 준다 */
+export interface KeywordPreviewResponse {
+  source: 'live' | 'snapshot'
+  mode: 'keyword'
+  reason?: string
+  results: Law[]
 }
 
 export interface AppUser {

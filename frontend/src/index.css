@@ -1212,6 +1212,26 @@ select.bz-cell-input { cursor: pointer; }
 .bz-law-pill { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700;
   color: var(--green-600); background: var(--surface, #fff); border: 1px solid var(--line);
   border-radius: 7px; padding: 3px 9px; }
+/* 키워드는 법령명이 아니라 '본문에서 찾을 말' 이다 — 상단 요약에서 한눈에
+   갈리도록 테두리를 점선으로 두고 색을 달리한다 */
+.bz-law-pill.kw { color: var(--amber); border-style: dashed;
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line)); }
+.bz-law-pillrow { display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+  margin-bottom: 5px; }
+.bz-law-pillrow:last-of-type { margin-bottom: 0; }
+.bz-law-pilllabel { font-size: 10.5px; font-weight: 700; color: var(--ink-faint);
+  min-width: 34px; }
+.bz-law-pillnone { font-size: 11.5px; }
+/* 편집 팝업 — 법령명 / 키워드 전환 */
+.bz-law-modes { display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+  flex-wrap: wrap; }
+.bz-law-mode { font-size: 12px; font-weight: 600; padding: 5px 13px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface, #fff); color: var(--ink-faint);
+  border-radius: 7px; }
+.bz-law-mode.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.bz-law-modehint { margin-left: 4px; }
+.bz-law-addkw { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
+  padding: 5px 11px; margin: 4px 0; flex-shrink: 0; }
 .bz-law-note { margin-top: 7px; font-size: 11px; }
 .bz-law-empty { margin: 0; }
 /* 관심 법령 고르기 — 검색창 · 담은 목록 · 결과 표 */

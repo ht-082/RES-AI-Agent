@@ -485,18 +485,25 @@ class PortfolioKpi(models.Model):
 
 
 class WatchedLaw(models.Model):
-    """법령 동향에서 지켜볼 법 — 우리 인허가에 걸리는 것만 골라 둔다.
+    """법령 동향에서 지켜볼 대상 — 법령명으로, 또는 본문 키워드로.
 
-    스냅샷에는 법령 40건(묶어서 21개)이 들어 있는데, 전부 늘어놓으면 정작
-    우리 사업에 걸리는 개정이 그 사이에 묻힌다. 담당자가 고른 법만 표에
-    올리고, 나머지는 편집 화면에서만 보인다.
+    법 전체를 늘어놓으면 정작 우리 사업에 걸리는 개정이 그 사이에 묻힌다.
+    담당자가 고른 것만 표에 올린다. 고르는 방법은 두 가지다.
 
-    family 는 시행령·시행규칙까지 묶은 이름(snapshots.law_family). '농지법' 을
-    담아 두면 '농지법 시행령' 개정도 함께 따라온다 — 실무에서 둘을 따로
-    챙기는 일이 없기 때문이다. 스냅샷 밖의 이름은 서버가 받지 않는다.
+    kind='law'     term = 시행령·시행규칙까지 묶은 법령 이름(lawapi.family_of).
+                   '농지법' 을 담으면 '농지법 시행령' 개정도 함께 따라온다 —
+                   실무에서 둘을 따로 챙기는 일이 없기 때문이다.
+    kind='keyword' term = 본문에서 찾을 말. 새 법이 생기거나 엉뚱한 법에
+                   재생에너지 조문이 끼어드는 경우를 잡는다. 법령명만으로는
+                   그런 개정을 영영 못 본다.
+
+    두 방법이 같은 법을 물어올 수 있어 표에서는 한 번만 보여 준다(views).
     """
+    KINDS = [('law', '법령명'), ('keyword', '키워드')]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    family = models.CharField('법령', max_length=120, unique=True)
+    kind = models.CharField('구분', max_length=10, choices=KINDS, default='law')
+    term = models.CharField('법령명 · 키워드', max_length=120)
     sort_order = models.IntegerField('순서', default=0)
     added_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL,
                                  null=True, blank=True,
@@ -505,9 +512,13 @@ class WatchedLaw(models.Model):
 
     class Meta:
         db_table = 'bizdev_watched_laws'
-        ordering = ['sort_order', 'family']
+        ordering = ['kind', 'sort_order', 'term']
+        constraints = [
+            models.UniqueConstraint(fields=['kind', 'term'],
+                                    name='uniq_watched_law_kind_term'),
+        ]
         verbose_name = '관심 법령'
         verbose_name_plural = '관심 법령'
 
     def __str__(self):
-        return self.family
+        return f'[{self.get_kind_display()}] {self.term}'

@@ -525,23 +525,38 @@ class GridNearbyView(APIView):
 
 
 def watched_law_rows():
-    """관심 법령의 동향 — 법제처에서 받아오고, 안 되면 스냅샷으로 되돌아간다.
+    """관심 대상의 동향 — 법령명으로 담은 것과 키워드로 담은 것을 합친다.
 
-    묶음마다 따로 조회하므로 일부만 실패해도 나머지는 보인다(전부 실패하면
-    스냅샷 필터 결과와 같아진다). 시행일 내림차순.
+    하나씩 따로 조회하므로 일부가 실패해도 나머지는 보인다(전부 실패하면
+    스냅샷 결과와 같아진다). 두 방법이 같은 법을 물어올 수 있어 id 로 한 번만
+    남긴다 — 화면에서는 법령명으로 걸렸는지 키워드로 걸렸는지 구분하지 않는다.
+    시행일 내림차순.
     """
-    families = list(WatchedLaw.objects.values_list('family', flat=True))
-    if not families:
+    watched = list(WatchedLaw.objects.all())
+    if not watched:
         return [], False
-    snap = snapshots.list_laws()
-    rows, live_used = [], False
-    for family in families:
-        got = lawapi.rows_for_family(family) if lawapi.enabled() else None
-        if got:
-            live_used = True
-            rows.extend(got)
+    snap = None
+    rows, seen, live_used = [], set(), False
+    for item in watched:
+        if item.kind == 'keyword':
+            got = lawapi.rows_for_keyword(item.term) if lawapi.enabled() else None
+            if got is None:
+                got = snapshots.laws_matching(item.term)
+            else:
+                live_used = True
         else:
-            rows.extend([r for r in snap if r.get('family') == family])
+            got = lawapi.rows_for_family(item.term) if lawapi.enabled() else None
+            if got:
+                live_used = True
+            else:
+                if snap is None:
+                    snap = snapshots.list_laws()
+                got = [r for r in snap if r.get('family') == item.term]
+        for row in got:
+            if row['id'] in seen:
+                continue
+            seen.add(row['id'])
+            rows.append(row)
     rows.sort(key=lambda r: r.get('date') or '', reverse=True)
     return rows, live_used
 
@@ -574,24 +589,38 @@ class LawListView(APIView):
 
 
 class LawSearchView(APIView):
-    """관심 법령 고르기 — 법제처에서 법령명으로 찾는다.
+    """관심 대상 고르기 — 법령명 검색(mode=law)과 키워드 미리보기(mode=keyword).
 
-    키가 없으면 스냅샷 목록을 같은 모양으로 걸러 돌려준다(검색창은 그대로
-    쓰이고, 고를 수 있는 범위만 21개로 좁아진다). source 로 어느 쪽인지 알린다.
+    키워드는 고를 목록이 없다. 대신 그 말이 본문에 든 법을 몇 건 보여 줘,
+    담기 전에 무엇이 딸려 올지 알 수 있게 한다.
+    키가 없으면 스냅샷에서 같은 모양으로 찾아 돌려주고(source), 왜 그런지
+    reason 에 적는다.
     """
     def get(self, request):
         query = (request.query_params.get('q') or '').strip()
+        mode = request.query_params.get('mode') or 'law'
+        fallback_reason = (
+            '법제처 키(LAW_API_OC)가 없어 스냅샷에서 찾습니다'
+            if not lawapi.enabled() else '법제처 조회에 실패해 스냅샷에서 찾습니다')
+
+        if mode == 'keyword':
+            live = lawapi.rows_for_keyword(query) if query else None
+            if live is not None:
+                return Response({'source': 'live', 'mode': mode, 'results': live})
+            return Response({
+                'source': 'snapshot', 'mode': mode, 'reason': fallback_reason,
+                'results': snapshots.laws_matching(query) if query else [],
+            })
+
         live = lawapi.search_families(query) if query else None
         if live is not None:
-            return Response({'source': 'live', 'results': live})
+            return Response({'source': 'live', 'mode': 'law', 'results': live})
         pool = snapshots.law_catalog()
         if query:
             pool = [g for g in pool
                     if query in g['family'] or query in g['law_name']]
         return Response({
-            'source': 'snapshot',
-            'reason': '법제처 키(LAW_API_OC)가 없어 스냅샷에서 찾습니다'
-                      if not lawapi.enabled() else '법제처 조회에 실패해 스냅샷에서 찾습니다',
+            'source': 'snapshot', 'mode': 'law', 'reason': fallback_reason,
             'results': pool[:20],
         })
 
@@ -611,10 +640,10 @@ class WatchedLawViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
         last = WatchedLaw.objects.order_by('-sort_order').first()
         obj = serializer.save(added_by=self.request.user,
                               sort_order=(last.sort_order + 1) if last else 0)
-        lawapi.forget(obj.family)
+        lawapi.forget(obj.term)
 
     def perform_destroy(self, instance):
-        lawapi.forget(instance.family)
+        lawapi.forget(instance.term)
         instance.delete()
 
 
