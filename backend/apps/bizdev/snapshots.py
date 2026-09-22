@@ -154,25 +154,41 @@ def get_law(law_id):
     return next((l for l in _all_laws() if l['id'] == law_id), None)
 
 
-def list_ordinances(sido=None):
-    """지자체 조례 — 스냅샷 필터.
+def ordinance_scope(law):
+    """조례의 소관 자치단체를 (시·도 2자, 기초단체명) 으로 가른다.
 
-    시·군명(홍성군)을 소속 시·도(충남/충청남도)로 정규화해 같은 도의 조례까지
-    매칭한다. 매칭이 없으면 빈 배열(무관한 타 지역 조례를 보여주지 않는다).
+    소관부처명은 '충청남도 보령시' 처럼 <광역> <기초> 로 온다. 뒤가 없으면
+    도 차원 조례다.
+    """
+    parts = (law.get('ministry') or '').split()
+    if not parts:
+        return None, ''
+    return resolve_sido(parts[0]), ' '.join(parts[1:]).strip()
+
+
+def list_ordinances(sido=None):
+    """지자체 조례 — 그 시·군 조례와, 그 시·군이 속한 도 차원 조례만.
+
+    같은 도라는 이유로 다른 시·군 조례까지 올리면(당진 사업 화면에 보령시
+    조례, 신안군 사업에 고흥군 조례) 검토해야 할 규정으로 오해한다. 해당하는
+    조례가 없으면 빈 배열로 둔다 — 무관한 것으로 칸을 채우지 않는다.
     """
     rows = [l for l in _all_laws() if l['law_type'] == '조례']
     if not sido:
         return rows
     key = str(sido).strip()
-    tokens = {key}
-    prov = resolve_sido(key)
-    if prov:
-        tokens.add(prov)
-        tokens.update(full for full, short in SIDO_FULL.items() if short == prov)
-    return [
-        l for l in rows
-        if any(t in (l['ministry'] + l['law_name']) for t in tokens)
-    ]
+    want = resolve_sido(key)
+    out = []
+    for law in rows:
+        prov, local = ordinance_scope(law)
+        if local:
+            if local == key:
+                out.append({**law, 'scope': 'local'})
+        elif want and prov == want:
+            # 도 차원 조례 — 그 시·군에도 적용되지만 시·군 조례와는 구분해
+            # 보여 줘야 한다(시·군 조례를 확인한 것으로 읽히지 않게)
+            out.append({**law, 'scope': 'province'})
+    return out
 
 
 def search_substations(query='', limit=30):

@@ -285,6 +285,8 @@ export interface Law {
   summary: string
   source_url: string
   categories: string[]
+  /** 조례에만 붙는다 — local=그 시·군 조례, province=도 차원 조례 */
+  scope?: 'local' | 'province'
 }
 
 /** 지켜보는 법령 — 표에 올릴 법을 담당자가 고른 목록 */
