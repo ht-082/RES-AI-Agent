@@ -8,22 +8,23 @@ RES 의 User.role ∈ {admin, member} 에 맞춰 "Site.pm 으로 지정된 membe
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
-from .models import (
-    BudgetEntry, CommunityIssue, Contract, PermitDocument, PermitStage,
-    Site, SiteEvent, SiteFact,
-)
+from .models import PermitDocument, Site
 
 
 def site_of(obj):
-    """어떤 bizdev 객체든 소속 Site 로 환원한다."""
+    """어떤 bizdev 객체든 소속 Site 로 환원한다.
+
+    모델을 하나하나 적어 두면 새 모델이 생길 때마다 조용히 빠진다 — 실제로
+    운영 실적·운영관리 계획·하자 보수·문서보관함·예산 승인 다섯이 빠져 있어
+    편집이 전부 403 이었다(2026-09-22). 그래서 'site 를 가리키는 것' 이라는
+    성질로 본다. 이 함수는 bizdev 뷰에서만 쓰인다.
+    """
     if isinstance(obj, Site):
         return obj
-    if isinstance(obj, (PermitStage, BudgetEntry, CommunityIssue,
-                        SiteFact, Contract, SiteEvent)):
-        return obj.site
-    if isinstance(obj, PermitDocument):
+    if isinstance(obj, PermitDocument):      # 사업지를 단계 너머에 두는 유일한 모델
         return obj.stage.site
-    return None
+    site = getattr(obj, 'site', None)
+    return site if isinstance(site, Site) else None
 
 
 def can_edit_site(user, site):
