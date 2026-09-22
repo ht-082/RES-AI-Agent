@@ -4,16 +4,20 @@ import 'leaflet/dist/leaflet.css'
 import { ENERGY_META, KOREA_BOUNDS, siteCoords } from './constants'
 import type { Site } from './types'
 
+// CARTO(basemaps.cartocdn.com) 는 이제 키 없이 쓰면 타일마다 'API KEY
+// REQUIRED' 워터마크를 찍는다(2026-09-22 실측 — 일반·밝게 두 장 모두).
+// 키 없이 깨끗하게 나오는 것으로 바꿨다. 일반은 지명이 한글로 나오는
+// OpenStreetMap 표준, 밝게는 Esri Light Gray.
 const TILES = {
   voyager: {
     label: '일반',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    options: { subdomains: 'abcd', attribution: '&copy; OpenStreetMap &copy; CARTO' },
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    options: { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 },
   },
   positron: {
     label: '밝게',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    options: { subdomains: 'abcd', attribution: '&copy; OpenStreetMap &copy; CARTO' },
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    options: { attribution: 'Tiles &copy; Esri' },
   },
   satellite: {
     label: '위성',
@@ -44,8 +48,11 @@ export default function SiteMap({ sites, onPick }: {
 
   useEffect(() => {
     if (!boxRef.current || mapRef.current) return
-    const map = L.map(boxRef.current, { scrollWheelZoom: true })
-    map.fitBounds(L.latLngBounds(KOREA_BOUNDS))
+    // zoomSnap: 0 — 기본값(1)이면 fitBounds 가 줌을 정수로 내려 버려서,
+    // 401x538 칸에 남한이 173x314(세로 58%)로 작게 떠 있었다. 소수 줌을
+    // 허용해야 경계가 칸에 정확히 맞는다(실측: 줌 6 → 6.776, 세로 100%).
+    const map = L.map(boxRef.current, { scrollWheelZoom: true, zoomSnap: 0 })
+    map.fitBounds(L.latLngBounds(KOREA_BOUNDS), { animate: false })
     mapRef.current = map
     return () => { map.remove(); mapRef.current = null }
   }, [])
@@ -79,7 +86,7 @@ export default function SiteMap({ sites, onPick }: {
       markersRef.current.push(marker)
       pts.push([at.lat, at.lng])
     })
-    if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [50, 50], maxZoom: 9 })
+    if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [50, 50], maxZoom: 9, animate: false })
   }, [sites, onPick])
 
   return (
@@ -91,10 +98,14 @@ export default function SiteMap({ sites, onPick }: {
             {TILES[k].label}
           </button>
         ))}
-        {/* 고정 줌이 아니라 경계 맞춤 — 지도 칸 너비가 바뀌어도 우리나라가
-            잘리거나 빈 바다가 남지 않는다 */}
+        {/* 고정 줌이 아니라 경계 맞춤 — 지도 칸 너비가 바뀌어도 남한이
+            잘리거나 빈 바다가 남지 않는다.
+            animate: false — 줌 애니메이션이 끝나지 않으면 Leaflet 이
+            _animatingZoom 을 켠 채로 남겨 이후 줌 호출을 전부 무시한다.
+            뷰를 되돌리는 버튼이라 즉시 이동이 맞기도 하다. */}
         <button className="bz-map-btn"
-                onClick={() => mapRef.current?.fitBounds(L.latLngBounds(KOREA_BOUNDS))}>전국</button>
+                onClick={() => mapRef.current?.fitBounds(L.latLngBounds(KOREA_BOUNDS),
+                                                         { animate: false })}>전국</button>
       </div>
     </div>
   )
