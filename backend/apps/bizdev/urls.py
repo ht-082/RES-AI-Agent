@@ -8,7 +8,7 @@ from .views import (
     PermitStageViewSet, SiteEventViewSet, SiteFactViewSet, SiteViewSet,
     SubstationSearchView, SummaryView,
     DefectItemViewSet, OpsDailyViewSet, OpsPlanItemViewSet, PortfolioKpiViewSet,
-    LawAdvicePromptView, SiteDocumentViewSet,
+    LawAdvicePromptView, SiteDocumentViewSet, LawCatalogView, WatchedLawViewSet,
 )
 
 router = DefaultRouter()
@@ -26,6 +26,7 @@ router.register('bizdev/ops-plans', OpsPlanItemViewSet, basename='bizdev-ops-pla
 router.register('bizdev/defects', DefectItemViewSet, basename='bizdev-defect')
 router.register('bizdev/site-documents', SiteDocumentViewSet, basename='bizdev-site-doc')
 router.register('bizdev/kpis', PortfolioKpiViewSet, basename='bizdev-kpi')
+router.register('bizdev/watched-laws', WatchedLawViewSet, basename='bizdev-watched-law')
 
 urlpatterns = [
     path('bizdev/laws/<str:law_id>/advice-prompt/', LawAdvicePromptView.as_view(),
@@ -34,6 +35,7 @@ urlpatterns = [
     path('bizdev/grid/capacity/', GridCapacityView.as_view(), name='bizdev-grid-capacity'),
     path('bizdev/grid/nearby/', GridNearbyView.as_view(), name='bizdev-grid-nearby'),
     path('bizdev/grid/substations/', SubstationSearchView.as_view(), name='bizdev-substations'),
+    path('bizdev/laws/catalog/', LawCatalogView.as_view(), name='bizdev-law-catalog'),
     path('bizdev/laws/', LawListView.as_view(), name='bizdev-laws'),
     path('bizdev/ordinances/', OrdinanceListView.as_view(), name='bizdev-ordinances'),
     path('', include(router.urls)),

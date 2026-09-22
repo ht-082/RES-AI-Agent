@@ -1188,7 +1188,27 @@ select.bz-cell-input { cursor: pointer; }
 .bz-kpi-sep { color: var(--ink-faint); font-weight: 400; }
 
 /* 전체 영향 법령 동향 — 표 배치 */
-.bz-law-scroll { overflow-x: auto; margin-top: 10px; }
+/* 법령 동향 — 카드가 지도와 높이를 맞추므로, 남는 높이만큼 표가 스크롤된다.
+   가로(여섯 열)·세로(고른 법령 수만큼) 둘 다 밀어 볼 수 있어야 한다. */
+.bz-law-card { display: flex; flex-direction: column; }
+/* 상한이 없으면 지켜보는 법이 늘어날수록 카드가 자라고, 높이를 맞춘 지도까지
+   같이 늘어난다(21개 전부 담으면 1,674px). 표가 스크롤되게 막아 둔다. */
+.bz-law-scroll { overflow: auto; margin-top: 10px; flex: 1 1 auto;
+  min-height: 120px; max-height: 520px; }
+.bz-law-count { background: var(--mint-soft); color: var(--green-600); }
+.bz-law-watch { margin-top: 8px; padding: 10px 12px; border-radius: 9px;
+  background: var(--mint-soft); border: 1px solid var(--line-soft); }
+.bz-law-pill { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700;
+  color: var(--green-600); background: var(--surface, #fff); border: 1px solid var(--line);
+  border-radius: 7px; padding: 3px 9px; }
+.bz-law-note { margin-top: 7px; font-size: 11px; }
+.bz-law-empty { margin: 0; }
+/* 고르기 표 — 담은 법령은 줄째로 옅게 칠해 한눈에 구분되게 */
+.bz-law-pick .bz-law-pick-act { width: 44px; }
+.bz-law-pick th[scope="row"] { font-weight: 700; color: var(--ink); text-align: left;
+  white-space: nowrap; }
+.bz-law-pick-on > * { background: color-mix(in srgb, var(--brand) 7%, transparent); }
+.bz-law-pick-btn { padding: 3px 7px; display: inline-flex; align-items: center; }
 .bz-law-tbl { min-width: 720px; }
 .bz-law-tbl th[scope="row"] { font-weight: 600; color: var(--ink); text-align: left; }
 .bz-law-tbl th:nth-child(1) { width: 78px; }

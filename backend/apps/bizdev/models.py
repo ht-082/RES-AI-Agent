@@ -482,3 +482,32 @@ class PortfolioKpi(models.Model):
 
     def __str__(self):
         return f'{self.get_key_display()} = {self.value}'
+
+
+class WatchedLaw(models.Model):
+    """법령 동향에서 지켜볼 법 — 우리 인허가에 걸리는 것만 골라 둔다.
+
+    스냅샷에는 법령 40건(묶어서 21개)이 들어 있는데, 전부 늘어놓으면 정작
+    우리 사업에 걸리는 개정이 그 사이에 묻힌다. 담당자가 고른 법만 표에
+    올리고, 나머지는 편집 화면에서만 보인다.
+
+    family 는 시행령·시행규칙까지 묶은 이름(snapshots.law_family). '농지법' 을
+    담아 두면 '농지법 시행령' 개정도 함께 따라온다 — 실무에서 둘을 따로
+    챙기는 일이 없기 때문이다. 스냅샷 밖의 이름은 서버가 받지 않는다.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    family = models.CharField('법령', max_length=120, unique=True)
+    sort_order = models.IntegerField('순서', default=0)
+    added_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL,
+                                 null=True, blank=True,
+                                 related_name='bizdev_watched_laws')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'bizdev_watched_laws'
+        ordering = ['sort_order', 'family']
+        verbose_name = '관심 법령'
+        verbose_name_plural = '관심 법령'
+
+    def __str__(self):
+        return self.family

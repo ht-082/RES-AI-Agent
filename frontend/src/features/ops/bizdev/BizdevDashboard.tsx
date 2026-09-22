@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Landmark, Plus, Scale, Sun } from 'lucide-react'
 import SiteMap from './SiteMap'
 import SiteDrawer from './SiteDrawer'
@@ -9,7 +9,7 @@ import SectionHead from './detail/SectionHead'
 import { apiGet, apiSend } from './api'
 import KpiValue from './KpiValue'
 import { formatKRW } from './constants'
-import type { AppUser, Law, Site } from './types'
+import type { AppUser, Law, LawCatalogItem, Site, WatchedLaw } from './types'
 
 interface Kpi {
   key: string
@@ -27,6 +27,8 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, o
   onOpenChat?: (conversationId: string) => void   // 법령 AI 제언 → 챗봇으로
 }) {
   const [laws, setLaws] = useState<Law[]>([])
+  const [watchedLaws, setWatchedLaws] = useState<WatchedLaw[]>([])
+  const [lawCatalog, setLawCatalog] = useState<LawCatalogItem[]>([])
   const [kpis, setKpis] = useState<Kpi[]>([])
   const [advising, setAdvising] = useState<string | null>(null)
   const [advisingName, setAdvisingName] = useState('')
@@ -35,12 +37,25 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, o
   const [drawerSite, setDrawerSite] = useState<Site | null>(null)
   const [showForm, setShowForm] = useState(false)
 
+  // 관심 법령이 바뀌면 동향 표도 같이 다시 받아야 한다 — 서버가 그 목록으로
+  // 걸러 주기 때문에 둘을 따로 갱신하면 화면이 어긋난다.
+  const loadLaws = useCallback(async () => {
+    const [rows, picked] = await Promise.all([
+      apiGet<Law[]>('/api/bizdev/laws/'),
+      apiGet<WatchedLaw[]>('/api/bizdev/watched-laws/'),
+    ])
+    setLaws(rows)
+    setWatchedLaws(picked)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
-    apiGet<Law[]>('/api/bizdev/laws/').then(d => { if (!cancelled) setLaws(d) }).catch(() => {})
+    loadLaws().catch(() => {})
+    apiGet<LawCatalogItem[]>('/api/bizdev/laws/catalog/')
+      .then(d => { if (!cancelled) setLawCatalog(d) }).catch(() => {})
     apiGet<Kpi[]>('/api/bizdev/kpis/').then(d => { if (!cancelled) setKpis(d) }).catch(() => {})
     return () => { cancelled = true }
-  }, [])
+  }, [loadLaws])
 
   // 제언은 사내 자료를 뒤지고 답을 쓰는 데 1분 가까이 걸린다. 멈춘 것처럼
   // 보이지 않게 경과 시간을 센다.
@@ -157,7 +172,9 @@ export default function BizdevDashboard({ sites, onSelectSite, onSitesChanged, o
         </div>
         {/* 우측에는 법령 동향만 — 지도와 아래 끝을 맞춘다 */}
         <div className="bz-stack" style={{ gap: 16 }}>
-          <LawRail laws={laws} onAdvise={askAdvice} busyId={advising} />
+          <LawRail laws={laws} watched={watchedLaws} catalog={lawCatalog}
+                   onAdvise={askAdvice} busyId={advising}
+                   onWatchedChanged={() => { void loadLaws() }} />
         </div>
       </div>
 

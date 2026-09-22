@@ -274,6 +274,7 @@ export interface GridSubstation {
 
 export interface Law {
   id: string
+  family: string          // 시행령·시행규칙까지 묶은 이름 ('농지법')
   law_name: string
   short_name: string
   law_type: string
@@ -284,6 +285,25 @@ export interface Law {
   summary: string
   source_url: string
   categories: string[]
+}
+
+/** 지켜보는 법령 — 표에 올릴 법을 담당자가 고른 목록 */
+export interface WatchedLaw {
+  id: string
+  family: string
+  law_name: string
+  ministry: string
+  sort_order: number
+  created_at: string
+}
+
+/** 고를 수 있는 법령 묶음 (편집 화면용) */
+export interface LawCatalogItem {
+  family: string
+  law_name: string
+  ministry: string
+  count: number
+  latest: string
 }
 
 export interface AppUser {

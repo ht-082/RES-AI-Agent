@@ -69,6 +69,19 @@ def grid_nearby(sido=None):
 
 # ── 법령 (lawApi.js) ───────────────────────────────────────────────
 
+def law_family(law):
+    """법률과 그 시행령·시행규칙을 한 이름으로 묶는다.
+
+    화면에서 고르는 단위는 '농지법' 이지 '농지법 시행령' 이 아니다. 약칭이
+    있으면 약칭을, 없으면 정식 명칭을 쓰고 뒤에 붙은 하위 법령 꼬리만 뗀다.
+    """
+    base = (law.get('short_name') or law.get('name') or '').strip()
+    for suffix in (' 시행규칙', ' 시행령'):
+        if base.endswith(suffix):
+            return base[:-len(suffix)].strip()
+    return base
+
+
 def _categorize(law):
     ef = law.get('enforcement_raw') or law.get('enforcement_date_raw') or ''
     if ef and ef > date.today().strftime('%Y%m%d'):
@@ -86,6 +99,7 @@ def _normalize(law, law_id):
     rv = law.get('revision_type') or ''
     return {
         'id': law_id,
+        'family': law_family(law),
         'law_name': law.get('name'),
         'short_name': short,
         'law_type': law.get('law_type'),
@@ -112,6 +126,28 @@ def list_laws(limit=None):
     rows = [l for l in _all_laws() if l['law_type'] != '조례']
     rows.sort(key=lambda l: l['date'] or '', reverse=True)
     return rows[:limit] if limit else rows
+
+
+def law_catalog():
+    """고를 수 있는 법령 묶음 — 이름 · 소관 · 딸린 문서 수 · 가장 최근 일자.
+
+    관심 법령 편집 화면이 쓴다. 표제는 되도록 상위 법률의 정식 명칭으로 둔다
+    (시행령만 있는 묶음은 그 이름을 그대로 쓴다).
+    """
+    groups = {}
+    for law in list_laws():
+        key = law['family']
+        g = groups.setdefault(key, {
+            'family': key, 'law_name': law['law_name'],
+            'ministry': law['ministry'], 'count': 0, 'latest': '',
+        })
+        g['count'] += 1
+        if (law['date'] or '') > g['latest']:
+            g['latest'] = law['date'] or ''
+        if law['law_type'] == '법률':
+            g['law_name'] = law['law_name']
+            g['ministry'] = law['ministry']
+    return sorted(groups.values(), key=lambda g: g['family'])
 
 
 def get_law(law_id):

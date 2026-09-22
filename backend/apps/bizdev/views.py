@@ -29,7 +29,7 @@ from .constants import (
 from .models import (
     BudgetApproval, BudgetEntry, CommunityIssue, Contract, DefectItem, OpsDaily,
     OpsPlanItem, PermitDocument, PermitStage, PortfolioKpi, Site, SiteDocument,
-    SiteEvent, SiteFact,
+    SiteEvent, SiteFact, WatchedLaw,
 )
 from .permissions import IsAdminOrSitePM, check_site_editable
 from .serializers import (
@@ -38,6 +38,7 @@ from .serializers import (
     OpsPlanItemSerializer, PortfolioKpiSerializer, SiteDocumentSerializer,
     PermitDocumentSerializer, PermitStageSerializer, SiteEventSerializer,
     SiteFactSerializer, SiteListSerializer, SiteWriteSerializer,
+    WatchedLawSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -524,13 +525,47 @@ class GridNearbyView(APIView):
 
 
 class LawListView(APIView):
+    """법령 동향 — 기본은 '관심 법령' 으로 좁힌다.
+
+    스냅샷 전체를 늘어놓으면 우리 사업에 걸리는 개정이 묻히기 때문에, 담당자가
+    골라 둔 법(과 그 시행령)만 돌려준다. ?all=1 은 고르기 화면용으로 전부.
+    관심 목록이 비어 있으면 빈 배열 — 임의로 전체를 보여 주면 '아무것도 안
+    골랐다' 와 '전부 본다' 를 화면이 구분할 수 없다.
+    """
     def get(self, request):
         limit = request.query_params.get('limit')
         try:
             limit = int(limit) if limit else None
         except ValueError:
             limit = None
-        return Response(snapshots.list_laws(limit))
+        rows = snapshots.list_laws()
+        if request.query_params.get('all') not in ('1', 'true'):
+            watched = set(WatchedLaw.objects.values_list('family', flat=True))
+            rows = [r for r in rows if r.get('family') in watched]
+        return Response(rows[:limit] if limit else rows)
+
+
+class LawCatalogView(APIView):
+    """고를 수 있는 법령 묶음 — 관심 법령 편집 화면이 쓴다."""
+    def get(self, request):
+        return Response(snapshots.law_catalog())
+
+
+class WatchedLawViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
+                        mixins.DestroyModelMixin, viewsets.GenericViewSet):
+    """관심 법령 — 목록 · 추가 · 제거. 사내 도구라 로그인 사용자면 고칠 수 있다.
+
+    이름은 스냅샷 목록에 있는 것만 받는다(serializer.validate_family).
+    """
+    queryset = WatchedLaw.objects.all()
+    serializer_class = WatchedLawSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
+
+    def perform_create(self, serializer):
+        last = WatchedLaw.objects.order_by('-sort_order').first()
+        serializer.save(added_by=self.request.user,
+                        sort_order=(last.sort_order + 1) if last else 0)
 
 
 class OrdinanceListView(APIView):

@@ -3,7 +3,7 @@ from rest_framework import serializers
 from .models import (
     DefectItem, OpsDaily, OpsPlanItem, PortfolioKpi, SiteDocument,
     BudgetApproval, BudgetEntry, CommunityIssue, Contract, PermitDocument,
-    PermitStage, Site, SiteEvent, SiteFact,
+    PermitStage, Site, SiteEvent, SiteFact, WatchedLaw,
 )
 from .constants import fact_spec, stage_spec
 from .permissions import can_edit_site
@@ -232,3 +232,36 @@ class PortfolioKpiSerializer(serializers.ModelSerializer):
         model = PortfolioKpi
         fields = ['key', 'label', 'value', 'note', 'updated_at']
         read_only_fields = ['key', 'label', 'updated_at']
+
+
+class WatchedLawSerializer(serializers.ModelSerializer):
+    """관심 법령. law_name·ministry 는 스냅샷에서 붙여 준다(저장하지 않는다 —
+    법령 메타가 바뀌면 스냅샷 한 곳만 갱신되게)."""
+    law_name = serializers.SerializerMethodField()
+    ministry = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WatchedLaw
+        fields = ['id', 'family', 'law_name', 'ministry', 'sort_order', 'created_at']
+        read_only_fields = ['id', 'law_name', 'ministry', 'created_at']
+
+    def _meta_of(self, obj):
+        from . import snapshots
+        cache = getattr(self, '_catalog_cache', None)
+        if cache is None:
+            cache = {g['family']: g for g in snapshots.law_catalog()}
+            self._catalog_cache = cache
+        return cache.get(obj.family) or {}
+
+    def get_law_name(self, obj):
+        return self._meta_of(obj).get('law_name') or obj.family
+
+    def get_ministry(self, obj):
+        return self._meta_of(obj).get('ministry') or ''
+
+    def validate_family(self, value):
+        from . import snapshots
+        names = {g['family'] for g in snapshots.law_catalog()}
+        if value not in names:
+            raise serializers.ValidationError('법령 목록에 없는 이름입니다.')
+        return value
