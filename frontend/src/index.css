@@ -1202,11 +1202,16 @@ select.bz-cell-input { cursor: pointer; }
 .bz-ord-group { font-size: 11.5px; font-weight: 700; color: var(--ink);
   margin: 12px 0 7px; padding-bottom: 5px; border-bottom: 1px solid var(--line-soft); }
 .bz-ord-group:first-child { margin-top: 0; }
-.bz-ord-row { display: block; text-decoration: none; color: inherit; margin-bottom: 9px; }
-.bz-ord-name { font-size: 12.5px; font-weight: 500; line-height: 1.4; }
+.bz-ord-row { margin-bottom: 11px; }
+/* 제언 버튼이 붙으면서 한 줄이 '이름 / 메타 + 버튼' 두 단이 됐다 */
+.bz-ord-foot { display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-top: 3px; }
+.bz-ord-name { display: block; font-size: 12.5px; font-weight: 500; line-height: 1.4;
+  text-decoration: none; color: inherit; }
 .bz-ord-name svg { display: inline; vertical-align: -1px; color: var(--ink-faint); }
 .bz-ord-row:hover .bz-ord-name { color: var(--green-600); }
-.bz-ord-meta { font-size: 10.5px; color: var(--ink-faint); margin-top: 2px; }
+.bz-ord-meta { font-size: 10.5px; color: var(--ink-faint); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bz-ord-none { margin: 0 0 4px; line-height: 1.5; }
 
 /* 법령 동향 — 카드가 지도와 높이를 맞추므로, 남는 높이만큼 표가 스크롤된다.

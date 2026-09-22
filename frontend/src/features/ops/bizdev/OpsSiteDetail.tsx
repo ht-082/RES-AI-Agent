@@ -21,7 +21,7 @@ import type { DetailProps } from './SiteDetail'
 // 담되 배치는 개발 상세와 맞춘다(사업 개요 · SPC · 부지가 맨 위).
 //   사업 개요 | SPC · 부지  →  진행경과 | 계약  →
 //   발전·재무 실적 | 재무지표  →  운영관리 계획 | 하자 보수  →  계통 | 조례
-export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSite, onSitesChanged }: DetailProps) {
+export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSite, onSitesChanged, onOpenChat }: DetailProps) {
   const [data, setData] = useState<SiteDetailPayload | null>(null)
   const [error, setError] = useState('')
   const paneRef = useRef<HTMLElement>(null)
@@ -121,7 +121,8 @@ export default function OpsSiteDetail({ siteId, sites, user, onBack, onSelectSit
               {/* 맨 아래 행 — 개발 상세와 같은 짝(계통 · 조례) */}
               <div className="grid-2 bz-even-row">
                 <GridCard id="ops-grid" sido={data.site.sido || data.site.location} />
-                <OrdinanceCard id="ops-law" sido={data.site.sido || data.site.location} />
+                <OrdinanceCard id="ops-law" sido={data.site.sido || data.site.location}
+                               siteId={siteId} onOpenChat={onOpenChat} />
               </div>
             </>
           )}

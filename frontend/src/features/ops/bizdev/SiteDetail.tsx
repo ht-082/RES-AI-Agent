@@ -24,11 +24,12 @@ export interface DetailProps {
   onBack: () => void
   onSelectSite: (id: string) => void
   onSitesChanged: () => void
+  onOpenChat?: (conversationId: string) => void   // 조례 AI 제언 → 대화 화면으로
 }
 
 // 개발 사업 상세 — 사업개요 양식(docs 사업개요_양식_v3.md) 목차 순서로 구성.
 // 양식에 없는 예산 집행·계통·조례는 뒤에 유지한다(사용자 결정).
-export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, onSitesChanged }: DetailProps) {
+export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, onSitesChanged, onOpenChat }: DetailProps) {
   const [data, setData] = useState<SiteDetailPayload | null>(null)
   const [error, setError] = useState('')
 
@@ -151,7 +152,8 @@ export default function SiteDetail({ siteId, sites, user, onBack, onSelectSite, 
 
               <div className="grid-2 bz-even-row">
                 <GridCard id="sec-grid" sido={data.site.sido || data.site.location} />
-                <OrdinanceCard id="sec-ordinance" sido={data.site.sido || data.site.location} />
+                <OrdinanceCard id="sec-ordinance" sido={data.site.sido || data.site.location}
+                               siteId={siteId} onOpenChat={onOpenChat} />
               </div>
             </>
           )}

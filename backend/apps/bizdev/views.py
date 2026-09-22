@@ -22,9 +22,11 @@ from rest_framework.views import APIView
 from apps.documents.views import resolve_media_path
 
 from . import lawapi, registry, snapshots
+from django.core.exceptions import ValidationError as DjangoValidationError
+
 from .constants import (
-    CAPEX_PARTS, FACT_DEFS, FACT_SECTIONS, INVESTMENT_PARTS, LIFECYCLE_TO_STAGE,
-    STAGE_DEFS, STAGE_TO_LIFECYCLE, fact_spec,
+    CAPEX_PARTS, ENERGY_CHOICES, FACT_DEFS, FACT_SECTIONS, INVESTMENT_PARTS,
+    LIFECYCLE_TO_STAGE, STAGE_DEFS, STAGE_TO_LIFECYCLE, fact_spec,
 )
 from .models import (
     BudgetApproval, BudgetEntry, CommunityIssue, Contract, DefectItem, OpsDaily,
@@ -959,6 +961,88 @@ def advice_prompt(law):
         '4) 조문 확인 전까지 취할 조치',
         '사내 자료에 근거가 있으면 인용하고, 일반 지식이면 그렇다고 밝혀 주세요.',
     ])
+
+
+def site_line(site):
+    """사업 한 건을 한 줄로 — 조례가 어디에 물릴지 판단할 맥락."""
+    kind = dict(ENERGY_CHOICES).get(site.energy_type, site.energy_type or '')
+    life = '운영 중' if site.lifecycle == 'ops' else '개발 중'
+    mw = f'{float(site.capacity_mw or 0):g}MW'
+    where = site.sido or site.location or '지역 미상'
+    return ' · '.join(x for x in [site.name, where, f'{kind} {mw}'.strip(), life] if x)
+
+
+def site_stage_line(site):
+    """지금 걸려 있는 인허가 — 조례는 대개 특정 단계에서 걸린다.
+
+    완료/전체만 세면 '어디까지 왔나' 는 알아도 '지금 무엇에 걸리나' 를 모른다.
+    진행 중 단계를 함께 넣어야 답이 그 단계를 겨냥한다.
+    """
+    stages = list(site.stages.all())
+    done = sum(1 for st in stages if st.status == 'done')
+    doing = [st.name for st in sorted(stages, key=lambda x: x.stage_no)
+             if st.status == 'active'][:5]
+    head = f'인허가 {done}/{len(stages)} 완료'
+    return f'{head} · 진행 중: ' + ' · '.join(doing) if doing else f'{head} · 진행 중 단계 없음'
+
+
+def ordinance_advice_prompt(law, site):
+    """조례 한 건에 대한 질문 — 법령 쪽과 달리 '그 사업' 을 가리켜 묻는다.
+
+    조례는 전국이 아니라 그 지자체에서만 걸리므로 포트폴리오 집계가 아니라
+    해당 사업의 지역 · 용량 · 인허가 단계를 넣는다. 법령 쪽과 마찬가지로
+    조문 원문이 없다는 사실을 먼저 밝힌다 — 그냥 물으면 "확인 불가" 만
+    돌아온다(실측). 법제처 조문이 붙으면 그 단서는 걷어낸다.
+    """
+    name = law.get('law_name') or '조례'
+    scope = ('광역(시·도) 조례 — 관할 전역에 적용'
+             if law.get('scope') == 'province' else '기초(시·군·구) 조례 — 사업지 관할')
+    return chr(10).join([
+        f"[{law.get('date', '')}] [{name}]",
+        f"소관 {law.get('ministry', '')} · {scope}",
+        '',
+        '※ 조례 조문 원문은 아직 확보하지 못했습니다. "확인 불가"라고만 답하지 말고,',
+        '   조문 없이 판단 가능한 범위에서 아래를 구체적으로 답해 주세요.',
+        '',
+        f'대상 사업: {site_line(site)}',
+        f'인허가 상황: {site_stage_line(site)}',
+        '',
+        '1) 이 조례가 이 사업에 걸리는 지점 — 이격거리 · 허가기준 · 심의 · 주민의견 중 무엇인가',
+        '2) 확인할 조문 — 어떤 조 · 별표를 찾아봐야 하는가',
+        '3) 지금 인허가 단계에서 취할 조치 — 담당 부서 · 제출 서류 · 일정 관점에서',
+        '4) 상위 법령(국토계획법 · 전기사업법 등)보다 엄격하거나 어긋나는 부분이 있다면 그 점',
+        '사내 자료에 근거가 있으면 인용하고, 일반 지식이면 그렇다고 밝혀 주세요.',
+    ])
+
+
+class OrdinanceAdvicePromptView(APIView):
+    """GET /api/bizdev/ordinances/<law_id>/advice-prompt/?site=<uuid>
+
+    조례는 사업지 관할로 걸러 내려간 것이라, 어느 사업 화면에서 눌렀는지를
+    함께 받아야 같은 목록에서 그 건을 찾을 수 있다.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, law_id):
+        # 빈 값·형식이 틀린 값은 UUID 변환에서 터진다 — 400 으로 돌려준다
+        site_id = (request.query_params.get('site') or '').strip()
+        site = None
+        if site_id:
+            try:
+                site = Site.objects.filter(id=site_id).first()
+            except (DjangoValidationError, ValueError):
+                site = None
+        if not site:
+            return Response({'error': '사업지를 찾을 수 없습니다.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        rows = snapshots.list_ordinances(site.sido or site.location)
+        law = next((r for r in rows if str(r.get('id')) == law_id), None)
+        if not law:
+            return Response({'error': '조례를 찾을 수 없습니다.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        name = law.get('law_name') or '조례'
+        return Response({'title': f'조례 영향 — {site.name} · {name}',
+                         'prompt': ordinance_advice_prompt(law, site)})
 
 
 class LawAdvicePromptView(APIView):

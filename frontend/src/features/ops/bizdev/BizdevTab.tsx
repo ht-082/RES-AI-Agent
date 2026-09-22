@@ -54,6 +54,7 @@ export default function BizdevTab({ user, onOpenChat }: {
         onBack={() => setSelectedId(null)}
         onSelectSite={setSelectedId}
         onSitesChanged={reload}
+        onOpenChat={onOpenChat}
       />
     )
   }

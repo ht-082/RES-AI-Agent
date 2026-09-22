@@ -9,6 +9,7 @@ from .views import (
     SubstationSearchView, SummaryView,
     DefectItemViewSet, OpsDailyViewSet, OpsPlanItemViewSet, PortfolioKpiViewSet,
     LawAdvicePromptView, SiteDocumentViewSet, LawSearchView, WatchedLawViewSet,
+    OrdinanceAdvicePromptView,
 )
 
 router = DefaultRouter()
@@ -37,6 +38,8 @@ urlpatterns = [
     path('bizdev/grid/substations/', SubstationSearchView.as_view(), name='bizdev-substations'),
     path('bizdev/laws/search/', LawSearchView.as_view(), name='bizdev-law-search'),
     path('bizdev/laws/', LawListView.as_view(), name='bizdev-laws'),
+    path('bizdev/ordinances/<str:law_id>/advice-prompt/',
+         OrdinanceAdvicePromptView.as_view(), name='bizdev-ordinance-advice-prompt'),
     path('bizdev/ordinances/', OrdinanceListView.as_view(), name='bizdev-ordinances'),
     path('', include(router.urls)),
 ]
