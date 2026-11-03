@@ -193,3 +193,4 @@ hwp는 전부 1, docx는 인위적 순번이다.
 - 프론트엔드는 Windows 바인드 마운트라 `usePolling`으로 파일 변경을 감지한다
 - `RAG_WARMUP_ON_START=False` 로 기동 시 모델 예열을 끌 수 있다 (관리 명령 실행 시 유용)
 - 로그: `docker logs re_backend --tail 50`
+- 마지막 동기화: 2026-11-03 (사내망에서 push 확인)
